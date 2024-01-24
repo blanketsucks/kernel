@@ -1,0 +1,111 @@
+#pragma once
+
+#include <kernel/common.h>
+#include <kernel/pci.h>
+
+#include <std/enums.h>
+
+namespace kernel::devices {
+
+enum class ATACommand : u8 {
+    Identify = 0xEC,
+    Read = 0x20,
+    Write = 0x30,
+    CacheFlush = 0xE7
+};
+
+enum class ATAStatus : u8 {
+    Error = 1 << 0,
+    Index = 1 << 1,
+    CorrectedData = 1 << 2,
+    DataRequest = 1 << 3,
+    DriveFault = 1 << 5,
+    DataReady = 1 << 6,
+    Busy = 1 << 7
+};
+
+MAKE_ENUM_BITWISE_OPS(ATAStatus);
+
+enum class ATARegister : u8 {
+    Data = 0x00,
+    Error = 0x01,
+    Features = 0x01,
+    SectorCount = 0x02,
+    LBA0 = 0x03,
+    LBA1 = 0x04,
+    LBA2 = 0x05,
+    Drive = 0x06,
+    Status = 0x07,
+    Command = 0x07,
+    Control = 0x0C,
+    AltStatus = 0x0C,
+
+    BusMasterStatus = 0x2
+};
+
+enum class ATADrive : u8 {
+    Master,
+    Slave
+};
+
+enum class ATAChannel : u8 {
+    Primary,
+    Secondary
+};
+
+class PATADevice {
+public:
+    constexpr static u16 PRIMARY_CONTROL_PORT = 0x3F6;
+    constexpr static u16 SECONDARY_CONTROL_PORT = 0x376;
+
+    constexpr static u16 PRIMARY_DATA_PORT = 0x1F0;
+    constexpr static u16 SECONDARY_DATA_PORT = 0x170;
+
+    constexpr static u16 PRIMARY_IRQ = 14;
+    constexpr static u16 SECONDARY_IRQ = 15;
+    
+    static PATADevice* create(ATAChannel channel, ATADrive drive);
+
+    ATAChannel channel() const { return m_channel; }
+    ATADrive drive() const { return m_drive; }
+
+    void seek(u32 lba) { m_offset = lba; }
+    u32 offset() const { return m_offset; }
+
+    u16 cylinders() const { return m_cylinders; }
+    u16 heads() const { return m_heads; }
+    u16 sectors_per_track() const { return m_sectors_per_track; }
+    u32 sectors() const { return m_cylinders * m_heads * m_sectors_per_track; }
+
+    u16 control_port() const;
+    u16 data_port() const;
+    u16 bus_master_port() const { return m_bus_master_port; }
+
+    void wait_while_busy() const;
+    void wait_for_irq();
+    void poll() const; // An alternative to IRQs
+
+    void set_irq_state(bool state) { m_did_irq = state; }
+
+    void prepare_for(ATACommand command, u32 lba, u8 sectors) const;
+
+    void read_sectors(u32 lba, u8 sectors, u8* buffer) const;
+    void write_sectors(u32 lba, u8 sectors, const u8* buffer) const;
+private:
+    PATADevice(ATAChannel channel, ATADrive drive, pci::Address address);
+
+    ATAChannel m_channel;
+    ATADrive m_drive;
+
+    u16 m_bus_master_port;
+
+    u16 m_cylinders;
+    u16 m_heads;
+    u16 m_sectors_per_track;
+
+    u32 m_offset = 0;
+    
+    bool m_did_irq = false;
+};
+
+}

@@ -1,0 +1,6 @@
+build/
+mnt/
+.vscode/
+
+fs.img
+kernel.map
