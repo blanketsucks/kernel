@@ -35,6 +35,7 @@ public:
 
     virtual size_t read(void* buffer, size_t size, size_t offset) const = 0;
     virtual size_t write(const void* buffer, size_t size, size_t offset) = 0;
+    virtual void truncate(size_t size) = 0;
 
     bool operator==(const Inode& other) const {
         return this->id() == other.id();
@@ -68,6 +69,8 @@ public:
 
     virtual void add_entry(String name, RefPtr<Inode> inode) = 0;
     virtual RefPtr<Inode> create_entry(String name, mode_t mode, uid_t uid, gid_t gid) = 0;
+
+    virtual void flush() = 0;
 
 protected:
     Inode() = default;

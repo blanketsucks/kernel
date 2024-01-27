@@ -22,6 +22,7 @@ public:
 
     void set(size_t index, bool value) {
         if (index >= m_size) return;
+        
         if (value) {
             m_data[index / 8] |= (1 << (index % 8));
         } else {

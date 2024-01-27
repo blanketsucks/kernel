@@ -156,11 +156,9 @@ ErrorOr<void*> MemoryManager::map_physical_region(u32 start, size_t size) {
     auto dir = PageDirectory::kernel_page_directory();
 
     auto space = m_kernel_region.find_free_pages(pages);
-    serial::printf("Found space at 0x%x\n", space->address());
     if (!space) return Error(ENOMEM);
 
     for (u32 i = 0; i < pages; i++) {
-        serial::printf("Mapping 0x%x to 0x%x\n", start + i * PAGE_SIZE, space->address() + i * PAGE_SIZE);
         dir->map(space->address() + i * PAGE_SIZE, start + i * PAGE_SIZE, false, true);
     }
 

@@ -43,7 +43,7 @@ PATADevice* PATADevice::create(ATAChannel channel, ATADrive drive) {
 
 PATADevice::PATADevice(
     ATAChannel channel, ATADrive drive, pci::Address address
-) : m_channel(channel), m_drive(drive) {
+) : DiskDevice(3, 0, SECTOR_SIZE), m_channel(channel), m_drive(drive) {
     s_device_instance = this;
     m_bus_master_port = pci::read<u32>(address, 0x20) & (~1);
 
@@ -77,6 +77,14 @@ PATADevice::PATADevice(
     m_cylinders = buffer[1];
     m_heads = buffer[3];
     m_sectors_per_track = buffer[6];
+
+    m_has_48bit_pio = buffer[83] & (1 << 10);
+
+    serial::printf("PATA Device Information:\n");
+    serial::printf("  Cylinders: %u\n", m_cylinders);
+    serial::printf("  Heads: %u\n", m_heads);
+    serial::printf("  Sectors per track: %u\n", m_sectors_per_track);
+    serial::printf("  48 bit PIO: %s\n", m_has_48bit_pio ? "Yes" : "No");
 }
 
 u16 PATADevice::control_port() const {
@@ -112,32 +120,31 @@ void PATADevice::poll() const {
     }
 }
 
+// TODO: Maybe support 48 bit PIO?
 void PATADevice::prepare_for(ATACommand command, u32 lba, u8 sectors) const {
-	u16 port = this->data_port();
+    u16 port = this->data_port();
 
-	this->wait_while_busy();
+    this->wait_while_busy();
 
     // Select the drive
     io::write<u8>(port + ATARegister::Drive, 0xE0 | (to_underlying(m_drive) << 4) | ((lba >> 24) & 0x0F));
 
     // Write the sector count and the LBA (sector) we want to read from
-	io::write<u8>(port + ATARegister::SectorCount, sectors);
-	io::write<u8>(port + ATARegister::LBA0, lba & 0xFF);
-	io::write<u8>(port + ATARegister::LBA1, (lba >> 8) & 0xFF);
-	io::write<u8>(port + ATARegister::LBA2, (lba >> 16) & 0xFF);
+    io::write<u8>(port + ATARegister::SectorCount, sectors);
+    io::write<u8>(port + ATARegister::LBA0, lba & 0xFF);
+    io::write<u8>(port + ATARegister::LBA1, (lba >> 8) & 0xFF);
+    io::write<u8>(port + ATARegister::LBA2, (lba >> 16) & 0xFF);
 
-	this->wait_while_busy();
+    this->wait_while_busy();
 
     io::write(port + ATARegister::Command, to_underlying(command));
 }
 
 void PATADevice::read_sectors(u32 lba, u8 count, u8* buffer) const {
-    this->prepare_for(ATACommand::Read, m_offset + lba, count);
+    this->prepare_for(ATACommand::Read, lba, count);
 
     for (u8 i = 0; i < count; i++) {
-        serial::printf("Reading sector %d\n", lba + i);
         this->poll();
-        serial::printf("Reading sector %d\n", lba + i);
 
         for (u16 j = 0; j < 256; j++) {
             u16 data = io::read<u16>(this->data_port() + ATARegister::Data);
@@ -151,7 +158,7 @@ void PATADevice::read_sectors(u32 lba, u8 count, u8* buffer) const {
 }
 
 void PATADevice::write_sectors(u32 lba, u8 count, const u8* buffer) const {
-    this->prepare_for(ATACommand::Write, m_offset + lba, count);
+    this->prepare_for(ATACommand::Write, lba, count);
 
     for (u8 i = 0; i < count; i++) {
         this->poll();
@@ -163,6 +170,27 @@ void PATADevice::write_sectors(u32 lba, u8 count, const u8* buffer) const {
 
         buffer += SECTOR_SIZE;
     }
+
+}
+
+bool PATADevice::read_blocks(void* buffer, size_t count, size_t block) {
+    if (count > UINT8_MAX) {
+        // In ATA 28 bit PIO, we can only read up to 255 sectors at a time.
+        return false;
+    }
+
+    this->read_sectors(block, count, reinterpret_cast<u8*>(buffer));
+    return true;
+}
+
+bool PATADevice::write_blocks(const void* buffer, size_t count, size_t block) {
+    if (count > UINT8_MAX) {
+        // In ATA 28 bit PIO, we can only write up to 255 sectors at a time.
+        return false;
+    }
+
+    this->write_sectors(block, count, reinterpret_cast<const u8*>(buffer));
+    return true;
 }
 
 }

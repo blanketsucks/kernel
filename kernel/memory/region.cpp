@@ -100,7 +100,6 @@ Space* Region::find_space(u32 address) const {
 Space* Region::find_free(size_t size) {
     auto* space = m_head;
     while (space) {
-        serial::printf("space.size = %d, space.used = %d\n", space->m_size, space->m_used);
         if (space->m_used || space->m_size < size) {
             space = space->next;
             continue;

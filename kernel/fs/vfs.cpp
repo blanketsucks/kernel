@@ -73,7 +73,9 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
         auto* mount = this->find_mount(*current);
 
         if (mount) {
-            auto root = mount->guest()->inode(mount->guest()->root());
+            auto* guest = mount->guest();
+
+            auto root = guest->inode(guest->root());
             current = ResolvedInode::create(component, root, current);
         }
     }
@@ -82,7 +84,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
 }
 
 ErrorOr<RefPtr<File>> VFS::open(StringView, int, mode_t) {
-    
+    return RefPtr<File>(nullptr);
 }
 
 ErrorOr<void> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {

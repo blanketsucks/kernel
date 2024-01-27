@@ -49,6 +49,8 @@ public:
     bool is_err() const { return has_err; }
     bool is_ok() const { return !is_err(); }
 
+    void value() const { return; } // Added here to make it possible to use the TRY() macro
+
     const E& error() const { return m_error; }
     E& error() { return m_error; }
 private:

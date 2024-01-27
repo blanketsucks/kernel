@@ -15,6 +15,7 @@ if [ -n "$QEMU_DEBUG" ]; then
     QEMU_ARGS+=(
         -d cpu_reset,int
         -D qemu.log
+        -s
     )
 fi
 

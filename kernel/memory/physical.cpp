@@ -15,7 +15,6 @@ PhysicalMemoryManager* PhysicalMemoryManager::instance() {
 
 void PhysicalMemoryManager::init(u32 mem_lower, u32 mem_upper) {
     u32 frames = (mem_upper + mem_lower) * 1024 / PAGE_SIZE;
-    serial::printf("PhysicalMemoryManager: %d frames\n", frames);
     s_instance.m_physical_frames.reserve(frames);
 
     for (u32 i = 0; i < frames; i++) {

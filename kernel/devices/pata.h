@@ -2,6 +2,7 @@
 
 #include <kernel/common.h>
 #include <kernel/pci.h>
+#include <kernel/devices/disk.h>
 
 #include <std/enums.h>
 
@@ -9,9 +10,12 @@ namespace kernel::devices {
 
 enum class ATACommand : u8 {
     Identify = 0xEC,
-    Read = 0x20,
-    Write = 0x30,
-    CacheFlush = 0xE7
+    Read = 0x20,    // For 28-bit PIO mode
+    Write = 0x30,   // For 28-bit PIO mode
+    CacheFlush = 0xE7,
+
+    ReadExt = 0x24, // For 48-bit PIO mode
+    WriteExt = 0x34 // For 48-bit PIO mode
 };
 
 enum class ATAStatus : u8 {
@@ -53,7 +57,7 @@ enum class ATAChannel : u8 {
     Secondary
 };
 
-class PATADevice {
+class PATADevice : public DiskDevice {
 public:
     constexpr static u16 PRIMARY_CONTROL_PORT = 0x3F6;
     constexpr static u16 SECONDARY_CONTROL_PORT = 0x376;
@@ -69,13 +73,12 @@ public:
     ATAChannel channel() const { return m_channel; }
     ATADrive drive() const { return m_drive; }
 
-    void seek(u32 lba) { m_offset = lba; }
-    u32 offset() const { return m_offset; }
-
     u16 cylinders() const { return m_cylinders; }
     u16 heads() const { return m_heads; }
     u16 sectors_per_track() const { return m_sectors_per_track; }
     u32 sectors() const { return m_cylinders * m_heads * m_sectors_per_track; }
+
+    bool has_48bit_pio() const { return m_has_48bit_pio; }
 
     u16 control_port() const;
     u16 data_port() const;
@@ -88,6 +91,9 @@ public:
     void set_irq_state(bool state) { m_did_irq = state; }
 
     void prepare_for(ATACommand command, u32 lba, u8 sectors) const;
+
+    bool read_blocks(void* buffer, size_t count, size_t block) override;
+    bool write_blocks(const void* buffer, size_t count, size_t block) override;
 
     void read_sectors(u32 lba, u8 sectors, u8* buffer) const;
     void write_sectors(u32 lba, u8 sectors, const u8* buffer) const;
@@ -102,8 +108,7 @@ private:
     u16 m_cylinders;
     u16 m_heads;
     u16 m_sectors_per_track;
-
-    u32 m_offset = 0;
+    bool m_has_48bit_pio;
     
     bool m_did_irq = false;
 };

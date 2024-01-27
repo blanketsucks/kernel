@@ -2,6 +2,7 @@
 
 #include <std/types.h>
 #include <std/kmalloc.h>
+#include <std/initializer_list.h>
 
 #include <kernel/serial.h>
 
@@ -61,11 +62,7 @@ public:
     using ConstIterator = VectorIterator<const T>;
 
     Vector() : m_size(0), m_capacity(0), m_data(nullptr) {}
-
-    Vector(size_t size) : m_size(size), m_capacity(size) {
-        m_data = reinterpret_cast<T*>(kmalloc(sizeof(T) * size));
-    }
-
+    
     Vector(size_t size, const T& initial) : m_size(size), m_capacity(size) {
         this->reserve(m_capacity);
         for (size_t i = 0; i < size; i++) {
@@ -73,9 +70,16 @@ public:
         }
     }
 
-    Vector(const Vector<T>& other) : m_size(other.m_size), m_capacity(other.m_capacity) {
-        this->reserve(m_capacity);
+    Vector(const Vector<T>& other) {
+        this->reserve(other.m_size);
         for (auto& item : other) {
+            this->append(item);
+        }
+    }
+
+    Vector(std::initializer_list<T> list) {
+        this->reserve(list.size());
+        for (auto& item : list) {
             this->append(item);
         }
     }
@@ -208,6 +212,12 @@ public:
         }
     }
 
+    void extend(const Vector<T>& vec) {
+        for (auto& item : vec) {
+            this->append(item);
+        }
+    }
+
     void remove(size_t index) {
         if (index >= m_size) {
             return;
@@ -277,9 +287,9 @@ public:
     }
 
 private:    
-    size_t m_size;
-    size_t m_capacity;
-    T* m_data;
+    size_t m_size = 0;
+    size_t m_capacity = 0;
+    T* m_data = nullptr;
 };
 
 }

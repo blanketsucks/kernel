@@ -1,4 +1,3 @@
-#include "kernel/devices/bochs_vga.h"
 #include <kernel/common.h>
 #include <kernel/multiboot.h>
 #include <kernel/vga.h>
@@ -32,6 +31,9 @@
 #include <kernel/devices/mouse.h>
 #include <kernel/devices/device.h>
 #include <kernel/devices/pcspeaker.h>
+#include <kernel/devices/bochs_vga.h>
+#include <kernel/devices/pata.h>
+#include <kernel/devices/partition.h>
 
 #include <kernel/syscalls/syscalls.h>
 
@@ -117,17 +119,12 @@ extern "C" u64 _kernel_end;
 extern "C" void main(u32 ptr) {
     asm volatile("cli");
 
-    serial::printf("Kernel start: 0x%x\n", &_kernel_start);
-
     serial::init();
     vga::clear();
 
     kernel::run_global_constructors();
 
     multiboot_info_t header = *load_multiboot_header(ptr);
-    // serial::printf("Header address: 0x%x\n", header);
-    // serial::printf("Kernel start: 0x%x\n", reinterpret_cast<u64>(&_kernel_start));
-
     pic::remap();
 
     cpu::init_gdt();
@@ -141,14 +138,9 @@ extern "C" void main(u32 ptr) {
     memory::MemoryManager::init(&header);
     asm volatile("sti");
 
-    auto mm = memory::MemoryManager::instance();
-    // auto* device = BochsVGADevice::create(640, 480);
-
-
-    // u32* fb = (u32*)mm->map_physical_region(header.framebuffer_addr, header.framebuffer_height * header.framebuffer_width * 4).value();
-
+    auto* device = BochsVGADevice::create(640, 480);
     pci::enumerate([](pci::Device device) {
-        serial::printf("Device '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
+        serial::printf("PCI Device: '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
     });
 
     PATADevice* disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
@@ -160,17 +152,82 @@ extern "C" void main(u32 ptr) {
     MasterBootRecord mbr = {};
     disk->read_sectors(0, 1, reinterpret_cast<u8*>(&mbr));
 
+    u32 offset = 0;
     for (auto& partition : mbr.partitions) {
         if (!partition.is_bootable()) {
             continue;
         }
 
-        serial::printf(
-            "Attributes: 0x%x, Starting sector: %u, Sectors: %u\n", 
-            partition.attributes, partition.lba_start, partition.sectors
-        );
+        offset = partition.lba_start;
+        break;
     }
 
+    BlockDevice* partition = nullptr;
+    if (offset != 0) {
+        partition = PartitionDevice::create(3, 1, disk, offset);
+    } else {
+        partition = disk;
+    }
+
+    auto fs = ext2fs::FileSystem::create(partition);
+    if (!fs) {
+        kernel::panic("Could not create the ext2 filesystem.");
+    }
+
+    auto root = fs->inode(fs->root());
+    for (auto& entry : root->readdir()) {
+        serial::printf("Entry (%d): %*s\n", entry.type, entry.name.size(), entry.name.data());
+    }
+
+    fs::VFS vfs;
+    vfs.mount_root(fs);
+
+    // ino_t id = fs->resolve("/boot/test");
+    // serial::printf("Inode ID: %u\n", id);
+
+    // auto inode = fs->inode(id);
+    // if (!inode) {
+    //     serial::printf("Failed to get inode\n");
+    //     return;
+    // }
+
+
+#if 0
+    ELF elf(inode->file());
+    elf.read_program_headers();
+
+    auto& file = elf.file();
+    auto& interpreter = elf.interpreter();
+
+    serial::printf("Interpreter: %*s\n", interpreter.size(), interpreter.data());
+    serial::printf("Entry point: %u\n", elf.header()->e_entry);
+
+
+    auto mm = memory::MemoryManager::instance();
+    
+    // Calculate the total number of pages needed to load the ELF file
+    size_t total_pages = 0;
+    for (auto& ph : elf.program_headers()) {
+        if (ph.p_type != PT_LOAD) continue;
+        total_pages += (ph.p_memsz + PAGE_SIZE - 1) / PAGE_SIZE;
+    }
+
+    serial::printf("Total pages: %u\n", total_pages);
+    u8* region = static_cast<u8*>(mm->allocate_heap_region(total_pages).value());
+
+    for (auto& ph : elf.program_headers()) {
+        if (ph.p_type != PT_LOAD) continue;
+
+        file.seek(ph.p_offset);
+        file.read(region + ph.p_vaddr, ph.p_filesz);
+    }
+
+    auto entry = reinterpret_cast<int(*)()>(region + elf.header()->e_entry);
+    serial::printf("Result: %d\n", entry());
+#endif
+}
+
+void find_hardware_rng() {
     cpu::CPUID cpuid(7);
     if (cpuid.ebx() & bit_RDSEED) {
         serial::printf("rdseed instruction supported.\n");
@@ -182,65 +239,7 @@ extern "C" void main(u32 ptr) {
             serial::printf("No hardware random number generator available.\n");
         }
     }
-
-    time_t now = rtc::now();
-    serial::printf("Current time: %u\n", now);
-
-    // auto fs = ext2fs::FileSystem::create(disk);
-    // if (!fs) {
-    //     serial::printf("Failed to create ext2fs filesystem\n");
-    //     return;
-    // }
-
-    // fs::VFS vfs;
-    // vfs.mount_root(fs);
-
-    // device->set_pixel(1, 1, 0xFFFFFFFF);
-
-    // ino_t id = fs->resolve("/boot/test");
-    // serial::printf("Inode ID: %u\n", id);
-
-    // auto inode = fs->inode(id);
-    // if (!inode) {
-    //     serial::printf("Failed to get inode\n");
-    //     return;
-    // }
-
-    // ELF elf(inode->file());
-    // elf.read_program_headers();
-
-    // auto& file = elf.file();
-    // auto& interpreter = elf.interpreter();
-
-    // serial::printf("Interpreter: %*s\n", interpreter.size(), interpreter.data());
-    // serial::printf("Entry point: %u\n", elf.header()->e_entry);
-
-    // auto mm = memory::MemoryManager::instance();
-
-    // auto& kernel_region = mm->kernel_region();
-
-    // // // Calculate the total number of pages needed to load the ELF file
-    // size_t total_pages = 0;
-    // for (auto& ph : elf.program_headers()) {
-    //     if (ph.p_type != PT_LOAD) continue;
-    //     total_pages += (ph.p_memsz + PAGE_SIZE - 1) / PAGE_SIZE;
-    // }
-
-    // serial::printf("Total pages: %u\n", total_pages);
-    // u8* region = static_cast<u8*>(mm->allocate_heap_region(total_pages).value());
-
-    // for (auto& ph : elf.program_headers()) {
-    //     if (ph.p_type != PT_LOAD) continue;
-
-    //     file.seek(ph.p_offset);
-    //     file.read(region + ph.p_vaddr, ph.p_filesz);
-    // }
-
-    // auto entry = reinterpret_cast<int(*)()>(region + elf.header()->e_entry);
-    // serial::printf("Result: %d\n", entry());
 }
-
-
 
 multiboot_info_t* load_multiboot_header(u32 address) {
     return reinterpret_cast<multiboot_info_t*>(address + KERNEL_VIRTUAL_BASE);

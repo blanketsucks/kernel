@@ -79,7 +79,10 @@ class RefPtr {
 public:
     RefPtr() = default;
 
-    RefPtr(T* ptr) : m_ptr(ptr), m_ref_count(new RefCount) { m_ref_count->ref(); }
+    RefPtr(T* ptr) : m_ptr(ptr), m_ref_count(new RefCount) {
+        m_ref_count->ref();
+    }
+    
     RefPtr(const RefPtr& other) : m_ptr(other.m_ptr) {
         m_ref_count = other.m_ref_count;
         if (m_ref_count) {

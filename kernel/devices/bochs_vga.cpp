@@ -24,7 +24,9 @@ BochsVGADevice* BochsVGADevice::create(i32 width, i32 height) {
     device->m_physical_address = address.bar0() & 0xFFFFFFF0;
 
     device->set_resolution(width, height, VBE_BPP_32);
-    device->mmap();
+    if (!device->mmap()) {
+        return nullptr;
+    }
 
     s_instance = device;
     return device;
@@ -72,7 +74,6 @@ bool BochsVGADevice::mmap() {
     }
 
     m_framebuffer = reinterpret_cast<u32*>(result.value());
-    serial::printf("end = 0x%x\n", u32(m_framebuffer + this->size()));
     return true;
 }
 

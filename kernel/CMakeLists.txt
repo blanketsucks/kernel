@@ -20,11 +20,11 @@ target_compile_options(
     kernel.bin PRIVATE
     -Wall -Wextra -Wno-interrupt-service-routine
     -nostdlib -nostdinc++ -ffreestanding -fno-exceptions -fno-rtti
-    --target=i386-pc-none-elf -m32
+    --target=i386-pc-none-elf -m32 -g
 )
 
 target_link_options(
     kernel.bin PRIVATE
-    -T ${LINKER_SCRIPT} --target=i386-pc-none-elf -m32
+    -T ${LINKER_SCRIPT} --target=i386-pc-none-elf -m32 -g
     -nostdlib -ffreestanding -fno-exceptions -fno-rtti
 )
