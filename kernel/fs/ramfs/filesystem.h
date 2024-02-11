@@ -1,4 +1,4 @@
-#if 0
+#pragma once
 
 #include <kernel/common.h>
 #include <std/string.h>
@@ -6,31 +6,77 @@
 #include <std/memory.h>
 
 #include <kernel/fs/filesystem.h>
+#include <kernel/fs/inode.h>
 #include <kernel/fs/file.h>
 
 namespace kernel::ramfs {
+
+constexpr ino_t ROOT_INODE = 1;
 
 enum NodeFlags {
     Directory = 1 << 0,
 };
 
-struct Node {
-    String name;
-    int flags;
+struct Inode : public fs::Inode {
+public:
+    virtual ~Inode() = default;
 
-    void* data;
+    size_t read(void* buffer, size_t size, size_t offset) const override;
+    size_t write(const void* buffer, size_t size, size_t offset) override;
+    void truncate(size_t size) override;
 
-    size_t maxsize; // The size of the allocated buffer
-    size_t size;    // The size of the data stored in the buffer
+    mode_t mode() const override;
+    size_t size() const override { return m_size; }
 
-    ino_t id;
+    bool is_fifo() const override;
+    bool is_character_device() const override;
+    bool is_directory() const override;
+    bool is_block_device() const override;
+    bool is_regular_file() const override;
+    bool is_symlink() const override;
+    bool is_unix_socket() const override;
 
-    Node* parent;
-    Vector<Node*> children;
+    u32 major() const override { return 0; }
+    u32 minor() const override { return 0; }
 
-    bool is_root() const { return parent == nullptr; }
-    bool is_directory() const { return flags & Directory; }
+    struct stat stat() const override;
+
+    Vector<fs::DirectoryEntry> readdir() const override;
+    RefPtr<fs::Inode> lookup(StringView name) const override;
+
+    void add_entry(String name, RefPtr<fs::Inode> inode) override;
+    RefPtr<fs::Inode> create_entry(String name, mode_t mode, uid_t uid, gid_t gid) override;
+
+    void flush() override;
+
+private:
+    String m_name;
+    int m_flags;
+
+    void* m_data;
+
+    size_t m_maxsize; // The size of the allocated buffer
+    size_t m_size;    // The size of the data stored in the buffer
+
+    ino_t m_id;
+
+    Inode* m_parent;
+    Vector<Inode*> m_children;
 };
+
+class FileSystem : public fs::FileSystem {
+public:
+    u8 id() const override { return 0x01; }
+    StringView name() const override { return "ramfs"; }
+
+    ino_t root() const override { return ROOT_INODE; }
+    RefPtr<fs::Inode> inode(ino_t id) override;
+
+private:
+    Inode* m_root;
+};
+
+#if 0
 
 class FileSystem : public fs::FileSystem {
 public:
@@ -82,6 +128,6 @@ private:
     ino_t nodes = 1; // The next node ID to be assigned
 };
 
-}
-
 #endif
+
+}

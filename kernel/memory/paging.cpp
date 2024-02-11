@@ -21,12 +21,10 @@ static ALIGNED(0x1000) PageTableEntry s_kernel_page_table_entries[256][1024];
 static PageDirectory* s_current_page_directory = nullptr;
 
 PageTable* PageTable::create() {
-    auto* mm = MemoryManager::instance();
-
     PageTable* table = new PageTable;
     ASSERT(table != nullptr, "Failed to allocate PageTable");
 
-    table->m_entries = static_cast<PageTableEntry*>(mm->allocate_kernel_region(1).value());
+    table->m_entries = static_cast<PageTableEntry*>(MM->allocate_kernel_region(1).value());
     return table;
 }
 
@@ -39,10 +37,9 @@ PageDirectory::PageDirectory() : m_type(Kernel) {
 }
 
 PageDirectory* PageDirectory::create_user() {
-    auto* mm = MemoryManager::instance();
     PageDirectory* dir = new PageDirectory(User);
 
-    auto* entries = static_cast<PageDirectoryEntry*>(mm->allocate_kernel_region(1).value());
+    auto* entries = static_cast<PageDirectoryEntry*>(MM->allocate_kernel_region(1).value());
     dir->m_entries = entries;
 
     std::memset(entries, 0, sizeof(PageDirectoryEntry) * 1024);

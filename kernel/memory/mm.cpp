@@ -82,15 +82,12 @@ PageDirectory* MemoryManager::kernel_page_directory() {
 
 ErrorOr<void*> MemoryManager::allocate_physical_frame() {
     auto* pmm = PhysicalMemoryManager::instance();
-    return TRY(pmm->allocate());
+    return pmm->allocate();
 }
 
 ErrorOr<void> MemoryManager::free_physical_frame(void* frame) {
     auto* pmm = PhysicalMemoryManager::instance();
-    auto result = pmm->free(frame);
-
-    if (result.is_err()) return result;
-    return {};
+    return pmm->free(frame);
 }
 
 ErrorOr<void*> MemoryManager::allocate_from_region(Region& region, size_t pages) {

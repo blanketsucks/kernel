@@ -22,6 +22,7 @@ struct PartitionTableEntry {
     u32 sectors;
 
     bool is_bootable() const { return attributes & 0x80; }
+    bool is_protective_mbr() const { return type == 0xEE; }
 } PACKED;
 
 static_assert(sizeof(PartitionTableEntry) == 16);

@@ -45,7 +45,6 @@ using namespace kernel;
 using namespace kernel::devices;
 
 multiboot_info_t* load_multiboot_header(u32 address);
-void dump_mmap_entries(multiboot_info_t* header);
 
 struct Command {
     String name;
@@ -125,6 +124,7 @@ extern "C" void main(u32 ptr) {
     kernel::run_global_constructors();
 
     multiboot_info_t header = *load_multiboot_header(ptr);
+
     pic::remap();
 
     cpu::init_gdt();
@@ -139,8 +139,10 @@ extern "C" void main(u32 ptr) {
     asm volatile("sti");
 
     auto* device = BochsVGADevice::create(640, 480);
+
+    serial::printf("PIC Bus:\n");
     pci::enumerate([](pci::Device device) {
-        serial::printf("PCI Device: '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
+        serial::printf("  Device: '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
     });
 
     PATADevice* disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
@@ -171,25 +173,26 @@ extern "C" void main(u32 ptr) {
 
     auto fs = ext2fs::FileSystem::create(partition);
     if (!fs) {
-        kernel::panic("Could not create the ext2 filesystem.");
-    }
-
-    auto root = fs->inode(fs->root());
-    for (auto& entry : root->readdir()) {
-        serial::printf("Entry (%d): %*s\n", entry.type, entry.name.size(), entry.name.data());
+        serial::printf("Could not create the ext2 filesystem.");
+        return;
     }
 
     fs::VFS vfs;
     vfs.mount_root(fs);
 
-    // ino_t id = fs->resolve("/boot/test");
-    // serial::printf("Inode ID: %u\n", id);
+    auto result = vfs.resolve("/dev");
+    if (result.is_err()) {
+        return;
+    }
 
-    // auto inode = fs->inode(id);
-    // if (!inode) {
-    //     serial::printf("Failed to get inode\n");
-    //     return;
-    // }
+    auto dev = result.value();
+    for (auto& entry : dev->inode().readdir()) {
+        serial::printf("Entry (%d): %*s\n", entry.type, entry.name.size(), entry.name.data());
+    }
+
+    for (int i = 0; i < 640; i++) {
+        device->set_pixel(i, device->height() / 2, 0x00FF00);
+    }
 
 
 #if 0
@@ -244,4 +247,3 @@ void find_hardware_rng() {
 multiboot_info_t* load_multiboot_header(u32 address) {
     return reinterpret_cast<multiboot_info_t*>(address + KERNEL_VIRTUAL_BASE);
 }
-

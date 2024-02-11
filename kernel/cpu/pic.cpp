@@ -12,7 +12,7 @@ constexpr u8 PIC_EOF = 0x20;
 
 namespace kernel::pic {
 
-void send_eoi(u8 irq) {
+void eoi(u8 irq) {
     if (irq >= 8) {
         // Send EOI to both master and slave PIC in this case
         io::write(PIC_SLAVE_COMMAND, PIC_EOF);

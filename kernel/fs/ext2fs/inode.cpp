@@ -63,7 +63,7 @@ size_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
 
     size_t bytes_read = 0;
     u8 block_buffer[ext2fs()->block_size()];
-
+ 
     while (bytes_read < size) {
         this->read_blocks(block, 1, block_buffer);
 
@@ -85,8 +85,6 @@ size_t InodeEntry::write(const void* buffer, size_t size, size_t offset) {
     } else if (offset + size > this->size()) {
         this->truncate(offset + size);
     }
-
-    serial::printf("First block: %u\n", m_inode.block_pointers[0]);
 
     u32 block_size = ext2fs()->block_size();
 

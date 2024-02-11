@@ -130,10 +130,10 @@ BlockGroup* FileSystem::find_block_group(const Function<IterationAction(BlockGro
 }
 
 RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
-    // auto iterator = m_inodes.find(inode);
-    // if (iterator != m_inodes.end()) {
-    //     return iterator->value;
-    // }
+    auto iterator = m_inodes.find(inode);
+    if (iterator != m_inodes.end()) {
+        return iterator->value;
+    }
 
     u32 block_group = (inode - 1) / m_superblock->inodes_per_group;
     u32 index = (inode - 1) % m_superblock->inodes_per_group;
@@ -154,10 +154,6 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
     m_inodes.set(inode, entry);
 
     return entry;
-}
-
-ino_t FileSystem::root() const { 
-    return ROOT_INODE;
 }
 
 RefPtr<InodeEntry> FileSystem::create_inode(mode_t mode, uid_t uid, gid_t gid) {

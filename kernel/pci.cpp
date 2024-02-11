@@ -58,6 +58,15 @@ u32 Address::bar3() const { return read<u32>(*this, BAR3); }
 u32 Address::bar4() const { return read<u32>(*this, BAR4); }
 u32 Address::bar5() const { return read<u32>(*this, BAR5); }
 
+u8 Address::prog_if() const { return read<u8>(*this, PROG_IF); }
+
+void Address::set_interrupt_line(bool value) const {
+    Command command = { read<u16>(*this, COMMAND) };
+    command.interrupt_disable = !value;
+
+    write<u16>(*this, COMMAND, command.value);
+}
+
 u16 get_vendor_id(Address address) { return read<u16>(address, VENDOR_ID); }
 u16 get_device_id(Address address) { return read<u16>(address, DEVICE_ID); }
 

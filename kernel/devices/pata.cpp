@@ -23,7 +23,7 @@ INTERRUPT void irq14_handler(cpu::InterruptFrame* frame) {
     io::write<u8>(port + ATARegister::BusMasterStatus, status | 0x04);
     s_device_instance->set_irq_state(true);
 
-    pic::send_eoi(14);
+    pic::eoi(14);
 }
 
 PATADevice* PATADevice::create(ATAChannel channel, ATADrive drive) {
@@ -80,7 +80,7 @@ PATADevice::PATADevice(
 
     m_has_48bit_pio = buffer[83] & (1 << 10);
 
-    serial::printf("PATA Device Information:\n");
+    serial::printf("PATA Device Information (%d:%d):\n", to_underlying(m_channel), to_underlying(m_drive));
     serial::printf("  Cylinders: %u\n", m_cylinders);
     serial::printf("  Heads: %u\n", m_heads);
     serial::printf("  Sectors per track: %u\n", m_sectors_per_track);
@@ -120,20 +120,42 @@ void PATADevice::poll() const {
     }
 }
 
-// TODO: Maybe support 48 bit PIO?
-void PATADevice::prepare_for(ATACommand command, u32 lba, u8 sectors) const {
+void PATADevice::prepare_for(ATACommand command, u32 lba, u16 sectors) const {
     u16 port = this->data_port();
 
     this->wait_while_busy();
 
-    // Select the drive
-    io::write<u8>(port + ATARegister::Drive, 0xE0 | (to_underlying(m_drive) << 4) | ((lba >> 24) & 0x0F));
+    if (!m_has_48bit_pio) {
+        // Select the drive
+        io::write<u8>(port + ATARegister::Drive, 0xE0 | (to_underlying(m_drive) << 4) | ((lba >> 24) & 0x0F));
 
-    // Write the sector count and the LBA (sector) we want to read from
-    io::write<u8>(port + ATARegister::SectorCount, sectors);
-    io::write<u8>(port + ATARegister::LBA0, lba & 0xFF);
-    io::write<u8>(port + ATARegister::LBA1, (lba >> 8) & 0xFF);
-    io::write<u8>(port + ATARegister::LBA2, (lba >> 16) & 0xFF);
+        // Write the sector count and the LBA (sector) we want to read from
+        io::write<u8>(port + ATARegister::SectorCount, sectors);
+        io::write<u8>(port + ATARegister::LBA0, lba & 0xFF);
+        io::write<u8>(port + ATARegister::LBA1, (lba >> 8) & 0xFF);
+        io::write<u8>(port + ATARegister::LBA2, (lba >> 16) & 0xFF);
+    } else {
+        // Select the drive
+        io::write<u8>(port + ATARegister::Drive, 0x40 | (to_underlying(m_drive) << 4));
+
+        // We first write the high byte of the sector count, then the 3 high bytes of the LBA
+        io::write<u8>(port + ATARegister::SectorCount, (sectors >> 8) & 0xFF);
+        io::write<u8>(port + ATARegister::LBA0, 0x00);
+        io::write<u8>(port + ATARegister::LBA1, 0x00);
+        io::write<u8>(port + ATARegister::LBA2, (lba >> 24) & 0xFF);
+
+        // Then we write the low byte of the sector count, and the low bytes of the LBA
+        io::write<u8>(port + ATARegister::SectorCount, sectors & 0xFF);
+        io::write<u8>(port + ATARegister::LBA0, lba & 0xFF);
+        io::write<u8>(port + ATARegister::LBA1, (lba >> 8) & 0xFF);
+        io::write<u8>(port + ATARegister::LBA2, (lba >> 16) & 0xFF);
+
+        if (command == ATACommand::Read) {
+            command = ATACommand::ReadExt;
+        } else if (command == ATACommand::Write) {
+            command = ATACommand::WriteExt;
+        }
+    }
 
     this->wait_while_busy();
 
@@ -170,7 +192,6 @@ void PATADevice::write_sectors(u32 lba, u8 count, const u8* buffer) const {
 
         buffer += SECTOR_SIZE;
     }
-
 }
 
 bool PATADevice::read_blocks(void* buffer, size_t count, size_t block) {

@@ -2,5 +2,5 @@ build/
 mnt/
 .vscode/
 
-fs.img
+disk.img
 kernel.map

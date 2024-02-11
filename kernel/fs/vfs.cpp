@@ -22,7 +22,6 @@ bool VFS::mount_root(FileSystem* fs) {
 }
 
 ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInode> relative_to) {
-    serial::printf("path: %*s\n", path.size(), path.data());
     if (path.empty()) {
         return Error(ENOENT);
     } else if (path == "/") {

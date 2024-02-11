@@ -1,4 +1,6 @@
-ENTRY (_start)
+ENTRY(_start)
+
+KERNEL_VIRTUAL_BASE = 0xC0000000;
 
 SECTIONS {
 	. = 0xC0100000;

@@ -7,7 +7,7 @@ fi
 
 cd "$(dirname "$0")"
 
-DISK_IMAGE="fs.img"
+DISK_IMAGE="disk.img"
 
 rm -f "$IMAGE_NAME"
 rm -rf ./mnt

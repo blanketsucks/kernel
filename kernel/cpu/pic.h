@@ -7,7 +7,7 @@ namespace kernel::pic {
 void disable();
 void remap();
 
-void send_eoi(u8 irq);
+void eoi(u8 irq);
 
 void disable(u8 irq);
 void enable(u8 irq);

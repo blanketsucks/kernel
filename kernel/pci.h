@@ -29,6 +29,31 @@ constexpr u16 BAR3 = 0x1C;
 constexpr u16 BAR4 = 0x20;
 constexpr u16 BAR5 = 0x24;
 
+constexpr u16 PROG_IF = 0x09;
+
+constexpr u16 COMMAND = 0x04;
+
+union Command {
+    struct {
+        u16 io_space : 1;
+        u16 memory_space : 1;
+        u16 bus_master : 1;
+        u16 special_cycles : 1;
+        u16 memory_write_and_invalidate : 1;
+        u16 vga_palette_snoop : 1;
+        u16 parity_error_response : 1;
+        u16 reserved : 1;
+        u16 serr_enable : 1;
+        u16 fast_back_to_back : 1;
+        u16 interrupt_disable : 1;
+    };
+
+    u16 value;
+
+    Command() = default;
+    Command(u16 value) : value(value) {}
+};
+
 union Address {
     struct {
         u32 register_offset : 8;
@@ -51,6 +76,10 @@ union Address {
     u32 bar3() const;
     u32 bar4() const;
     u32 bar5() const;
+
+    u8 prog_if() const;
+
+    void set_interrupt_line(bool value) const;
 };
 
 enum class DeviceClass : u8 {
@@ -228,7 +257,14 @@ struct Device {
     StringView class_name() const { return get_class_name(device_class); }
     StringView subclass_name() const { return get_subclass_name(device_class, subclass); }
 
-    bool is_ide_controller() const { return device_class == DeviceClass::MassStorageController && subclass == DeviceSubclass::IDEController; }
+    bool is_ide_controller() const {
+        return device_class == DeviceClass::MassStorageController && subclass == DeviceSubclass::IDEController;
+    }
+
+    bool is_usb_controller() const {
+        return device_class == DeviceClass::SerialBusController && subclass == DeviceSubclass::USBController;
+    }
+
 };
 
 using EnumerationCallback = Function<void(Device)>;

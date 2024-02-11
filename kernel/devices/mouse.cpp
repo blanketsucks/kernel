@@ -66,6 +66,7 @@ void MouseDevice::handle_interrupt(cpu::InterruptFrame*) {
                     device->m_cycle++;
                     break;
                 }
+                // We just fallthrough to call update_mouse_state() if we don't have a scroll wheel
             case 3:
                 device->update_mouse_state();
                 break;
@@ -74,7 +75,7 @@ void MouseDevice::handle_interrupt(cpu::InterruptFrame*) {
         status = io::read<u8>(MOUSE_STATUS);
     }
 
-    pic::send_eoi(12);
+    pic::eoi(12);
 }
 
 MouseDevice* MouseDevice::instance() {

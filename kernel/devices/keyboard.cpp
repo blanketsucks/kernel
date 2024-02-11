@@ -84,7 +84,7 @@ void KeyboardDevice::handle_interrupt(cpu::InterruptFrame*) {
     }
 
     kb->m_key_buffer.append(key);
-    pic::send_eoi(1);
+    pic::eoi(1);
 }
 
 size_t KeyboardDevice::read(void* buffer, size_t size, size_t) {

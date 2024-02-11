@@ -21,9 +21,9 @@ public:
     static FileSystem* instance();
 
     RefPtr<fs::Inode> inode(ino_t inode) override;
-    ino_t root() const override;
+    ino_t root() const override { return ROOT_INODE; }
 
-    u8 id() const override { return 0x83; }
+    u8 id() const override { return 0x02; }
     StringView name() const override { return "ext2"; }
 
     Superblock* superblock() { return m_superblock; }

@@ -8,6 +8,8 @@
 #include <kernel/cpu/idt.h>
 #include <kernel/sync/spinlock.h>
 
+#define MM memory::MemoryManager::instance()
+
 namespace kernel::memory {
 
 void* allocate_from_initial_heap(size_t size);
@@ -73,8 +75,8 @@ public:
 
     static PageDirectory* kernel_page_directory();
 
-    Region const& heap_region() const { return m_heap_region; }
-    Region const& kernel_region() const { return m_kernel_region; }
+    Region& heap_region() { return m_heap_region; }
+    Region& kernel_region() { return m_kernel_region; }
 
     bool is_mapped(void* addr);
 

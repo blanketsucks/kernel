@@ -54,17 +54,21 @@ public:
     void write_register(u16 index, u16 value);
     u16 read_register(u16 index);
 
-    void set_resolution(i32 width, i32 height, i32 bpp);
+    void set_resolution(i32 width, i32 height, i32 bpp, bool map = true);
 
     bool mmap();
+    bool mremap();
 
     void set_pixel(i32 x, i32 y, u32 color);
 
 private:
     static BochsVGADevice* s_instance;
 
+    // Converts a value like 32 to the equivalent VBE BPP value which is 0x20 in this case.
+    static i32 bpp_to_vbe_bpp(i32 bpp);
+
     u32 m_physical_address;
-    u32* m_framebuffer;
+    u32* m_framebuffer = nullptr;
 
     i32 m_height;
     i32 m_width;

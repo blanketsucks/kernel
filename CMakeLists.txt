@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_COMPILER clang++)
 
-set(DISK_IMAGE ${CMAKE_SOURCE_DIR}/scripts/fs.img)
+set(DISK_IMAGE ${CMAKE_SOURCE_DIR}/scripts/disk.img)
 set(SCRIPTS ${CMAKE_SOURCE_DIR}/scripts)
 
 add_subdirectory(kernel)

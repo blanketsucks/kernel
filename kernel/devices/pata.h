@@ -90,7 +90,7 @@ public:
 
     void set_irq_state(bool state) { m_did_irq = state; }
 
-    void prepare_for(ATACommand command, u32 lba, u8 sectors) const;
+    void prepare_for(ATACommand command, u32 lba, u16 sectors) const;
 
     bool read_blocks(void* buffer, size_t count, size_t block) override;
     bool write_blocks(const void* buffer, size_t count, size_t block) override;
