@@ -56,8 +56,8 @@ public:
 
     void set_resolution(i32 width, i32 height, i32 bpp, bool map = true);
 
-    bool mmap();
-    bool mremap();
+    bool map();
+    bool remap();
 
     void set_pixel(i32 x, i32 y, u32 color);
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <kernel/fs/file.h>
+
+#include <std/memory.h>
 #include <std/hash_map.h>
 
 namespace kernel::devices {
@@ -29,6 +31,8 @@ public:
     virtual size_t read(void* buffer, size_t size, size_t offset) override = 0;
     virtual size_t write(const void* buffer, size_t size, size_t offset) override = 0;
 
+    size_t size() const override { return 0; }
+
     virtual bool is_character_device() const { return false; }
     virtual bool is_block_device() const { return false; }
 private:
@@ -41,13 +45,15 @@ public:
     static void init();
     static DeviceManager* instance();
 
-    HashMap<u32, Device*> const& devices() const { return m_devices; }
+    HashMap<u32, RefPtr<Device>> const& devices() const { return m_devices; }
 
     bool register_device(Device* device);
-    Device* get_device(u32 major, u32 minor);
+    RefPtr<Device> get_device(u32 major, u32 minor);
 
 private:
-    HashMap<u32, Device*> m_devices;
+    DeviceManager();
+
+    HashMap<u32, RefPtr<Device>> m_devices;
 
     static DeviceManager* s_instance;
 };

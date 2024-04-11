@@ -97,14 +97,23 @@ Space* Region::find_space(u32 address) const {
     return nullptr;
 }
 
-Space* Region::find_free(size_t size) {
+Space* Region::find_free(size_t size, bool page_aligned) {
     auto* space = m_head;
     while (space) {
         if (space->m_used || space->m_size < size) {
             space = space->next;
             continue;
-        } else if (space->m_size == size) {
+        } else if (space->m_size == size && (!page_aligned || space->m_address % PAGE_SIZE == 0)) {
             return space;
+        }
+
+        if (page_aligned && space->m_address % PAGE_SIZE != 0) {
+            size_t offset = PAGE_SIZE - (space->m_address % PAGE_SIZE);
+            if (offset < size) {
+                size -= offset;
+                space->m_address += offset;
+                space->m_size -= offset;
+            }
         }
 
         auto* new_space = new Space(size, space->m_address);
@@ -120,11 +129,11 @@ Space* Region::find_free(size_t size) {
 }
 
 Space* Region::find_free_pages(size_t pages) {
-    return this->find_free(pages * PAGE_SIZE);
+    return this->find_free(pages * PAGE_SIZE, true);
 }
 
-Space* Region::allocate(size_t size, Permissions perms) {
-    auto* space = this->find_free(size);
+Space* Region::allocate(size_t size, Permissions perms, bool page_aligned) {
+    auto* space = this->find_free(size, page_aligned);
     if (!space) {
         return nullptr;
     }

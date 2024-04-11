@@ -28,7 +28,7 @@ i32 BochsVGADevice::bpp_to_vbe_bpp(i32 bpp) {
 BochsVGADevice* BochsVGADevice::create(i32 width, i32 height) {
     pci::Address address = {};
     pci::enumerate([&address](pci::Device device) {
-        if (device.vendor_id == VENDOR_ID && device.id == DEVICE_ID) {
+        if (device.is_bochs_vga()) {
             address = device.address;
         }
     });
@@ -41,7 +41,7 @@ BochsVGADevice* BochsVGADevice::create(i32 width, i32 height) {
     device->m_physical_address = address.bar0() & 0xFFFFFFF0;
 
     device->set_resolution(width, height, 32, false);
-    if (!device->mmap()) {
+    if (!device->map()) {
         return nullptr;
     }
 
@@ -81,27 +81,29 @@ void BochsVGADevice::set_resolution(i32 width, i32 height, i32 bpp, bool map) {
     m_height = height;
     m_bpp = bpp;
 
-    if (map) this->mremap();
+    if (map) {
+        this->remap();
+    }
 }
 
-bool BochsVGADevice::mmap() {
-    auto result = MM->map_physical_region(m_physical_address, this->size());
-    if (result.is_err()) {
+bool BochsVGADevice::map() {
+    void* framebuffer = MM->map_physical_region(m_physical_address, this->size());
+    if (!framebuffer) {
         return false;
     }
 
-    m_framebuffer = reinterpret_cast<u32*>(result.value());
+    m_framebuffer = reinterpret_cast<u32*>(framebuffer);
     return true;
 }
 
-bool BochsVGADevice::mremap() {
-    // We just mark the old framebuffer as free and then call mmap again
+bool BochsVGADevice::remap() {
+    // We just mark the old framebuffer as free for use and call map again.
     if (m_framebuffer) {
         auto& kernel_region = MM->kernel_region();
         kernel_region.free(reinterpret_cast<u32>(m_framebuffer));
     }
 
-    return this->mmap();
+    return this->map();
 }
 
 void BochsVGADevice::set_pixel(i32 x, i32 y, u32 color) {

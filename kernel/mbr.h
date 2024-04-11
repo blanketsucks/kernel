@@ -1,6 +1,8 @@
 #pragma once
 
 #include <kernel/common.h>
+
+#include <std/utility.h>
 #include <std/array.h>
 
 namespace kernel {
@@ -18,11 +20,12 @@ struct PartitionTableEntry {
     CHSAddress start;
     u8 type;
     CHSAddress end;
-    u32 lba_start;
+    u32 offset;
     u32 sectors;
 
-    bool is_bootable() const { return attributes & 0x80; }
-    bool is_protective_mbr() const { return type == 0xEE; }
+    bool is_bootable() const {
+        return this->attributes & 0x80;
+    }
 } PACKED;
 
 static_assert(sizeof(PartitionTableEntry) == 16);
@@ -33,8 +36,43 @@ struct MasterBootRecord {
     u16 reserved;
     Array<PartitionTableEntry, 4> partitions;
     u16 signature;
+
+    bool is_protective() const {
+        return this->partitions[0].type == 0xEE;
+    }
 } PACKED;
 
 static_assert(sizeof(MasterBootRecord) == 512);
+
+struct GPTHeader {
+    u8 signature[8];
+    u32 revision;
+    u32 header_size;
+    u32 header_crc;
+    u32 reserved;
+    u64 current_lba;
+    u64 backup_lba;
+    u64 first_usable_lba;
+    u64 last_usable_lba;
+    u8 disk_guid[16];
+    u64 partition_table_lba;
+    u32 partition_count;
+    u32 partition_entry_size;
+    u32 partition_table_crc;
+} PACKED;
+
+struct GPTEntry {
+    Array<u8, 16> partition_type_guid;
+    Array<u8, 16> unique_partition_guid;
+    u64 first_lba;
+    u64 last_lba;
+    u64 attributes;
+    Array<u8, 72> partition_name;
+    
+    bool is_valid() const {
+        return std::all(this->partition_type_guid, [](u8 byte) { return byte == 0; });
+    }
+
+} PACKED;
 
 }

@@ -6,19 +6,7 @@
 
 namespace kernel::ext2fs {
 
-BlockGroup::BlockGroup(FileSystem* fs, u32 index) : m_index(index), m_fs(fs) {
-    fs->read_block_group(index, &m_descriptor);
-}
-
-void BlockGroup::flush() {
-    m_fs->write_block_group(m_index, &m_descriptor);
-}
-
-FileSystem* FileSystem::s_instance = nullptr;
-
 FileSystem* FileSystem::create(devices::BlockDevice* disk) {
-    if (s_instance) return s_instance;
-
     if (disk->block_size() != SECTOR_SIZE) {
         return nullptr;
     }
@@ -31,14 +19,10 @@ FileSystem* FileSystem::create(devices::BlockDevice* disk) {
         return nullptr;
     }
 
-    s_instance = new FileSystem(superblock, disk);
-    s_instance->m_block_groups.resize(s_instance->block_group_count());
+    auto* fs = new FileSystem(superblock, disk);
+    fs->m_block_groups.resize(fs->block_group_count());
 
-    return s_instance;
-}
-
-FileSystem* FileSystem::instance() {
-    return s_instance;
+    return fs;
 }
 
 FileSystem::FileSystem(Superblock* superblock, devices::BlockDevice* disk) : m_superblock(superblock), m_disk(disk) {}
@@ -135,28 +119,32 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
         return iterator->value;
     }
 
+    u32 block_size = this->block_size();
+
     u32 block_group = (inode - 1) / m_superblock->inodes_per_group;
     u32 index = (inode - 1) % m_superblock->inodes_per_group;
 
     BlockGroup* group = this->get_block_group(block_group);
-    if (!group) return nullptr;
+    if (!group) {
+        return nullptr;
+    }
 
-    u32 block = group->inode_table() + (index) * sizeof(ext2fs::Inode) / this->block_size();
-    u8 buffer[this->block_size()];
+    u32 block = group->inode_table() + (index) * sizeof(ext2fs::Inode) / block_size;
+    u8 buffer[block_size];
 
     this->read_block(block, buffer);
     ext2fs::Inode result = {};
 
-    u32 offset = (index * sizeof(ext2fs::Inode)) % this->block_size();
+    u32 offset = (index * sizeof(ext2fs::Inode)) % block_size;
     std::memcpy(&result, buffer + offset, sizeof(ext2fs::Inode));
-
+    
     auto entry = new InodeEntry(this, result, inode);
     m_inodes.set(inode, entry);
 
     return entry;
 }
 
-RefPtr<InodeEntry> FileSystem::create_inode(mode_t mode, uid_t uid, gid_t gid) {
+RefPtr<fs::Inode> FileSystem::create_inode(mode_t mode, uid_t uid, gid_t gid) {
     BlockGroup* block_group = this->find_block_group([](BlockGroup* group) {
         return group->free_inodes() > 0 ? IterationAction::Break : IterationAction::Continue;
     });
@@ -165,24 +153,7 @@ RefPtr<InodeEntry> FileSystem::create_inode(mode_t mode, uid_t uid, gid_t gid) {
         return nullptr;
     }
     
-    // TODO: Move the below piece of code to BlockGroup::allocate_inode().
-    auto& descriptor = block_group->descriptor();
-
-    u8 buffer[this->block_size()];
-    this->read_block(block_group->inode_bitmap(), buffer);
-
-    std::Bitmap bitmap(buffer, this->superblock()->inodes_per_group);
-    ino_t inode = bitmap.find_first_unset();
-
-    bitmap.set(inode, true);
-    this->write_block(block_group->inode_bitmap(), buffer);
-
-    descriptor.free_inodes--;
-    if (S_ISDIR(mode)) {
-        descriptor.dir_count++;
-    }
-    
-    block_group->flush();
+    u32 inode = block_group->allocate_inode(S_ISDIR(mode));
     inode += 1 + block_group->index() * m_superblock->inodes_per_group;
 
     Inode result = {};
@@ -193,7 +164,9 @@ RefPtr<InodeEntry> FileSystem::create_inode(mode_t mode, uid_t uid, gid_t gid) {
     result.size_lower = 0;
     result.hard_link_count = S_ISDIR(mode) ? 1 : 0;
 
-    auto entry = RefPtr<InodeEntry>::make(this, result, inode);
+    // FIXME: Set the creation time.
+
+    auto* entry = new InodeEntry(this, result, inode);
     entry->flush();
 
     return entry;

@@ -1,16 +1,27 @@
-global _flush_gdt
+%include "kernel/boot/common.inc"
 
+global _flush_gdt
+global _flush_tss
+
+; void _flush_tss(u8 selector);
+_flush_tss:
+    mov ax, 0x28
+    ltr ax
+
+    ret
+
+; void _flush_gdt(GDTPointer*);
 _flush_gdt:
     mov eax, [esp + 4]
     lgdt [eax]
 
-    mov ax, 0x10
+    mov ax, KERNEL_DATA_SELECTOR
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
 
-    jmp 0x08:.flush_gdt_done
+    jmp KERNEL_CODE_SELECTOR:.flush_gdt_done
 .flush_gdt_done:
     ret

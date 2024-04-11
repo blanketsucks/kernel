@@ -1,8 +1,9 @@
 #pragma once
 
-#include <kernel/common.h>
 #include <kernel/pci.h>
+#include <kernel/cpu/pic.h>
 #include <kernel/devices/disk.h>
+#include <kernel/process/blocker.h>
 
 #include <std/enums.h>
 
@@ -57,7 +58,13 @@ enum class ATAChannel : u8 {
     Secondary
 };
 
-class PATADevice : public DiskDevice {
+struct PhysicalRegionDescriptor {
+    u32 base;
+    u16 size;
+    u16 flags;
+} PACKED; 
+
+class PATADevice : public DiskDevice, IRQHandler {
 public:
     constexpr static u16 PRIMARY_CONTROL_PORT = 0x3F6;
     constexpr static u16 SECONDARY_CONTROL_PORT = 0x376;
@@ -76,41 +83,54 @@ public:
     u16 cylinders() const { return m_cylinders; }
     u16 heads() const { return m_heads; }
     u16 sectors_per_track() const { return m_sectors_per_track; }
-    u32 sectors() const { return m_cylinders * m_heads * m_sectors_per_track; }
+    
+    size_t sectors() const { return m_cylinders * m_heads * m_sectors_per_track; }
 
     bool has_48bit_pio() const { return m_has_48bit_pio; }
 
-    u16 control_port() const;
-    u16 data_port() const;
+    size_t max_io_block_count() const; // The maximum number of blocks that can be read/written in a single operation
+
+    u16 control_port() const { return m_control_port; }
+    u16 data_port() const { return m_data_port; }
     u16 bus_master_port() const { return m_bus_master_port; }
 
     void wait_while_busy() const;
     void wait_for_irq();
     void poll() const; // An alternative to IRQs
 
-    void set_irq_state(bool state) { m_did_irq = state; }
-
     void prepare_for(ATACommand command, u32 lba, u16 sectors) const;
 
     bool read_blocks(void* buffer, size_t count, size_t block) override;
     bool write_blocks(const void* buffer, size_t count, size_t block) override;
 
-    void read_sectors(u32 lba, u8 sectors, u8* buffer) const;
-    void write_sectors(u32 lba, u8 sectors, const u8* buffer) const;
+    void read_sectors(u32 lba, u8 sectors, u8* buffer);
+    void write_sectors(u32 lba, u8 sectors, const u8* buffer);
+
+    void read_sectors_with_dma(u32 lba, u8 sectors, u8* buffer);
+    void write_sectors_with_dma(u32 lba, u8 sectors, const u8* buffer);
 private:
     PATADevice(ATAChannel channel, ATADrive drive, pci::Address address);
+
+    void handle_interrupt(cpu::Registers*) override;
 
     ATAChannel m_channel;
     ATADrive m_drive;
 
+    u16 m_control_port;
+    u16 m_data_port;
     u16 m_bus_master_port;
 
     u16 m_cylinders;
     u16 m_heads;
     u16 m_sectors_per_track;
+
+    BooleanBlocker m_irq_blocker;
+
     bool m_has_48bit_pio;
-    
-    bool m_did_irq = false;
+    bool m_has_dma;
+
+    PhysicalRegionDescriptor* m_prdt = nullptr;
+    u8* m_dma_buffer = nullptr;
 };
 
 }

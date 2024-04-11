@@ -63,10 +63,10 @@ public:
 
     Space* find_space(u32 address) const;
 
-    Space* find_free(size_t size);
+    Space* find_free(size_t size, bool page_aligned);
     Space* find_free_pages(size_t pages);
 
-    Space* allocate(size_t size, Permissions perms);
+    Space* allocate(size_t size, Permissions perms, bool page_aligned = false);
     void free(u32 address);
 
 private:

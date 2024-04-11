@@ -5,7 +5,12 @@ namespace kernel::fs {
 String ResolvedInode::fullpath() const {
     Vector<String> parts;
     for (auto* inode = this; inode != nullptr; inode = inode->parent()) {
-        parts.append(inode->name());
+        String name = inode->name();
+        if (inode->parent() != nullptr && name.first() == '/') {
+            name = name.substr(1);
+        }
+
+        parts.append(move(name));
     }
 
     parts.reverse();

@@ -2,8 +2,9 @@
 
 namespace kernel {
 
+// FIXME: Implement
 bool SpinLock::is_locked() {
-    return atomic_flag_test_and_set_explicit(&this->lock, memory_order_acquire);
+    return false;
 }
 
 void SpinLock::acquire() {
@@ -13,7 +14,7 @@ void SpinLock::acquire() {
 }
 
 void SpinLock::release() {
-    atomic_flag_clear_explicit(&this->lock, memory_order_release);
+    
 }
 
 }

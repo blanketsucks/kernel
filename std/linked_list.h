@@ -29,6 +29,8 @@
 #include <kernel/common.h>
 #include <kernel/panic.h>
 
+#include <std/utility.h>
+
 namespace std {
 
 template<typename ListType, typename ElementType>

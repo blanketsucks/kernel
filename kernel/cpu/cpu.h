@@ -1,9 +1,9 @@
 #pragma once
 
+#include "std/types.h"
 #include <cpuid.h>
 
 #include <kernel/common.h>
-
 
 enum class ECXFeature {
     SSE3       = 1 << 0, 
@@ -89,7 +89,17 @@ private:
     u32 m_eax, m_ebx, m_ecx, m_edx;
 };
 
+struct FPUState {
+    u8 buffer[512];
+} PACKED;
+
 bool has_feature(ECXFeature feature);
 bool has_feature(EDXFeature feature);
+
+bool enable_fpu();
+bool enable_sse();
+
+void save_fpu_state(FPUState& state);
+void restore_fpu_state(FPUState& state);
 
 }

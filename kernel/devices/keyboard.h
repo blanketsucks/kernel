@@ -3,6 +3,8 @@
 #include <kernel/common.h>
 #include <kernel/devices/character.h>
 #include <kernel/cpu/idt.h>
+#include <kernel/cpu/pic.h>
+
 #include <std/vector.h>
 
 namespace kernel::devices {
@@ -22,7 +24,7 @@ struct KeyEvent {
     bool is_pressed() const { return this->scancode & 0x80; }
 };
 
-class KeyboardDevice : public CharacterDevice {
+class KeyboardDevice : public CharacterDevice, IRQHandler {
 public:
     enum KeyModifiers : u8 {
         None  = 0,
@@ -37,13 +39,15 @@ public:
     size_t read(void* buffer, size_t size, size_t offset) override;
     size_t write(const void* buffer, size_t size, size_t offset) override;
 
+    bool is_full() const { return m_key_buffer.size() == MAX_KEY_BUFFER_SIZE; }
+
 private:
     static constexpr u8 MAX_KEY_BUFFER_SIZE = 255;
     static KeyboardDevice* s_instance;
 
-    KeyboardDevice() : CharacterDevice(13, 1) {}
+    KeyboardDevice() : CharacterDevice(13, 1), IRQHandler(1) {}
 
-    INTERRUPT static void handle_interrupt(cpu::InterruptFrame*);
+    void handle_interrupt(cpu::Registers*) override;
 
     Vector<KeyEvent> m_key_buffer;
     u8 m_key_buffer_offset = 0;

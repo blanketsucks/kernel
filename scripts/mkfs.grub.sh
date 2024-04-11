@@ -7,17 +7,17 @@ fi
 
 cd "$(dirname "$0")"
 
-IMAGE_NAME="disk.img"
+DISK_IMAGE="disk.img"
 
-rm -f "$IMAGE_NAME"
+rm -f "$DISK_IMAGE"
 rm -rf ./mnt
 
-qemu-img create "$IMAGE_NAME" 512M
-chown "$SUDO_UID:$SUDO_GID" "$IMAGE_NAME"
+qemu-img create "$DISK_IMAGE" 512M
+chown "$SUDO_UID:$SUDO_GID" "$DISK_IMAGE"
 
 echo "Disk image created."
 
-dev=$(losetup --find --partscan --show "$IMAGE_NAME")
+dev=$(losetup --find --partscan --show "$DISK_IMAGE")
 part="p1"
 
 echo "Loopback device set to '$dev'"
@@ -38,6 +38,7 @@ mkdir -p ./mnt/boot
 grub-install --boot-directory=mnt/boot --target=i386-pc --modules="ext2 part_msdos" "${dev}"
 cp grub.cfg ./mnt/boot/grub
 
+cp ./kernel.map ./mnt/boot
 cp ../build/kernel/kernel.bin ./mnt/boot/kernel
 
 ./mkfs.root.sh

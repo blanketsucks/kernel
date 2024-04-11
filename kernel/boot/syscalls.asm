@@ -1,21 +1,25 @@
+global _syscall_interrupt_handler
 extern _syscall_handler
 
-global __handle_syscall
-__handle_syscall:
+%include "kernel/boot/common.inc"
+
+_syscall_interrupt_handler:
     pusha
-    push ds
-    push es
-    push fs
-    push gs
+    pushsg
+
+    mov ax, KERNEL_DATA_SELECTOR
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
     push esp
     
     call _syscall_handler
     
     add esp, 4
-    pop gs
-    pop fs
-    pop es
-    pop ds
+
+    popsg
     popa
 
     iret

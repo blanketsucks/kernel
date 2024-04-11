@@ -37,14 +37,12 @@ void MouseDevice::update_mouse_state() {
     } else {
         state.z = 0;
     }
-
+    
     m_state = state;
 }
 
-void MouseDevice::handle_interrupt(cpu::InterruptFrame*) {
-    MouseDevice* device = instance();
+void MouseDevice::handle_interrupt(cpu::Registers*) {
     u8 status = io::read<u8>(MOUSE_STATUS);
-
     while (status & MOUSE_B_BIT) {
         if (!(status & MOUSE_F_BIT)) {
             status = io::read<u8>(MOUSE_STATUS);
@@ -52,30 +50,29 @@ void MouseDevice::handle_interrupt(cpu::InterruptFrame*) {
         }
 
         u8 packet = io::read<u8>(MOUSE_DATA);
-        device->m_bytes[device->m_cycle] = packet;
+        m_bytes[m_cycle] = packet;
 
-        switch (device->m_cycle) {
+        switch (m_cycle) {
             case 0:
-                device->m_cycle++;
+                m_cycle++;
                 break;
             case 1:
-                device->m_cycle++;
+                m_cycle++;
                 break;
             case 2:
-                if (device->m_has_scroll_wheel) {
-                    device->m_cycle++;
+                if (m_has_scroll_wheel) {
+                    m_cycle++;
                     break;
                 }
                 // We just fallthrough to call update_mouse_state() if we don't have a scroll wheel
+                [[fallthrough]];
             case 3:
-                device->update_mouse_state();
+                this->update_mouse_state();
                 break;
         }
 
         status = io::read<u8>(MOUSE_STATUS);
     }
-
-    pic::eoi(12);
 }
 
 MouseDevice* MouseDevice::instance() {
@@ -114,6 +111,10 @@ u8 MouseDevice::read() {
 }
 
 void MouseDevice::init() {
+    if (s_instance) {
+        return;
+    }
+
     // Enable the auxiliary mouse device
     MouseDevice* device = new MouseDevice();
     s_instance = device;
@@ -148,9 +149,6 @@ void MouseDevice::init() {
     if (device_id == 0x03) {
         device->m_has_scroll_wheel = true;
     }
-
-    cpu::set_idt_entry(0x2C, reinterpret_cast<u32>(MouseDevice::handle_interrupt), 0x8E);
-    pic::enable(12);
 }
 
 u8 MouseDevice::get_device_id() {

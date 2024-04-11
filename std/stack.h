@@ -23,10 +23,7 @@ public:
     void push(const T& value) { this->buffer.append(value); }
 
     T pop() {
-        T value = this->buffer.last();
-        this->buffer.remove_last();
-
-        return value;
+        return this->buffer.take_last();
     }
 
     T& top() { return this->buffer.last(); }

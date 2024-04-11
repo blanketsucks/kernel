@@ -11,7 +11,7 @@ struct RegisterState {
     u32 eip, cs, eflags, esp0, ss;
 };
 
-extern "C" void __handle_syscall(cpu::InterruptFrame* frame);
+extern "C" void _syscall_interrupt_handler(cpu::InterruptFrame*);
 extern "C" void _syscall_handler(RegisterState* regs);
 
 void init_syscalls();

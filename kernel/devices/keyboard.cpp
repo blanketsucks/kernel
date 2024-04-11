@@ -1,5 +1,6 @@
 #include <kernel/devices/keyboard.h>
 #include <kernel/cpu/pic.h>
+#include <kernel/cpu/apic.h>
 #include <std/string.h>
 
 #include <kernel/vga.h>
@@ -42,9 +43,7 @@ static bool s_shift = false;
 static bool s_ctrl  = false;
 static bool s_alt   = false;
 
-void KeyboardDevice::handle_interrupt(cpu::InterruptFrame*) {
-    auto* kb = KeyboardDevice::instance();
-
+void KeyboardDevice::handle_interrupt(cpu::Registers*) {
     u8 scancode = io::read<u8>(0x60);
     u8 modifiers = None;
 
@@ -79,12 +78,11 @@ void KeyboardDevice::handle_interrupt(cpu::InterruptFrame*) {
         .modifiers = modifiers
     };
 
-    if (kb->m_key_buffer.size() == MAX_KEY_BUFFER_SIZE) {
-        kb->m_key_buffer.remove(0);
+    if (this->is_full()) {
+        m_key_buffer.remove(0);
     }
 
-    kb->m_key_buffer.append(key);
-    pic::eoi(1);
+    m_key_buffer.append(key);
 }
 
 size_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
@@ -104,13 +102,10 @@ size_t KeyboardDevice::write(const void*, size_t, size_t) {
 }
 
 void KeyboardDevice::init() {
-    auto* instance = new KeyboardDevice();
-    instance->m_key_buffer.reserve(MAX_KEY_BUFFER_SIZE);
+    auto* device = new KeyboardDevice();
+    device->m_key_buffer.reserve(MAX_KEY_BUFFER_SIZE);
 
-    s_instance = instance;
-
-    cpu::set_idt_entry(0x21, reinterpret_cast<u32>(KeyboardDevice::handle_interrupt), 0x8E);
-    pic::enable(1);
+    s_instance = device;
 }
 
 KeyboardDevice* KeyboardDevice::instance() {

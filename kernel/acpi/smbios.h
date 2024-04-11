@@ -8,7 +8,7 @@ namespace kernel::smbios {
 constexpr u32 BASE_ADDRESS = 0xF0000;
 constexpr u32 MAX_SIZE = 0x10000;
 
-struct EntryPoint {
+struct EntryPoint32Bit {
     char signature[4];
     u8 checksum;
     u8 length;
@@ -23,6 +23,19 @@ struct EntryPoint {
     u8 table_address;
     u16 tables_count;
     u8 bcd_revision;
+} PACKED;
+
+struct EntryPoint64Bit {
+    char signature[5];
+    u8 checksum;
+    u8 length;
+    u8 major_version;
+    u8 minor_version;
+    u8 document_revision;
+    u8 revision;
+    u8 reserved;
+    u32 table_maximum_size;
+    u64 table_address;
 } PACKED;
 
 enum class TableType {
@@ -90,12 +103,24 @@ public:
 
     bool initialized() const { return m_initialized; }
 
+    const EntryPoint32Bit* entry_point_32_bit() const { return m_32_bit_entry_point; }
+    const EntryPoint64Bit* entry_point_64_bit() const { return m_64_bit_entry_point; }
+
+    const Vector<TableHeader*>& table_headers() const { return m_table_headers; }
+
 private:
-    EntryPoint* find_entry_point();
+    void find_entry_points();
+    void read_table_headers();
 
     bool m_initialized = false;
 
-    EntryPoint* m_entry_point;
+    EntryPoint32Bit* m_32_bit_entry_point;
+    EntryPoint64Bit* m_64_bit_entry_point;
+
+    u32 m_table_address;
+    u32 m_table_length;
+    u32 m_table_count;
+
     Vector<TableHeader*> m_table_headers;
 };
 

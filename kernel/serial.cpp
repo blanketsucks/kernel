@@ -1,8 +1,11 @@
 #include <kernel/serial.h>
-#include <std/string.h>
 #include <kernel/io.h>
 
-#include <stdarg.h>
+#define STB_SPRINTF_IMPLEMENTATION
+#define STB_SPRINTF_NOFLOAT
+#include <std/stb_sprintf.h>
+
+#include <std/string.h>
 
 constexpr u16 SERIAL_PORT = 0x3F8;
 
@@ -46,6 +49,10 @@ bool is_transmit_empty() {
 }
 
 void putc(char c) {
+    if (!s_initialized) {
+        serial::init();
+    }
+
     while (!is_transmit_empty());
     io::write<u8>(SERIAL_PORT, c);
 }
@@ -58,89 +65,17 @@ void write(const char* str, size_t len) {
 }
 
 void write(const char* str) {
-    for (u32 i = 0; str[i] != '\0'; i++) {
-        putc(str[i]);
-    }
+    write(str, std::strlen(str));
 }
 
 void printf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
-    while (*fmt) {
-        if (*fmt == '%') {
-            fmt++;
-            switch (*fmt) {
-            case '*': {
-                int width = va_arg(args, int);
-                fmt++;
+    char buffer[4096];
+    stbsp_vsnprintf(buffer, 4096, fmt, args);
 
-                if (*fmt != 's') {
-                    break;
-                }
-
-                const char* str = va_arg(args, const char*);
-                serial::write(str, width);
-                
-                break;
-            }
-            case 'c': {
-                char c = static_cast<char>(va_arg(args, int));
-                serial::putc(c);
-
-                break;
-            }
-            case 's': {
-                const char* str = va_arg(args, const char*);
-                serial::write(str);
-                
-                break;
-            }
-            case 'd': {
-                int n = va_arg(args, int);
-                char str[32];
-
-                std::itoa(n, str, 10);
-                serial::write(str);
-
-                break;
-            }
-            case 'x': {
-                unsigned int n = va_arg(args, unsigned int);
-                char str[32];
-
-                std::itoa(n, str, 16);
-                serial::write(str);
-
-                break;
-            }
-            case 'b': {
-                int n = va_arg(args, int);
-                char str[32];
-
-                std::itoa(n, str, 2);
-                serial::write(str);
-
-                break;
-            }
-            case 'u': {
-                unsigned int n = va_arg(args, unsigned int);
-                char str[32];
-
-                std::itoa(n, str, 10);
-                serial::write(str);
-
-                break;
-            }
-            default:
-                break;
-            }
-        } else {
-            putc(*fmt);
-        }
-
-        fmt++;
-    }
+    write(buffer);
 
     va_end(args);
 }

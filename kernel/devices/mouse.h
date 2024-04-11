@@ -2,6 +2,7 @@
 
 #include <kernel/common.h>
 #include <kernel/devices/character.h>
+#include <kernel/cpu/pic.h>
 #include <kernel/cpu/idt.h>
 
 #include <std/enums.h>
@@ -54,7 +55,7 @@ struct MouseState {
     }
 };
 
-class MouseDevice : public CharacterDevice {
+class MouseDevice : public CharacterDevice, IRQHandler {
 public:
     static void init();
     static MouseDevice* instance();
@@ -74,12 +75,12 @@ public:
     MouseState state();
 
 private:
-    INTERRUPT static void handle_interrupt(cpu::InterruptFrame*);
-    void update_mouse_state();
-
-    MouseDevice() : CharacterDevice(13, 0) {}
-
     static MouseDevice* s_instance;
+
+    void update_mouse_state();
+    void handle_interrupt(cpu::Registers*) override;
+
+    MouseDevice() : CharacterDevice(13, 0), IRQHandler(12) {}
 
     MouseState m_state;
     u8 m_cycle;

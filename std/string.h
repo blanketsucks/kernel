@@ -4,6 +4,8 @@
 #include <std/string_view.h>
 #include <std/kmalloc.h>
 
+#include <kernel/serial.h>
+
 namespace std {
 
 template<typename T>
@@ -13,18 +15,24 @@ class String {
 public:
     using Iterator = StringIterator;
 
-    String() : m_data(nullptr), m_size(0), m_capacity(0) {}
+    String() = default;
 
-    String(const char* str) : m_data(nullptr), m_size(0), m_capacity(0) {
-        this->append(str);
+    String(const char* str) {
+        m_size = strlen(str);
+        m_capacity = m_size;
+        
+        m_data = new char[m_capacity];
+        memcpy(m_data, str, m_size);
     }
 
-    String(const StringView& str) : m_data(nullptr), m_size(0), m_capacity(0) {
-        this->append(str);
+    String(const StringView& str) : m_size(str.size()), m_capacity(str.size()) {
+        m_data = new char[m_size];
+        memcpy(m_data, str.data(), m_size);
     }
 
-    String(const String& other) : m_data(nullptr), m_size(0), m_capacity(0) {
-        this->append(other);
+    String(const String& other) : m_size(other.m_size), m_capacity(other.m_capacity) {
+        m_data = new char[m_capacity];
+        memcpy(m_data, other.m_data, m_size);
     }
 
     String(String&& other) : m_data(other.m_data), m_size(other.m_size), m_capacity(other.m_capacity) {
@@ -37,9 +45,12 @@ public:
         if (m_data) {
             kfree(m_data);
         }
+
+        m_data = nullptr;
     }
 
     void clear() {
+        m_data = nullptr;
         m_size = 0;
     }
 
@@ -68,6 +79,7 @@ public:
 
     String& operator=(const StringView& other);
     String& operator=(const String& other);
+    String& operator=(String&& other);
     String& operator=(const char* other);
 
     char operator[](size_t index) const { return m_data[index]; }
@@ -97,11 +109,12 @@ public:
     bool endswith(const StringView& str) const { return this->substr(m_size - str.size()) == str; }
 
     static String join(const Vector<String>& vec, char sep);
+    static String format(const char* fmt, ...);
 
 private:
-    char* m_data;
-    size_t m_size;
-    size_t m_capacity;
+    char* m_data = nullptr;
+    size_t m_size = 0;
+    size_t m_capacity = 0;
 };
 
 namespace traits {

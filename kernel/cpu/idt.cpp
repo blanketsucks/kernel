@@ -1,23 +1,34 @@
 #include <kernel/cpu/idt.h>
-#include <kernel/vga.h>
+#include <kernel/serial.h>
+#include <kernel/memory/mm.h>
+#include <kernel/panic.h>
+
+#include <std/cstring.h>
 
 namespace kernel::cpu {
 
-static IDTEntry idt[256];
+static IDTEntry s_idt_entries[256];
 
-INTERRUPT void default_int_handler(InterruptFrame* frame) {
-    (void)frame;
+extern "C" void* _isr_stub_table[];
+extern "C" void _default_interrupt_handler();
+
+extern "C" void _interrupt_exception_handler(cpu::Registers* regs) {
+    switch (regs->intno) {
+        case 14:
+            memory::MemoryManager::page_fault_handler(regs);
+            break;
+        case 13:
+            serial::printf("\n\nGeneral protection fault at EIP=%#x\n", regs->eip);
+            serial::printf("  Error code: %#x\n\n", regs->errno);
+
+            kernel::panic("General protection fault", false);
+        default:
+            serial::printf("Unhandled exception: %u\n", regs->intno);
+    }
 }
 
-INTERRUPT void default_int_hander_with_code(InterruptFrame* frame, u32 error_code) {
-    (void)frame;
-    (void)error_code;
-
-    while (true) {}
-}
-
-void set_idt_entry(u8 index, u32 base, u8 flags) {
-    IDTEntry& entry = idt[index];
+void set_idt_entry(u16 index, u32 base, u8 flags) {
+    IDTEntry& entry = s_idt_entries[index];
 
     entry.base_low = base & 0xFFFF;
     entry.base_high = (base >> 16) & 0xFFFF;
@@ -28,25 +39,18 @@ void set_idt_entry(u8 index, u32 base, u8 flags) {
 }
 
 void init_idt() {
-    IDTPointer ip {
-        .limit = sizeof(idt) - 1,
-        .base = reinterpret_cast<u32>(&idt)
+    std::memset(s_idt_entries, 0, sizeof(s_idt_entries));
+
+    IDTPointer idt = {
+        .limit = sizeof(s_idt_entries) - 1,
+        .base = reinterpret_cast<u32>(&s_idt_entries)
     };
 
-    for (u32 i = 0; i < 32; i++) {
-        if (i == 8 || i == 10 || i == 11 || i == 12 || i == 13 || i == 14 || i == 17 || i == 21) {
-            set_idt_entry(i, reinterpret_cast<u32>(default_int_hander_with_code), 0x8F);
-            continue;
-        }
-
-        set_idt_entry(i, reinterpret_cast<u32>(default_int_handler), 0x8F);
+    for (u16 i = 0; i < 32; i++) {
+        set_idt_entry(i, reinterpret_cast<u32>(_isr_stub_table[i]), INTERRUPT_GATE);
     }
 
-    for (u32 i = 32; i < 256; i++) {
-        set_idt_entry(i, reinterpret_cast<u32>(default_int_handler), 0x8E);
-    }
-
-    asm volatile("lidt %0" : : "memory"(ip));
+    asm volatile("lidt %0" : : "m"(idt));
 }
 
 }

@@ -1,4 +1,3 @@
-#include "kernel/common.h"
 #include <kernel/memory/mm.h>
 #include <kernel/memory/paging.h>
 #include <kernel/memory/physical.h>
@@ -8,21 +7,13 @@
 #include <kernel/vga.h>
 #include <kernel/serial.h>
 
-static u8 s_initial_kernel_heap[INITIAL_KERNEL_HEAP_SIZE];
-static u32 s_kernel_heap_offset = 0;
+#include <std/cstring.h>
+#include <std/utility.h>
 
 namespace kernel::memory {
 
-void* allocate_from_initial_heap(size_t size) {
-    if (s_kernel_heap_offset + size > INITIAL_KERNEL_HEAP_SIZE) {
-        return nullptr;
-    }
-
-    void* ptr = &s_initial_kernel_heap[s_kernel_heap_offset];
-    s_kernel_heap_offset += size;
-
-    return ptr;
-}
+static u8 s_kernel_heap[INITIAL_KERNEL_HEAP_SIZE];
+static u32 s_kernel_heap_offset = 0;
 
 static MemoryManager s_memory_manager = MemoryManager();
 
@@ -32,18 +23,16 @@ MemoryManager::MemoryManager() {
 }
 
 void MemoryManager::init(multiboot_info_t* header) {
-    PhysicalMemoryManager::init(header->mem_lower, header->mem_upper);
+    PhysicalMemoryManager::init(header);
     PageDirectory::init_kernel(s_memory_manager.m_kernel_region);
-
-    cpu::set_idt_entry(14, reinterpret_cast<u32>(MemoryManager::page_fault_handler), 0x8E);
 }
 
-void MemoryManager::page_fault_handler(cpu::InterruptFrame* fr, u32 err) {
+void MemoryManager::page_fault_handler(cpu::Registers* regs) {
     u32 address = 0;
     asm volatile("mov %%cr2, %0" : "=r"(address));
 
-    serial::printf("Page fault (address 0x%x) at EIP=0x%x:\n", address, fr->eip);
-    PageFault fault = err;
+    serial::printf("\n\nPage fault (address 0x%x) at EIP=%#x:\n", address, regs->eip);
+    PageFault fault = regs->errno;
 
     if (!fault.present) {
         serial::printf(" - Page not present\n");
@@ -59,14 +48,6 @@ void MemoryManager::page_fault_handler(cpu::InterruptFrame* fr, u32 err) {
         serial::printf(" - User mode\n\n");
     } else {
         serial::printf(" - Kernel mode\n\n");
-    }
-
-    StackFrame* frame = kernel::get_stack_frame();
-    serial::printf("Stack trace:\n");
-
-    while (frame) {
-        serial::printf(" - 0x%x\n", frame->eip);
-        frame = frame->ebp;
     }
 
     kernel::panic("Page fault", false);
@@ -93,16 +74,17 @@ ErrorOr<void> MemoryManager::free_physical_frame(void* frame) {
 ErrorOr<void*> MemoryManager::allocate_from_region(Region& region, size_t pages) {
     auto dir = PageDirectory::kernel_page_directory();
 
-    auto space = region.allocate(pages, Permissions::Read | Permissions::Write);
-    if (!space) return Error(ENOMEM);
+    auto space = region.allocate(pages * PAGE_SIZE, Permissions::Read | Permissions::Write, true);
+    if (!space) {
+        return Error(ENOMEM);
+    }
 
     for (size_t i = 0; i < pages; i++) {
         void* frame = TRY(this->allocate_physical_frame());
         dir->map(
             space->address() + i * PAGE_SIZE, 
             reinterpret_cast<PhysicalAddress>(frame), 
-            false,
-            true
+            PageFlags::Writable
         );
     }
 
@@ -146,26 +128,72 @@ ErrorOr<void> MemoryManager::free_kernel_region(void* start, size_t pages) {
     return this->free_from_region(m_kernel_region, start, pages);
 }
 
-ErrorOr<void*> MemoryManager::map_physical_region(u32 start, size_t size) {
-    u32 pages = size / PAGE_SIZE;
-    if (pages * PAGE_SIZE < size) pages++;
+void* MemoryManager::allocate(size_t size) {
+    size_t pages = std::ceil_div(size, PAGE_SIZE);
+    auto result = this->allocate_kernel_region(pages);
+    if (result.is_err()) {
+        return nullptr;
+    }
 
+    return result.value();
+}
+
+void MemoryManager::free(void* ptr) {
+    auto dir = PageDirectory::kernel_page_directory();
+    if (!dir->is_mapped(reinterpret_cast<u32>(ptr))) {
+        return;
+    }
+
+    auto space = m_kernel_region.find_space(reinterpret_cast<u32>(ptr));
+    if (!space) {
+        return;
+    }
+
+    this->free_kernel_region(ptr, space->size() / PAGE_SIZE).value(); // discard the result
+}
+
+void* MemoryManager::map_physical_region(u32 start, size_t size) {
+    u32 pages = std::ceil_div(size, PAGE_SIZE);
     auto dir = PageDirectory::kernel_page_directory();
 
     auto space = m_kernel_region.find_free_pages(pages);
-    if (!space) return Error(ENOMEM);
+    if (!space) {
+        return nullptr;
+    }
 
     for (u32 i = 0; i < pages; i++) {
-        dir->map(space->address() + i * PAGE_SIZE, start + i * PAGE_SIZE, false, true);
+        dir->map(space->address() + i * PAGE_SIZE, start + i * PAGE_SIZE, PageFlags::Writable);
     }
 
     space->m_used = true;
+    space->m_perms = Permissions::Read | Permissions::Write;
+
     return reinterpret_cast<void*>(space->address());
+}
+
+void MemoryManager::unmap_physical_region(void* ptr) {
+    auto dir = PageDirectory::kernel_page_directory();
+    auto space = m_kernel_region.find_space(reinterpret_cast<u32>(ptr));
+    if (!space) {
+        return;
+    }
+
+    u32 pages = space->size() / PAGE_SIZE;
+    for (u32 i = 0; i < pages; i++) {
+        dir->unmap(space->address() + i * PAGE_SIZE);
+    }
+
+    space->m_used = false;
 }
 
 bool MemoryManager::is_mapped(void* addr) {
     auto dir = PageDirectory::kernel_page_directory();
     return dir->is_mapped(reinterpret_cast<u32>(addr));
+}
+
+u32 MemoryManager::get_physical_address(void* addr) {
+    auto dir = PageDirectory::kernel_page_directory();
+    return dir->get_physical_address(reinterpret_cast<u32>(addr));
 }
 
 }
@@ -180,35 +208,52 @@ int liballoc_unlock() {
 }
 
 void* liballoc_alloc(size_t pages) {
-    using namespace kernel;
+    using namespace kernel::memory;
 
-    if (s_kernel_heap_offset + pages * PAGE_SIZE < INITIAL_KERNEL_HEAP_SIZE) {
-        void* ptr = &s_initial_kernel_heap[s_kernel_heap_offset];
-        s_kernel_heap_offset += pages * PAGE_SIZE;
+    size_t size = pages * PAGE_SIZE;
+    if (s_kernel_heap_offset + size < INITIAL_KERNEL_HEAP_SIZE) {
+        void* ptr = &s_kernel_heap[s_kernel_heap_offset];
+        s_kernel_heap_offset += size;
 
         return ptr;
     }
     
-    auto result = memory::MemoryManager::instance()->allocate_heap_region(pages);
+    auto result = MemoryManager::instance()->allocate_heap_region(pages);
 
     if (result.is_err()) return nullptr;
     return result.value();
 }
 
 int liballoc_free(void* addr, size_t pages) {
+    using namespace kernel::memory;
+
     // No need to do anything if the address is in the initial kernel heap
-    if (addr >= &s_initial_kernel_heap && addr < &s_initial_kernel_heap[INITIAL_KERNEL_HEAP_SIZE]) {
+    if (addr >= &s_kernel_heap && addr < &s_kernel_heap[INITIAL_KERNEL_HEAP_SIZE]) {
         return 0;
     }
 
-    auto mm = kernel::memory::MemoryManager::instance();
+    auto mm = MemoryManager::instance();
     
     auto result = mm->free_heap_region(addr, pages);
     return result.is_err();
 }
 
-void* operator new(size_t size) { return kmalloc(size); }
-void* operator new[](size_t size) { return kmalloc(size); }
+void* operator new(size_t size) {
+    auto* ptr = kmalloc(size);
+    std::memset(ptr, 0, size);
 
-void operator delete(void* ptr) { kfree(ptr); }
-void operator delete[](void* ptr) { kfree(ptr); }
+    return ptr;
+}
+
+void* operator new[](size_t size) {
+    auto* p = kmalloc(size);
+    std::memset(p, 0, size);
+
+    return p;
+}
+
+void operator delete(void* p) { kfree(p); }
+void operator delete[](void* p) { kfree(p); }
+
+void operator delete(void* p, size_t) { kfree(p); }
+void operator delete[](void* p, size_t) { kfree(p); }

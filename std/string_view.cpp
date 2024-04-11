@@ -10,6 +10,7 @@ bool StringView::operator==(const StringView& other) const {
         return false;
     }
 
+    kernel::serial::printf("memcmp(%s, %s, %d)\n", this->data(), other.data(), this->size());
     return memcmp(this->data(), other.data(), this->size()) == 0;
 }
 

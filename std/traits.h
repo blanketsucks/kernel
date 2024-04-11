@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/common.h>
+#include <std/types.h>
 
 namespace std::traits {
 
@@ -12,7 +12,8 @@ namespace std::traits {
     Op(u8)              \
     Op(u16)             \
     Op(u32)             \
-    Op(u64)
+    Op(u64)             \
+    Op(unsigned long)
 
 template<typename T>
 struct Hash {

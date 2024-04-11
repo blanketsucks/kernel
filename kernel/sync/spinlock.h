@@ -2,7 +2,7 @@
 
 #include <kernel/common.h>
 
-#include <stdatomic.h>
+#include <std/atomic.h>
 
 namespace kernel {
 
@@ -22,7 +22,7 @@ public:
     void release();
 
 private:
-    atomic_flag lock { static_cast<atomic_bool>(0) };
+    std::Atomic<bool> m_lock { false };
 };
 
 }

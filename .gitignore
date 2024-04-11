@@ -2,5 +2,7 @@ build/
 mnt/
 .vscode/
 
+.clangd
+
 disk.img
 kernel.map

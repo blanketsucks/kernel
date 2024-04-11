@@ -1,86 +1,135 @@
 #include <kernel/cpu/pic.h>
+#include <kernel/cpu/apic.h>
+#include <kernel/cpu/idt.h>
+#include <kernel/serial.h>
+
 #include <kernel/io.h>
 #include <kernel/vga.h>
 
-constexpr u8 PIC_MASTER_COMMAND = 0x20;
-constexpr u8 PIC_MASTER_DATA = 0x21;
+namespace kernel {
 
-constexpr u8 PIC_SLAVE_COMMAND = 0xA0;
-constexpr u8 PIC_SLAVE_DATA = 0xA1;
+IRQHandler::IRQHandler(u8 irq) : m_irq(irq) {
+    pic::enable(irq);
+    pic::set_irq_handler(irq, this);
+}
 
-constexpr u8 PIC_EOF = 0x20;
+void IRQHandler::enable_irq_handler() {
+    pic::set_irq_handler(m_irq, this);
+}
 
-namespace kernel::pic {
+void IRQHandler::disable_irq_handler() {
+    pic::set_irq_handler(m_irq, (IRQHandler*)nullptr); // A bit jank but whatever
+}
+
+namespace pic {
+
+static IRQHandler* s_irq_handlers[16] = {};
+
+extern "C" void* _irq_stub_table[];
+
+extern "C" void _irq_handler(cpu::Registers* regs) {
+    u8 irq = regs->intno - 32;
+    IRQHandler* handler = s_irq_handlers[irq];
+
+    if (handler) {
+        handler->handle_interrupt(regs);
+    }
+
+    eoi(irq);
+}
 
 void eoi(u8 irq) {
     if (irq >= 8) {
         // Send EOI to both master and slave PIC in this case
-        io::write(PIC_SLAVE_COMMAND, PIC_EOF);
+        io::write(SLAVE_COMMAND, EOF);
     }
 
-    io::write(PIC_MASTER_COMMAND, PIC_EOF);
+    io::write(MASTER_COMMAND, EOF);
+}
+
+void set_irq_handler(u8 irq, IRQHandler* handler) {
+    s_irq_handlers[irq] = handler;
+}
+
+void set_irq_handler(u8 irq, cpu::InterruptHandler handler) {
+    enable(irq);
+    cpu::set_idt_entry(32 + irq, reinterpret_cast<u32>(handler), 0x8E);
 }
 
 void disable() {
-    io::write<u8>(PIC_MASTER_DATA, 0xFF);
-    io::write<u8>(PIC_SLAVE_DATA, 0xFF);
+    io::write<u8>(MASTER_DATA, 0xFF);
+    io::write<u8>(SLAVE_DATA, 0xFF);
 }
 
 void remap() {
     // Start initialization sequence
-    io::write<u8>(PIC_MASTER_COMMAND, 0x11);
+    io::write<u8>(MASTER_COMMAND, 0x11);
     io::wait();
 
-    io::write<u8>(PIC_SLAVE_COMMAND, 0x11);
+    io::write<u8>(SLAVE_COMMAND, 0x11);
     io::wait();
 
     // Set offsets
-    io::write<u8>(PIC_MASTER_DATA, 0x20);
+    io::write<u8>(MASTER_DATA, 0x20);
     io::wait();
 
-    io::write<u8>(PIC_SLAVE_DATA, 0x28);
+    io::write<u8>(SLAVE_DATA, 0x28);
     io::wait();
 
     // Set cascade identity
-    io::write<u8>(PIC_MASTER_DATA, 0x04);
+    io::write<u8>(MASTER_DATA, 0x04);
     io::wait();
 
-    io::write<u8>(PIC_SLAVE_DATA, 0x02);
+    io::write<u8>(SLAVE_DATA, 0x02);
     io::wait();
 
     // Set 8086 mode
-    io::write<u8>(PIC_MASTER_DATA, 0x01);
+    io::write<u8>(MASTER_DATA, 0x01);
     io::wait();
     
-    io::write<u8>(PIC_SLAVE_DATA, 0x01);
+    io::write<u8>(SLAVE_DATA, 0x01);
     io::wait();
 
     // Disable all IRQs
-    io::write<u8>(PIC_MASTER_DATA, 0xFF);
-    io::write<u8>(PIC_SLAVE_DATA, 0xFF);
+    io::write<u8>(MASTER_DATA, 0xFF);
+    io::write<u8>(SLAVE_DATA, 0xFF);
 
     pic::enable(2); // Enable IRQ 2 which is the slave PIC
 }
 
+void init() {
+    remap();
+
+    for (u8 i = 0; i < 16; i++) {
+        cpu::set_idt_entry(32 + i, reinterpret_cast<u32>(_irq_stub_table[i]), 0x8E);
+    }
+}
+
 void disable(u8 irq) {
+    asm volatile("cli");
+
     u16 port = 0;
     if (irq < 8) {
-        port = PIC_MASTER_DATA;
+        port = MASTER_DATA;
     } else {
-        port = PIC_SLAVE_DATA;
+        port = SLAVE_DATA;
         irq -= 8;
     }
 
     u8 value = io::read<u8>(port) | (1 << irq);
     io::write(port, value);
+
+    asm volatile("sti");
 }
 
 void enable(u8 irq) {
+    asm volatile("cli");
+
     u16 port = 0;
     if (irq < 8) {
-        port = PIC_MASTER_DATA;
+        port = MASTER_DATA;
     } else {
-        port = PIC_SLAVE_DATA;
+        port = SLAVE_DATA;
         irq -= 8;
     }
 
@@ -88,6 +137,9 @@ void enable(u8 irq) {
     value &= ~(1 << irq);
 
     io::write(port, value);
+    asm volatile("sti");
+}
+
 }
 
 }

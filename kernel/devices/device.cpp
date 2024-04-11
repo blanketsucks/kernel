@@ -4,6 +4,10 @@ namespace kernel::devices {
 
 DeviceManager* DeviceManager::s_instance = nullptr;
 
+DeviceManager::DeviceManager() {
+    
+}
+
 void DeviceManager::init() {
     s_instance = new DeviceManager();
 }
@@ -22,7 +26,7 @@ bool DeviceManager::register_device(Device* device) {
     return true;
 }
 
-Device* DeviceManager::get_device(u32 major, u32 minor) {
+RefPtr<Device> DeviceManager::get_device(u32 major, u32 minor) {
     auto iterator = m_devices.find(Device::encode(major, minor));
     if (iterator == m_devices.end()) {
         return nullptr;

@@ -26,15 +26,10 @@ public:
         return __atomic_exchange_n(&m_value, value, to_underlying(order));
     }
 
-    bool compare_exchange_weak(T& expected, T desired, MemoryOrder order = MemoryOrder::SeqCst) volatile {
+    bool compare_exchange_strong(T& expected, T desired, MemoryOrder order = MemoryOrder::SeqCst) volatile {
         if (order == MemoryOrder::AcqRel || order == MemoryOrder::Release) {
             return __atomic_compare_exchange_n(
-                &m_value, 
-                &expected, 
-                desired, 
-                true, 
-                to_underlying(MemoryOrder::Release), 
-                to_underlying(MemoryOrder::Acquire)
+                &m_value, &expected, desired, false, to_underlying(MemoryOrder::Release), to_underlying(MemoryOrder::Acquire)
             );
         }
 
@@ -47,6 +42,10 @@ public:
 
     void store(T value, MemoryOrder order = MemoryOrder::SeqCst) volatile {
         __atomic_store_n(&m_value, value, to_underlying(order));
+    }
+
+    T fetch_add(T value, MemoryOrder order = MemoryOrder::SeqCst) volatile {
+        return __atomic_fetch_add(&m_value, value, to_underlying(order));
     }
 
 

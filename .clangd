@@ -1,7 +1,8 @@
 CompileFlags:
     Add:
         - -m32
-        - -I/mnt/c/Users/Dell/Desktop/cpp/kernel/
+        - -I/mnt/c/users/blanket/desktop/c++/kernel
+        - -I/mnt/c/users/blanket/desktop/c++/kernel/include
         - -ffreestanding
         - -fno-stack-protector
         - -fno-exceptions
@@ -11,3 +12,7 @@ CompileFlags:
         - -Wextra
         - -Wno-interrupt-service-routine
         - -D__KERNEL__
+        - -DSTBI_NO_STDIO
+        - -DSTB_SPRINTF_IMPLEMENTATION
+        - -DSTB_SPRINTF_NOFLOAT
+        - -Wno-register

@@ -12,8 +12,6 @@
 
 namespace kernel::memory {
 
-void* allocate_from_initial_heap(size_t size);
-
 class PageDirectory;
 
 union PageFault {
@@ -52,6 +50,7 @@ union PageFault {
         u8 hlt : 1;
 
         u8 reserved0 : 7;
+        
         // 0 = The fault was not caused by SGX.
         // 1 = There was an SGX access-control violation.
         u8 sgx : 1;
@@ -71,7 +70,7 @@ public:
     static void init(multiboot_info_t* header);
     static MemoryManager* instance();
 
-    static void page_fault_handler(cpu::InterruptFrame* frame, u32 err);
+    static void page_fault_handler(cpu::Registers*);
 
     static PageDirectory* kernel_page_directory();
 
@@ -79,6 +78,7 @@ public:
     Region& kernel_region() { return m_kernel_region; }
 
     bool is_mapped(void* addr);
+    u32 get_physical_address(void* addr);
 
     [[nodiscard]] ErrorOr<void*> allocate_physical_frame();
     [[nodiscard]] ErrorOr<void> free_physical_frame(void* frame);
@@ -89,8 +89,15 @@ public:
     [[nodiscard]] ErrorOr<void*> allocate_kernel_region(size_t pages);
     [[nodiscard]] ErrorOr<void> free_kernel_region(void* start, size_t pages);
 
+    // Allocates from the kernel region
+    void* allocate(size_t size);
+    void free(void* ptr);
+
+    template<typename T> T* allocate() { return this->allocate(sizeof(T)); }
+
     // Map an already existing physical region into the kernel's address space
-    [[nodiscard]] ErrorOr<void*> map_physical_region(u32 start, size_t size);
+    void* map_physical_region(u32 start, size_t size);
+    void unmap_physical_region(void* ptr);
 
     SpinLock& alloc_lock() { return m_alloc_lock; }
 private:
@@ -144,9 +151,13 @@ void* liballoc_alloc(size_t pages);
 int liballoc_free(void* address, size_t pages);
 
 void* operator new(size_t size);
-void* operator new(size_t size, void* ptr);
+inline void* operator new(size_t, void* p) { return p; }
 
 void* operator new[](size_t size);
+inline void* operator new[](size_t, void* p) { return p; }
 
-void operator delete(void* ptr);
-void operator delete[](void* ptr);
+void operator delete(void* p);
+void operator delete[](void* p);
+
+void operator delete(void* p, size_t size);
+void operator delete[](void* p, size_t size);

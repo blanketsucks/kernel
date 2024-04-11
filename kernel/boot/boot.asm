@@ -1,7 +1,10 @@
+global _start
 extern main
 
 extern _kernel_start
 extern _kernel_end
+
+%include "kernel/boot/common.inc"
 
 MULTIBOOT_ALIGN      equ 1 << 0
 MULTIBOOT_MEMINFO    equ 1 << 1
@@ -11,7 +14,21 @@ MULTIBOOT_FLAGS      equ MULTIBOOT_ALIGN | MULTIBOOT_MEMINFO | MULTIBOOT_VIDEO_M
 MULTIBOOT_MAGIC      equ 0x1BADB002
 MULTIBOOT_CHECKSUM   equ -(MULTIBOOT_MAGIC + MULTIBOOT_FLAGS)
 
-KERNEL_VIRTUAL_BASE  equ 0xC0000000
+; %1: Page table (virtual address)
+; %2: Starting physical address
+%macro map_page_table 2
+    mov edi, %1 - KERNEL_VIRTUAL_BASE
+    mov esi, %2
+    call _map_page_table
+%endmacro
+
+; %1: Virtual address of the page table
+; %2: Index of the page table entry
+%macro map_kernel_page_directory 2
+    mov ecx, %1 - KERNEL_VIRTUAL_BASE
+    or ecx, 0x003
+    mov dword [kernel_page_directory - KERNEL_VIRTUAL_BASE + %2 * 4], ecx
+%endmacro
 
 section .multiboot align=4
     dd MULTIBOOT_MAGIC
@@ -25,54 +42,33 @@ section .multiboot align=4
     dd 480 ; Height
     dd 32  ; Depth 
 
-section .data align=0x1000
-header:
-    dd 0
-
 section .stack nobits align=16
 stack:
-    resb 16384 ; 16 KiB
-stack.top:
+    resb STACK_SIZE
 
 section .bss nobits align=0x1000
 boot_page_directory:
-    resb 4096
-boot_page_table:
-    resb 4096
+    resd KERNEL_PAGE_NUMBER
+kernel_page_directory:
+    resd (1024 - KERNEL_PAGE_NUMBER)
+boot_page_table0:
+    resd 1024
+boot_page_table1:
+    resd 1024
 
 section .text
 
-global _start
 _start:
-    mov [header - KERNEL_VIRTUAL_BASE], ebx
+    map_page_table boot_page_table0, 0
+    map_page_table boot_page_table1, (PAGE_SIZE * 1024)
 
-    mov edi, boot_page_table - KERNEL_VIRTUAL_BASE
-    mov esi, 0
-    mov ecx, 1023
-.loop:
-    cmp esi, _kernel_start
-    jl .loop.inner
+    map_kernel_page_directory boot_page_table0, 0
 
-    cmp esi, _kernel_end - KERNEL_VIRTUAL_BASE
-    jge .loop.end
+    ; ecx contains the value of (boot_page_table0 | 0x3) from the previous macro call and we use it
+    ; to identity map the first 4MB of memory
+    mov dword [boot_page_directory - KERNEL_VIRTUAL_BASE], ecx 
 
-    mov edx, esi
-    or edx, 0x003
-    mov [edi], edx
-.loop.inner:
-    add esi, 4096
-    add edi, 4
-
-    loop .loop
-.loop.end:
-    ; Map the VGA Address to 0xC03FF000
-    mov eax, 0x000B8000 | 0x003
-    mov dword [boot_page_table - KERNEL_VIRTUAL_BASE + 1023 * 4], eax
-
-    mov eax, boot_page_table - KERNEL_VIRTUAL_BASE + 0x003
-
-    mov dword [boot_page_directory - KERNEL_VIRTUAL_BASE + 0], eax
-    mov dword [boot_page_directory - KERNEL_VIRTUAL_BASE + 768 * 4], eax
+    map_kernel_page_directory boot_page_table1, 1
 
     mov ecx, boot_page_directory - KERNEL_VIRTUAL_BASE
     mov cr3, ecx
@@ -81,7 +77,6 @@ _start:
     or ecx, 0x80010000
     mov cr0, ecx
 
-    ; Jump to _entrypoint
     lea ecx, [_entrypoint]
     jmp ecx
 
@@ -89,14 +84,32 @@ _entrypoint:
     mov dword [boot_page_directory], 0
     invlpg [0]
 
-    mov esp, stack.top
+    mov esp, stack + STACK_SIZE
 
     ; Push multiboot header as first argument for main
-    push dword [header]
+    add ebx, KERNEL_VIRTUAL_BASE
+    push ebx
 
+    cli
     call main
 
     cli
     
     hlt
     jmp $
+
+_map_page_table:
+    xor eax, eax
+
+    .loop:
+        mov edx, esi
+        or edx, 0x003
+        mov [edi + eax * 4], edx
+
+        add esi, PAGE_SIZE
+        inc eax
+
+        cmp eax, 1024
+        jl .loop ; We keep looping until we have mapped 1024 pages
+
+    ret

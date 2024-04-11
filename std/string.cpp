@@ -35,6 +35,24 @@ String& String::operator=(const String& other) {
     return *this;
 }
 
+String& String::operator=(String&& other) {
+    if (this != &other) {
+        if (m_data) {
+            kfree(m_data);
+        }
+
+        m_data = other.m_data;
+        m_size = other.m_size;
+        m_capacity = other.m_capacity;
+
+        other.m_data = nullptr;
+        other.m_size = 0;
+        other.m_capacity = 0;
+    }
+
+    return *this;
+}
+
 String& String::operator=(const char* other) {
     this->clear();
     this->append(other);
@@ -71,7 +89,7 @@ void String::resize(size_t size) {
 }
 
 void String::append(char c) {
-    if (m_size + 1 >= m_capacity) {
+    if (m_size + 1 >= m_capacity || !m_data) {
         this->reserve(m_capacity == 0 ? 1 : m_capacity * 2);
     }
 
@@ -80,7 +98,7 @@ void String::append(char c) {
 
 void String::append(const char* str) {
     size_t len = strlen(str);    
-    if (m_size + len >= m_capacity) {
+    if (m_size + len >= m_capacity || !m_data) {
         this->reserve(m_capacity == 0 ? m_size + len : m_capacity * 2);
     }
 
@@ -89,7 +107,7 @@ void String::append(const char* str) {
 }
 
 void String::append(const char* str, size_t len) {
-    if (m_size + len >= m_capacity) {
+    if (m_size + len >= m_capacity || !m_data) {
         this->reserve(m_capacity == 0 ? m_size + len : m_capacity * 2);
     }
 
@@ -98,7 +116,7 @@ void String::append(const char* str, size_t len) {
 }
 
 void String::append(const StringView& str) {
-    if (m_size + str.size() >= m_capacity) {
+    if (m_size + str.size() >= m_capacity || !m_data) {
         this->reserve(m_capacity == 0 ? m_size + str.size() : m_capacity * 2);
     }
 
@@ -107,7 +125,7 @@ void String::append(const StringView& str) {
 }
 
 void String::append(const String& str) {
-    if (m_size + str.size() >= m_capacity) {
+    if (m_size + str.size() >= m_capacity || !m_data) {
         this->reserve(m_capacity == 0 ? m_size + str.size() : m_capacity * 2);
     }
 

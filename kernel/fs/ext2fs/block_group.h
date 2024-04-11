@@ -33,6 +33,8 @@ public:
     void free_blocks(const Vector<u32>& blocks);
     void free_block(u32 block);
 
+    u32 allocate_inode(bool is_directory);
+
 private:
     BlockGroupDescriptor m_descriptor;
     u32 m_index;

@@ -156,6 +156,13 @@ public:
         return item;
     }
 
+    T take_last() {
+        T item = m_data[m_size - 1];
+        this->remove_last();
+
+        return item;
+    }
+
     // TODO: Maybe add bounds checking?
     T& operator[](size_t index) { return m_data[index]; }
     const T& operator[](size_t index) const { return m_data[index]; }
@@ -171,13 +178,21 @@ public:
             return;
         }
 
-        if (!m_data) {
-            m_data = reinterpret_cast<T*>(kmalloc(sizeof(T) * capacity));
-        } else {
-            m_data = reinterpret_cast<T*>(krealloc(m_data, sizeof(T) * capacity));
+        T* data = reinterpret_cast<T*>(kmalloc(sizeof(T) * capacity));
+        for (size_t i = 0; i < m_size; i++) {
+            new (data + i) T(m_data[i]);
         }
 
         m_capacity = capacity;
+        if (m_data) {
+            for (size_t i = 0; i < m_size; i++) {
+                m_data[i].~T();
+            }
+
+            kfree(m_data);
+        }
+
+        m_data = data;
     }
 
     void resize(size_t size) {
@@ -190,8 +205,7 @@ public:
             return;
         }
 
-        m_data = reinterpret_cast<T*>(krealloc(m_data, sizeof(T) * m_size));
-        m_capacity = m_size;
+        this->reserve(m_size);
     }
 
     void append(const T& value) {
@@ -199,7 +213,9 @@ public:
             this->reserve(m_capacity == 0 ? 1 : m_capacity * 2);
         }
 
-        m_data[m_size++] = value;
+        
+        new (m_data + m_size) T(value);
+        m_size++;
     }
 
     void append(const T* data, size_t size) {
@@ -225,7 +241,8 @@ public:
 
         m_data[index].~T();
         for (size_t i = index; i < m_size - 1; i++) {
-            m_data[i] = m_data[i + 1];
+            new (m_data + i) T(m_data[i + 1]);
+            m_data[i + 1].~T();
         }
 
         m_size--;
@@ -256,7 +273,7 @@ public:
     void reverse() {
         for (size_t i = 0; i < m_size / 2; i++) {
             T temp = m_data[i];
-            
+
             m_data[i] = m_data[m_size - i - 1];
             m_data[m_size - i - 1] = temp;
         }

@@ -4,6 +4,18 @@
 #include <kernel/multiboot.h>
 #include <kernel/memory/region.h>
 
+namespace kernel {
+
+enum class PageFlags : u32 {
+    Writable = 1 << 1,
+    User = 1 << 2,
+    DisableCache = 1 << 3
+};
+
+MAKE_ENUM_BITWISE_OPS(PageFlags)
+
+}
+
 namespace kernel::memory {
 
 using VirtualAddress = u32;
@@ -57,6 +69,7 @@ union PageTableEntry {
     void set_present(bool present) { data.present = present; }
     void set_writable(bool writable) { data.writable = writable; }
     void set_user(bool user) { data.user = user; }
+    void set_cache_disable(bool cache_disable) { data.cache_disabled = cache_disable; }
     void set_physical_address(u32 addr) { data.physical_address = addr >> 12; }
 };
 
@@ -100,7 +113,7 @@ public:
     Type type() const { return m_type; }
     bool is_kernel() const { return m_type == Kernel; }
 
-    void map(VirtualAddress virt, PhysicalAddress phys, bool user, bool writable);
+    void map(VirtualAddress virt, PhysicalAddress phys, PageFlags flags);
     void unmap(VirtualAddress virt);
 
     PhysicalAddress get_physical_address(VirtualAddress virt) const;

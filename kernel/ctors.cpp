@@ -15,7 +15,7 @@ struct atexit_func_entry_t {
 atexit_func_entry_t __atexit_funcs[ATEXIT_MAX_FUNCS];
 u32 __atexit_func_count = 0;
 
-extern "C" void __cxa_atexit(void (*func)(void*), void *arg, void* dso_handle) {
+extern "C" void __cxa_atexit(void (*func)(void*), void *arg, void*) {
     if (__atexit_func_count >= ATEXIT_MAX_FUNCS) {
         return;
     }

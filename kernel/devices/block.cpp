@@ -13,7 +13,7 @@ size_t BlockDevice::read(void* buffer, size_t size, size_t offset) {
     while (bytes_read < size) {
         this->read_block(block_buffer, block);
 
-        size_t bytes_to_read = min(size - bytes_read, this->block_size() - block_offset);
+        size_t bytes_to_read = std::min(size - bytes_read, this->block_size() - block_offset);
         std::memcpy(reinterpret_cast<u8*>(buffer) + bytes_read, block_buffer + block_offset, bytes_to_read);
 
         bytes_read += bytes_to_read;
@@ -35,7 +35,7 @@ size_t BlockDevice::write(const void* buffer, size_t size, size_t offset) {
     while (bytes_written < size) {
         this->read_block(block_buffer, block);
 
-        size_t bytes_to_write = min(size - bytes_written, this->block_size() - block_offset);
+        size_t bytes_to_write = std::min(size - bytes_written, this->block_size() - block_offset);
         std::memcpy(block_buffer + block_offset, reinterpret_cast<const u8*>(buffer) + bytes_written, bytes_to_write);
 
         this->write_block(block_buffer, block);

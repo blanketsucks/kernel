@@ -14,6 +14,8 @@ void __cxa_guard_release(__guard* g) {
 
 void __cxa_guard_abort(__guard*) {}
 
-void __cxa_pure_virtual() {}
+void __cxa_pure_virtual() {
+    __builtin_unreachable();
+}
 
 }

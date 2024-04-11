@@ -9,13 +9,15 @@
 
 namespace kernel::fs {
 
-// TODO: Implement this
 class FileDescriptor {
 public:
-    FileDescriptor(RefPtr<File> file, i32 options) : m_file(file), m_offset(0), m_options(options) {};
+    FileDescriptor(RefPtr<File> file, int flags) : m_file(file), m_offset(0), m_flags(flags) {};
+
+    size_t size() const { return m_file->size(); }
+    const File* file() const { return m_file.ptr(); }
 
     off_t offset() const { return m_offset; }
-    i32 options() const { return m_options; }
+    int flags() const { return m_flags; }
 
     size_t read(void* buffer, size_t size);
     size_t write(const void* buffer, size_t size);
@@ -28,8 +30,8 @@ public:
 private:
     RefPtr<File> m_file;
 
-    off_t m_offset;
-    i32 m_options;
+    off_t m_offset = 0;
+    int m_flags = 0;
 };
 
 }

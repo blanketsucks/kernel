@@ -11,6 +11,9 @@ constexpr u16 CONFIG_ADDRESS = 0xCF8;
 constexpr u16 CONFIG_DATA = 0xCFC;
 constexpr u16 SECONDARY_BUS = 0x19;
 
+constexpr u16 INTERRUPT_LINE = 0x3C;
+constexpr u16 INTERRUPT_PIN = 0x3D;
+
 constexpr u16 VENDOR_ID = 0x00;
 constexpr u16 DEVICE_ID = 0x02;
 constexpr u16 HEADER_TYPE = 0x0E;
@@ -78,8 +81,11 @@ union Address {
     u32 bar5() const;
 
     u8 prog_if() const;
+    u8 interrupt_line() const;
 
     void set_interrupt_line(bool value) const;
+    void set_bus_master(bool value) const;
+    void set_io_space(bool value) const;
 };
 
 enum class DeviceClass : u8 {
@@ -265,6 +271,13 @@ struct Device {
         return device_class == DeviceClass::SerialBusController && subclass == DeviceSubclass::USBController;
     }
 
+    bool is_audio_device() const {
+        return device_class == DeviceClass::MultimediaController && subclass == DeviceSubclass::AudioDevice;
+    }
+
+    bool is_bochs_vga() const {
+        return vendor_id == 0x1234 && id == 0x1111;
+    }
 };
 
 using EnumerationCallback = Function<void(Device)>;
@@ -279,6 +292,7 @@ template<typename T> void write(Address address, u8 offset, T value) = delete;
 
 template<> void write<u8>(Address address, u8 offset, u8 value);
 template<> void write<u16>(Address address, u8 offset, u16 value);
+template<> void write<u32>(Address address, u8 offset, u32 value);
 
 u16 get_vendor_id(Address address);
 u16 get_device_id(Address address);

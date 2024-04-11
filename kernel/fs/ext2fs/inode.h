@@ -59,8 +59,6 @@ public:
     Vector<fs::DirectoryEntry> readdir() const override { return m_entries; }
     RefPtr<fs::Inode> lookup(StringView name) const override;
 
-    OwnPtr<fs::File> file();
-
     size_t block_count() const;
     u32 block_group_index() const;
     u32 block_group_offset() const;
@@ -84,10 +82,12 @@ public:
     void set_disk_sectors();
 
     Vector<fs::DirectoryEntry> read_directory_entries() const;
+    void write_directory_entries();
+
     ErrorOr<void> add_directory_entry(ino_t id, String name, fs::DirectoryEntry::Type type);
 
-    void add_entry(String, RefPtr<Inode>) override {}
-    RefPtr<Inode> create_entry(String, mode_t, uid_t, gid_t) override { return nullptr; }
+    ErrorOr<void> add_entry(String name, RefPtr<fs::Inode> inode) override;
+    RefPtr<fs::Inode> create_entry(String name, mode_t mode, uid_t uid, gid_t gid) override;
 
     void flush() override;
 

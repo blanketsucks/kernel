@@ -1,3 +1,4 @@
+#include "kernel/multiboot.h"
 #include <kernel/memory/physical.h>
 #include <kernel/memory/mm.h>
 
@@ -13,18 +14,42 @@ PhysicalMemoryManager* PhysicalMemoryManager::instance() {
     return &s_instance;
 }
 
-void PhysicalMemoryManager::init(u32 mem_lower, u32 mem_upper) {
-    u32 frames = (mem_upper + mem_lower) * 1024 / PAGE_SIZE;
-    s_instance.m_physical_frames.reserve(frames);
+void PhysicalMemoryManager::init(multiboot_info_t* header) {
+    serial::printf("Memory map:\n");
+    u32 frames = 0;
 
-    for (u32 i = 0; i < frames; i++) {
-        s_instance.m_physical_frames.push(i * PAGE_SIZE);
+    for (u32 i = 0; i < header->mmap_length; i += sizeof(multiboot_memory_map_t)) {
+        multiboot_memory_map_t* entry = reinterpret_cast<multiboot_memory_map_t*>(header->mmap_addr + KERNEL_VIRTUAL_BASE + i);
+
+        u32 size = std::align_down((u32)entry->len, PAGE_SIZE);
+        u32 address = std::align_up((u32)entry->addr, PAGE_SIZE);
+
+        serial::printf("  Address: %#x, Size: %#x, Type: %d\n", address, size, entry->type);
+        if (entry->type != MULTIBOOT_MEMORY_AVAILABLE) {
+            continue;
+        }
+
+        frames += size / PAGE_SIZE;
+        s_instance.m_total_usable_ram += size;
     }
 
-    s_instance.m_upper_address = s_instance.m_physical_frames.top();
+    s_instance.m_physical_frames.reserve(frames);
+    for (u32 i = 0; i < header->mmap_length; i += sizeof(multiboot_memory_map_t)) {
+        multiboot_memory_map_t* entry = reinterpret_cast<multiboot_memory_map_t*>(header->mmap_addr + KERNEL_VIRTUAL_BASE + i);
 
-    s_instance.frames = frames;
-    s_instance.initialized = true;
+        u32 size = std::align_down((u32)entry->len, PAGE_SIZE);
+        u32 address = std::align_up((u32)entry->addr, PAGE_SIZE);
+
+        if (entry->type != MULTIBOOT_MEMORY_AVAILABLE) {
+            continue;
+        }
+
+        for (u32 j = 0; j < size; j += PAGE_SIZE) {
+            s_instance.m_physical_frames.push(address + j);
+        }
+    }
+
+    s_instance.m_initialized = true;
 }
 
 ErrorOr<void*> PhysicalMemoryManager::allocate() {
@@ -51,8 +76,6 @@ ErrorOr<void> PhysicalMemoryManager::free(void* frame) {
     if (!this->is_initialized()) return {};
 
     if (!this->is_allocated(frame)) {
-        return Error(EINVAL);
-    } else if ((u32)frame > m_upper_address) {
         return Error(EINVAL);
     }
 

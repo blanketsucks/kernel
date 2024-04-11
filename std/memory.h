@@ -91,8 +91,10 @@ public:
     }
 
     template<typename U>
-    RefPtr(const RefPtr<U>& other) : m_ptr(static_cast<T*>(other.ptr())) {
+    RefPtr(const RefPtr<U>& other) {
+        m_ptr = static_cast<T*>(const_cast<U*>(other.ptr()));
         m_ref_count = other.ref_count();
+
         if (m_ref_count) {
             m_ref_count->ref();
         }
@@ -126,7 +128,10 @@ public:
         m_ptr = other.m_ptr;
         m_ref_count = other.m_ref_count;
 
-        if (m_ref_count) m_ref_count->ref();
+        if (m_ref_count) {
+            m_ref_count->ref();
+        }
+        
         return *this;
     }
 

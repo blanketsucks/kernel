@@ -67,7 +67,7 @@ size_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
     while (bytes_read < size) {
         this->read_blocks(block, 1, block_buffer);
 
-        size_t bytes_to_read = min(size - bytes_read, ext2fs()->block_size() - block_offset);
+        size_t bytes_to_read = std::min(size - bytes_read, ext2fs()->block_size() - block_offset);
         std::memcpy(reinterpret_cast<u8*>(buffer) + bytes_read, block_buffer + block_offset, bytes_to_read);
 
         bytes_read += bytes_to_read;
@@ -97,7 +97,7 @@ size_t InodeEntry::write(const void* buffer, size_t size, size_t offset) {
     while (bytes_written < size) {
         this->read_blocks(block, 1, block_buffer);
 
-        size_t bytes_to_write = min(size - bytes_written, block_size - block_offset);
+        size_t bytes_to_write = std::min(size - bytes_written, block_size - block_offset);
         std::memcpy(block_buffer + block_offset, reinterpret_cast<const u8*>(buffer) + bytes_written, bytes_to_write);
 
         this->write_blocks(block, 1, block_buffer);
@@ -187,6 +187,7 @@ Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
     Vector<fs::DirectoryEntry> entries;
 
     for (size_t i = 0; i < this->block_count(); i++) {
+        std::memset(buffer, 0, ext2fs()->block_size());
         this->read_blocks(i, 1, buffer);
 
         size_t offset = 0;
@@ -200,13 +201,17 @@ Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
             if (entry->inode == 0) break;
             offset += entry->size;
 
-            entries.append(
-                { entry->inode, static_cast<fs::DirectoryEntry::Type>(entry->type_indicator), name }
-            );
+            entries.append(fs::DirectoryEntry(entry->inode, static_cast<fs::DirectoryEntry::Type>(entry->type_indicator), String(name)));
         }
     }
 
     return entries;
+}
+
+void InodeEntry::write_directory_entries() {
+    if (!this->is_directory()) return;
+
+    ASSERT(false, "Writing directory entries is not implemented yet.");
 }
 
 ErrorOr<void> InodeEntry::add_directory_entry(ino_t inode, String name, fs::DirectoryEntry::Type type) {
@@ -224,7 +229,9 @@ ErrorOr<void> InodeEntry::add_directory_entry(ino_t inode, String name, fs::Dire
 }
 
 RefPtr<fs::Inode> InodeEntry::lookup(StringView name) const {
-    if (!this->is_directory()) return nullptr;
+    if (!this->is_directory()) {
+        return nullptr;
+    }
 
     for (auto& entry : m_entries) {
         if (entry.name == name) {
@@ -245,7 +252,10 @@ u32 InodeEntry::get_block_pointer(size_t index) const {
 
 void InodeEntry::read_block_pointers() {
     for (i32 block_pointer : m_inode.block_pointers) {
-        if (!block_pointer) continue;
+        if (!block_pointer) {
+            continue;
+        }
+
         m_block_pointers.append(block_pointer);
     }
 
@@ -266,6 +276,10 @@ void InodeEntry::read_singly_indirect_block_pointers(u32 block) {
 
     u32* pointers = reinterpret_cast<u32*>(buffer);
     for (size_t i = 0; i < ext2fs()->block_size() / sizeof(u32); i++) {
+        if (!pointers[i]) {
+            continue;
+        }
+
         m_block_pointers.append(pointers[i]);
     }
 }
@@ -278,7 +292,10 @@ void InodeEntry::read_doubly_indirect_block_pointers(u32 block) {
 
     u32* pointers = reinterpret_cast<u32*>(buffer);
     for (size_t i = 0; i < ext2fs()->block_size() / sizeof(u32); i++) {
-        if (!buffer[i]) continue;
+        if (!pointers[i]) {
+            continue;
+        }
+
         this->read_singly_indirect_block_pointers(pointers[i]);
     }
 }
@@ -291,7 +308,10 @@ void InodeEntry::read_triply_indirect_block_pointers(u32 block) {
 
     u32* pointers = reinterpret_cast<u32*>(buffer);
     for (size_t i = 0; i < ext2fs()->block_size() / sizeof(u32); i++) {
-        if (!buffer[i]) continue;
+        if (!pointers[i]) {
+            continue;
+        }
+
         this->read_doubly_indirect_block_pointers(pointers[i]);
     }
 }
@@ -396,6 +416,43 @@ ErrorOr<void> InodeEntry::write_triply_indirect_block_pointers(u32) {
 void InodeEntry::set_disk_sectors() {
     u32 block_size = ext2fs()->block_size();
     m_inode.disk_sectors = (m_block_pointers.size() + m_indirect_block_pointers.size()) * block_size / SECTOR_SIZE;
+}
+
+ErrorOr<void> InodeEntry::add_entry(String name, RefPtr<fs::Inode> inode) {
+    mode_t mode = inode->mode();
+    fs::DirectoryEntry::Type type = fs::DirectoryEntry::Unknown;
+
+    switch (mode & S_IFMT) {
+        case S_IFDIR:
+            this->m_inode.hard_link_count++;
+            type = fs::DirectoryEntry::Directory; break;
+        case S_IFREG:
+            type = fs::DirectoryEntry::RegularFile; break;
+        case S_IFLNK:
+            type = fs::DirectoryEntry::SymbolicLink; break;
+        case S_IFSOCK:
+            type = fs::DirectoryEntry::Socket; break;
+        case S_IFIFO:
+            type = fs::DirectoryEntry::FIFO; break;
+        case S_IFCHR:
+            type = fs::DirectoryEntry::CharacterDevice; break;
+        case S_IFBLK:
+            type = fs::DirectoryEntry::BlockDevice; break;
+        default:
+            return Error(EINVAL);
+    }
+
+    return this->add_directory_entry(inode->id(), name, type);
+}
+
+RefPtr<fs::Inode> InodeEntry::create_entry(String name, mode_t mode, uid_t uid, gid_t gid) {
+    auto inode = ext2fs()->create_inode(mode, uid, gid);
+    if (!inode) {
+        return nullptr;
+    }
+
+    this->add_entry(name, inode);
+    return inode;
 }
 
 void InodeEntry::flush() {

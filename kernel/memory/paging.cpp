@@ -1,3 +1,4 @@
+#include "std/enums.h"
 #include <kernel/memory/paging.h>
 #include <kernel/memory/physical.h>
 #include <kernel/memory/mm.h>
@@ -87,9 +88,12 @@ PageTable* PageDirectory::create_page_table(u32 pd, bool user) {
     return table;
 }
 
-void PageDirectory::map(VirtualAddress virt, PhysicalAddress phys, bool user, bool writable) {
+void PageDirectory::map(VirtualAddress virt, PhysicalAddress phys, PageFlags flags) {
     u32 pd = get_page_directory_index(virt);
     u32 pt = get_page_table_index(virt);
+
+    bool writable = std::has_flag(flags, PageFlags::Writable);
+    bool user = std::has_flag(flags, PageFlags::User);
 
     PageTable* table = this->create_page_table(pd, user);
     PageTableEntry& entry = table->at(pt);
@@ -167,7 +171,7 @@ PageDirectory* PageDirectory::kernel_page_directory() {
 void PageDirectory::init_kernel(Region& kernel_region) {
     PageDirectory* dir = PageDirectory::kernel_page_directory();
     dir->clear();
-
+    
     for (u32 i = 0; i < 256; i++) {
         PageTable* table = &s_kernel_page_tables[i];
         table->m_entries = s_kernel_page_table_entries[i];
@@ -186,7 +190,7 @@ void PageDirectory::init_kernel(Region& kernel_region) {
 
     // FIXME: This maps all kernel sections to writable which is not true for some like .rodata, .text, etc.
     for (u64 i = kernel_start; i < kernel_end; i += 0x1000) {
-        dir->map(i, i - KERNEL_VIRTUAL_BASE, false, true);
+        dir->map(i, i - KERNEL_VIRTUAL_BASE, PageFlags::Writable);
     }
 
     // Reserve space in the MemoryManager's kernel region so we don't end up getting some forbidden address
@@ -197,7 +201,7 @@ void PageDirectory::init_kernel(Region& kernel_region) {
         Permissions::Read | Permissions::Write
     );
 
-    dir->map(VIRTUAL_VGA_ADDRESS, PHYSICAL_VGA_ADDRESS, false, true);
+    dir->map(VIRTUAL_VGA_ADDRESS, PHYSICAL_VGA_ADDRESS, PageFlags::Writable);
     dir->switch_to();
 }
 

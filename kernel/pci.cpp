@@ -60,9 +60,25 @@ u32 Address::bar5() const { return read<u32>(*this, BAR5); }
 
 u8 Address::prog_if() const { return read<u8>(*this, PROG_IF); }
 
+u8 Address::interrupt_line() const { return read<u8>(*this, INTERRUPT_LINE); }
+
 void Address::set_interrupt_line(bool value) const {
     Command command = { read<u16>(*this, COMMAND) };
     command.interrupt_disable = !value;
+
+    write<u16>(*this, COMMAND, command.value);
+}
+
+void Address::set_bus_master(bool value) const {
+    Command command = { read<u16>(*this, COMMAND) };
+    command.bus_master = value;
+
+    write<u16>(*this, COMMAND, command.value);
+}
+
+void Address::set_io_space(bool value) const {
+    Command command = { read<u16>(*this, COMMAND) };
+    command.io_space = value;
 
     write<u16>(*this, COMMAND, command.value);
 }

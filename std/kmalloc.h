@@ -11,28 +11,27 @@
     #define krealloc realloc
     #define kcalloc calloc
 
-    void* operator new(size_t size) {
-        return kmalloc(size);
+    inline void* operator new(size_t, void* p) { return p; }
+    inline void* operator new[](size_t, void* p) { return p; }
+
+    inline void* operator new(size_t size) {
+        return malloc(size);
     }
 
-    void* operator new[](size_t size) {
-        return kmalloc(size);
+    inline void* operator new[](size_t size) {
+        return malloc(size);
     }
 
-    void operator delete(void* ptr) {
-        kfree(ptr);
+    inline void operator delete(void* p) {
+        free(p);
     }
 
-    void operator delete[](void* ptr) {
-        kfree(ptr);
+    inline void operator delete[](void* p) {
+        free(p);
     }
 
-    void* operator new(size_t size, void* ptr) {
-        return ptr;
-    }
-
-    void* operator new[](size_t size, void* ptr) {
-        return ptr;
+    inline void operator delete(void* p, size_t) {
+        free(p);
     }
 #endif
 

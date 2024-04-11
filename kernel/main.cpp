@@ -8,6 +8,7 @@
 #include <kernel/pci.h>
 #include <kernel/mbr.h>
 #include <kernel/elf.h>
+#include <kernel/symbols.h>
 
 #include <std/result.h>
 #include <std/vector.h>
@@ -15,12 +16,17 @@
 #include <std/memory.h>
 #include <std/hash_map.h>
 
+#include <kernel/acpi/smbios.h>
+#include <kernel/acpi/acpi.h>
+
 #include <kernel/time/rtc.h>
+#include <kernel/time/pit.h>
 
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
 #include <kernel/cpu/pic.h>
 #include <kernel/cpu/cpu.h>
+#include <kernel/cpu/apic.h>
 
 #include <kernel/memory/physical.h>
 #include <kernel/memory/paging.h>
@@ -34,6 +40,10 @@
 #include <kernel/devices/bochs_vga.h>
 #include <kernel/devices/pata.h>
 #include <kernel/devices/partition.h>
+
+#include <kernel/process/scheduler.h>
+#include <kernel/process/process.h>
+#include <kernel/process/threads.h>
 
 #include <kernel/syscalls/syscalls.h>
 
@@ -58,17 +68,6 @@ struct Command {
     }
 
     bool has(size_t index) const { return index < args.size(); }
-};
-
-struct PSF2Header {
-    u32 magic;
-    u32 version;
-    u32 header_size;
-    u32 flags;
-    u32 glyph_count;
-    u32 glyph_size;
-    u32 height;
-    u32 width;
 };
 
 void process_commands();
@@ -112,24 +111,75 @@ Command parse_shell_command(StringView line) {
     return { move(name), move(args) };
 }
 
-extern "C" u64 _kernel_start;
-extern "C" u64 _kernel_end;
+struct Vector2 {
+    i32 x;
+    i32 y;
+};
 
-extern "C" void main(u32 ptr) {
-    asm volatile("cli");
+void draw_rect(BochsVGADevice* framebuffer, Vector2 position, Vector2 size, u32 color) {
+    for (i32 y = position.y; y < position.y + size.y; y++) {
+        for (i32 x = position.x; x < position.x + size.x; x++) {
+            framebuffer->set_pixel(x, y, color);
+        }
+    }
+}
+
+void draw_line(BochsVGADevice* framebuffer, Vector2 start, Vector2 end, u32 color) {
+    i32 dx = end.x - start.x;
+    i32 dy = end.y - start.y;
+
+    if (!dx && !dy) {
+        framebuffer->set_pixel(start.x, start.y, color);
+        return;
+    }
+
+    if (std::abs(dx) > std::abs(dy)) {
+        if (start.x > end.x) {
+            std::swap(start, end);
+        }
+
+        for (i32 x = start.x; x <= end.x; x++) {
+            i32 y = start.y + dy * (x - start.x) / dx;
+            framebuffer->set_pixel(x, y, color);
+        }
+    } else {
+        if (start.y > end.y) {
+            std::swap(start, end);
+        }
+
+        for (i32 y = start.y; y <= end.y; y++) {
+            i32 x = start.x + dx * (y - start.y) / dy;
+            framebuffer->set_pixel(x, y, color);
+        }
+    }
+}
+
+void draw_triangle(BochsVGADevice* framebuffer, Vector2 a, Vector2 b, Vector2 c, u32 color) {
+    draw_line(framebuffer, a, b, color);
+    draw_line(framebuffer, b, c, color);
+    draw_line(framebuffer, c, a, color);
+}
+
+Vector2 barycentric(Vector2 a, Vector2 b, Vector2 c) {
+    return {
+        (a.x + b.x + c.x) / 3,
+        (a.y + b.y + c.y) / 3
+    };
+}
+
+extern "C" void main(multiboot_info_t* ptr) {
+    auto header = *ptr;
 
     serial::init();
     vga::clear();
 
     kernel::run_global_constructors();
 
-    multiboot_info_t header = *load_multiboot_header(ptr);
-
-    pic::remap();
-
     cpu::init_gdt();
     cpu::init_idt();
-    kernel::init_syscalls();
+    
+    pic::init();
+    pit::init();
 
     DeviceManager::init();
     KeyboardDevice::init();
@@ -138,9 +188,9 @@ extern "C" void main(u32 ptr) {
     memory::MemoryManager::init(&header);
     asm volatile("sti");
 
-    auto* device = BochsVGADevice::create(640, 480);
+    auto* device = BochsVGADevice::create(800, 600);
 
-    serial::printf("PIC Bus:\n");
+    serial::printf("PCI Bus:\n");
     pci::enumerate([](pci::Device device) {
         serial::printf("  Device: '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
     });
@@ -155,13 +205,38 @@ extern "C" void main(u32 ptr) {
     disk->read_sectors(0, 1, reinterpret_cast<u8*>(&mbr));
 
     u32 offset = 0;
-    for (auto& partition : mbr.partitions) {
-        if (!partition.is_bootable()) {
-            continue;
+    // FIXME: This assumes that the OS partition is always the first
+    if (!mbr.is_protective()) {
+        for (auto& partition : mbr.partitions) {
+            if (!partition.is_bootable()) {
+                continue;
+            }
+
+            offset = partition.offset;
+            break;
+        }
+    } else {
+        GPTHeader gpt = {};
+        disk->read_sectors(1, 1, reinterpret_cast<u8*>(&gpt));
+
+        if (std::memcmp(gpt.signature, "EFI PART", 8) != 0) {
+            serial::printf("Invalid GPT header signature\n");
+            return;
         }
 
-        offset = partition.lba_start;
-        break;
+        Vector<GPTEntry> entries;
+        entries.resize(gpt.partition_count);
+
+        disk->read_sectors(gpt.partition_table_lba, gpt.partition_count, reinterpret_cast<u8*>(entries.data()));
+
+        for (auto& entry : entries) {
+            if (!entry.is_valid()) {
+                continue;
+            }
+
+            offset = entry.first_lba;
+            break;
+        }
     }
 
     BlockDevice* partition = nullptr;
@@ -173,27 +248,24 @@ extern "C" void main(u32 ptr) {
 
     auto fs = ext2fs::FileSystem::create(partition);
     if (!fs) {
-        serial::printf("Could not create the ext2 filesystem.");
+        serial::printf("Could not create main ext2 filesystem.\n");
         return;
     }
 
-    fs::VFS vfs;
-    vfs.mount_root(fs);
+    auto vfs = fs::vfs();
+    vfs->mount_root(fs);
 
-    auto result = vfs.resolve("/dev");
-    if (result.is_err()) {
-        return;
-    }
+    Vector2 a = { 100, 25 };
+    Vector2 b = { 200, 50 };
+    Vector2 c = { 150, 200 };
 
-    auto dev = result.value();
-    for (auto& entry : dev->inode().readdir()) {
-        serial::printf("Entry (%d): %*s\n", entry.type, entry.name.size(), entry.name.data());
-    }
+    draw_triangle(device, a, b, c, 0x34EBB7);
 
-    for (int i = 0; i < 640; i++) {
-        device->set_pixel(i, device->height() / 2, 0x00FF00);
-    }
+    Vector2 center = barycentric(a, b, c);
+    device->set_pixel(center.x, center.y, 0xFF0000);
 
+    auto* parser = acpi::Parser::instance();
+    parser->init();
 
 #if 0
     ELF elf(inode->file());
@@ -204,7 +276,6 @@ extern "C" void main(u32 ptr) {
 
     serial::printf("Interpreter: %*s\n", interpreter.size(), interpreter.data());
     serial::printf("Entry point: %u\n", elf.header()->e_entry);
-
 
     auto mm = memory::MemoryManager::instance();
     
@@ -228,22 +299,28 @@ extern "C" void main(u32 ptr) {
     auto entry = reinterpret_cast<int(*)()>(region + elf.header()->e_entry);
     serial::printf("Result: %d\n", entry());
 #endif
+
+    for (;;) {
+        asm volatile("hlt");
+    }
 }
 
 void find_hardware_rng() {
     cpu::CPUID cpuid(7);
     if (cpuid.ebx() & bit_RDSEED) {
         serial::printf("rdseed instruction supported.\n");
-    } else {
-        cpuid = cpu::CPUID(1);
-        if (cpuid.ecx() & bit_RDRND) {
-            serial::printf("rdrand instruction supported.\n");
-        } else {
-            serial::printf("No hardware random number generator available.\n");
-        }
+        return;
     }
+
+    cpuid = cpu::CPUID(1);
+    if (!(cpuid.ecx() & bit_RDRND)) {
+        serial::printf("No hardware random number generator available.\n");
+        return;
+    }
+    
+    serial::printf("rdrand instruction supported.\n");
 }
 
 multiboot_info_t* load_multiboot_header(u32 address) {
-    return reinterpret_cast<multiboot_info_t*>(address + KERNEL_VIRTUAL_BASE);
+    return reinterpret_cast<multiboot_info_t*>(address);
 }

@@ -1,9 +1,18 @@
 #include <kernel/fs/vfs.h>
 
+#include <kernel/devices/device.h>
 #include <kernel/common.h>
 #include <kernel/serial.h>
 
 namespace kernel::fs {
+
+using devices::DeviceManager;
+
+static VFS s_vfs_instance = {};
+
+VFS* VFS::instance() {
+    return &s_vfs_instance;
+}
 
 bool VFS::mount_root(FileSystem* fs) {
     if (m_root) {
@@ -32,7 +41,10 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
     if (relative_to && path[0] != '/') {
         current = relative_to;
     } else {
-        if (path[0] == '/') path = path.substr(1);
+        if (path[0] == '/') {
+            path = path.substr(1);
+        }
+
         current = m_root;
     }
 
@@ -82,8 +94,33 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
     return current;
 }
 
-ErrorOr<RefPtr<File>> VFS::open(StringView, int, mode_t) {
-    return RefPtr<File>(nullptr);
+ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int flags, mode_t) {
+    if (path.empty()) {
+        return Error(ENOENT);
+    } else if ((flags & O_DIRECTORY) && (flags & O_CREAT)) {
+        return Error(EINVAL);
+    }
+
+    // TODO: Handle O_CREAT and O_EXCL
+    auto resolved = TRY(this->resolve(path));
+    auto& inode = resolved->inode();
+
+    if (inode.is_directory() && (flags & O_DIRECTORY) == 0) {
+        return Error(EISDIR);
+    }
+
+    if (inode.is_device()) {
+        auto* manager = DeviceManager::instance();
+        auto device = manager->get_device(inode.major(), inode.minor());
+        if (!device) {
+            return Error(ENODEV);
+        }
+
+        return RefPtr<FileDescriptor>::make(device, flags);
+    }
+
+    auto file = RefPtr<InodeFile>::make(inode);
+    return RefPtr<FileDescriptor>::make(file, flags);
 }
 
 ErrorOr<void> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
