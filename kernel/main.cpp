@@ -167,6 +167,10 @@ Vector2 barycentric(Vector2 a, Vector2 b, Vector2 c) {
     };
 }
 
+void bar() {
+    asm volatile("cli");
+}
+
 extern "C" void main(multiboot_info_t* ptr) {
     auto header = *ptr;
 
@@ -266,6 +270,11 @@ extern "C" void main(multiboot_info_t* ptr) {
 
     auto* parser = acpi::Parser::instance();
     parser->init();
+
+    auto* process = Process::create_user_process("Foo", bar);
+    Scheduler::add_process(process);
+
+    Scheduler::init();
 
 #if 0
     ELF elf(inode->file());

@@ -10,14 +10,14 @@ public:
     Stack(void* stack, size_t size) : m_stack(reinterpret_cast<u32>(stack) + size), m_size(size) {}
 
     u32 value() const { return reinterpret_cast<u32>(m_stack); }
-    u32 base() const { return reinterpret_cast<u32>(m_stack) + m_size; }
+    u32 base() const { return reinterpret_cast<u32>(m_stack) + m_offset; }
 
     size_t size() const { return m_size; }
     size_t offset() const { return m_offset; }
 
     void push(u32 value) {
         m_stack -= sizeof(u32);
-        // m_offset += sizeof(u32);
+        m_offset += sizeof(u32);
 
         *reinterpret_cast<u32*>(m_stack) = value;
     }

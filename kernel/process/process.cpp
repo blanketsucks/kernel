@@ -8,6 +8,10 @@ Process* Process::create_kernel_process(String name, void (*entry)()) {
     return new Process(1, move(name), true, entry);
 }
 
+Process* Process::create_user_process(String name, void (*entry)()) {
+    return new Process(generate_id(), move(name), false, entry);
+}
+
 Process::Process(pid_t id, String name, bool kernel, void (*entry)()) : m_id(id), m_name(move(name)), m_kernel(kernel) {
     if (!kernel) {
         m_page_directory = memory::PageDirectory::create_user();

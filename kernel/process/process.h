@@ -21,6 +21,7 @@ public:
     };
 
     static Process* create_kernel_process(String name, void (*entry)());
+    static Process* create_user_process(String name, void (*entry)());
 
     pid_t id() const { return m_id; }
     String const& name() const { return m_name; }

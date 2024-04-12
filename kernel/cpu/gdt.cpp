@@ -1,4 +1,5 @@
 #include <kernel/cpu/gdt.h>
+#include <kernel/process/scheduler.h>
 
 #include <std/cstring.h>
 
@@ -6,7 +7,7 @@ namespace kernel::cpu {
 
 constexpr u32 LIMIT = 0xFFFFFFFF;
 
-static GDTEntry s_gdt_entries[5];
+static GDTEntry s_gdt_entries[6];
 
 extern "C" void _flush_gdt(GDTPointer* gp);
 extern "C" void _flush_tss();
@@ -73,7 +74,10 @@ void init_gdt() {
     set_gdt_entry(3, 0, LIMIT, true, true, 3);  // User code segment
     set_gdt_entry(4, 0, LIMIT, true, false, 3);  // User data segment
 
+    write_tss(5, Scheduler::tss());
+
     _flush_gdt(&gp);
+    asm volatile("ltr %0" : : "r"(static_cast<u16>(0x28)));
 }
 
 }

@@ -16,6 +16,8 @@ static Thread* s_current_thread = nullptr;
 
 static Process* s_kernel_process = nullptr;
 
+static cpu::TSS s_tss;
+
 void _idle() {
     Scheduler::yield();
     while (true) {
@@ -28,6 +30,16 @@ u32 generate_id() {
 }
 
 void Scheduler::init() {
+    std::memset(&s_tss, 0, sizeof(cpu::TSS));
+
+	s_tss.ss0 = 0x10;
+	s_tss.cs = 0x0b;
+	s_tss.ss = 0x13;
+	s_tss.ds = 0x13;
+	s_tss.es = 0x13;
+	s_tss.fs = 0x13;
+	s_tss.gs = 0x13;
+
     s_kernel_process = Process::create_kernel_process("Kernel", _idle);
     auto thread = s_kernel_process->get_main_thread();
 
@@ -105,5 +117,8 @@ void Scheduler::set_current_thread(Thread* thread) {
     s_current_thread = thread;
 }
 
+cpu::TSS& Scheduler::tss() {
+    return s_tss;
+}
 
 }

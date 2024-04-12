@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/cpu/gdt.h>
 
 #include <std/vector.h>
 
@@ -28,6 +29,8 @@ public:
     static Thread* set_next_thread(Thread*);
 
     static Thread* get_next_thread();
+
+    static cpu::TSS& tss();
 
 };
 

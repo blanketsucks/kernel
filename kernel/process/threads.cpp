@@ -49,9 +49,6 @@ void Thread::create_stack() {
     u32 eflags = 0;
     asm volatile("pushf; pop %0" : "=r"(eflags));
 
-    u32 value = m_kernel_stack.value() - 4;
-    serial::printf("is Mapped: %u\n", MM->is_mapped((void*)value));
-
     // Setup registers for the `iret` inside of `_first_yield`
     m_registers.eflags = eflags;
     m_registers.cs = selector;
@@ -64,6 +61,12 @@ void Thread::create_stack() {
     m_registers.es = segment;
     m_registers.fs = segment;
     m_registers.gs = segment;
+
+    // If we are returning to a different privilege level, we need to push `ss` and `esp` onto the stack for the iret
+    if (!this->is_kernel()) {
+        m_kernel_stack.push(0x23);
+        m_kernel_stack.push(m_user_stack.value());
+    }
 
     // Push the registers onto the stack
     m_kernel_stack.push(m_registers.eflags);
