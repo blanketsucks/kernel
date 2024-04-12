@@ -47,7 +47,7 @@ PageDirectory* PageDirectory::create_user() {
     
     // Share the top 1GB of kernel page tables (0xC0000000 - 0xFFFFFFFF)
     for(auto i = 768; i < 1024; i++) {
-        entries[i].value = s_kernel_page_directory_entries[i - 0x300].value;
+        entries[i].value = s_kernel_page_directory_entries[i].value;
     }
 
     return dir;
