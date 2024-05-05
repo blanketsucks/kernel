@@ -22,15 +22,8 @@
 #include <kernel/time/rtc.h>
 #include <kernel/time/pit.h>
 
-#include <kernel/cpu/gdt.h>
-#include <kernel/cpu/idt.h>
-#include <kernel/cpu/pic.h>
-#include <kernel/cpu/cpu.h>
-#include <kernel/cpu/apic.h>
-
 #include <kernel/memory/physical.h>
-#include <kernel/memory/paging.h>
-#include <kernel/memory/mm.h>
+#include <kernel/memory/manager.h>
 #include <kernel/memory/liballoc.h>
 
 #include <kernel/devices/keyboard.h>
@@ -44,17 +37,17 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
 #include <kernel/process/threads.h>
-
-#include <kernel/syscalls/syscalls.h>
+#include <kernel/process/syscalls.h>
 
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/ramfs/filesystem.h>
 #include <kernel/fs/ext2fs/filesystem.h>
 
+#include <kernel/arch/arch.h>
+#include <kernel/arch/boot_info.h>
+
 using namespace kernel;
 using namespace kernel::devices;
-
-multiboot_info_t* load_multiboot_header(u32 address);
 
 struct Command {
     String name;
@@ -167,29 +160,24 @@ Vector2 barycentric(Vector2 a, Vector2 b, Vector2 c) {
     };
 }
 
-void bar() {
-    asm volatile("cli");
-}
-
-extern "C" void main(multiboot_info_t* ptr) {
-    auto header = *ptr;
-
+extern "C" void main(arch::BootInfo const& boot_info) {
     serial::init();
     vga::clear();
 
     kernel::run_global_constructors();
+    arch::init();
 
-    cpu::init_gdt();
-    cpu::init_idt();
-    
     pic::init();
     pit::init();
+
+    setup_syscall_handler();
 
     DeviceManager::init();
     KeyboardDevice::init();
     MouseDevice::init();
 
-    memory::MemoryManager::init(&header);
+    memory::MemoryManager::init(boot_info);
+
     asm volatile("sti");
 
     auto* device = BochsVGADevice::create(800, 600);
@@ -223,7 +211,7 @@ extern "C" void main(multiboot_info_t* ptr) {
         GPTHeader gpt = {};
         disk->read_sectors(1, 1, reinterpret_cast<u8*>(&gpt));
 
-        if (std::memcmp(gpt.signature, "EFI PART", 8) != 0) {
+        if (memcmp(gpt.signature, "EFI PART", 8) != 0) {
             serial::printf("Invalid GPT header signature\n");
             return;
         }
@@ -271,7 +259,10 @@ extern "C" void main(multiboot_info_t* ptr) {
     auto* parser = acpi::Parser::instance();
     parser->init();
 
-    auto* process = Process::create_user_process("Foo", bar);
+    auto fd = vfs->open("/home/test", O_RDONLY, 0).unwrap();
+    ELF elf(fd);
+
+    auto* process = Process::create_user_process("Userland", elf);
     Scheduler::add_process(process);
 
     Scheduler::init();
@@ -312,22 +303,6 @@ extern "C" void main(multiboot_info_t* ptr) {
     for (;;) {
         asm volatile("hlt");
     }
-}
-
-void find_hardware_rng() {
-    cpu::CPUID cpuid(7);
-    if (cpuid.ebx() & bit_RDSEED) {
-        serial::printf("rdseed instruction supported.\n");
-        return;
-    }
-
-    cpuid = cpu::CPUID(1);
-    if (!(cpuid.ecx() & bit_RDRND)) {
-        serial::printf("No hardware random number generator available.\n");
-        return;
-    }
-    
-    serial::printf("rdrand instruction supported.\n");
 }
 
 multiboot_info_t* load_multiboot_header(u32 address) {

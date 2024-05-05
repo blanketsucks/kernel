@@ -7,10 +7,12 @@ namespace kernel {
 class Stack {
 public:
     Stack() = default;
-    Stack(void* stack, size_t size) : m_stack(reinterpret_cast<u32>(stack) + size), m_size(size) {}
+    Stack(
+        void* stack, size_t size
+    ) : m_stack(reinterpret_cast<u32>(stack) + size), m_top(m_stack), m_size(size) {}
 
     u32 value() const { return reinterpret_cast<u32>(m_stack); }
-    u32 base() const { return reinterpret_cast<u32>(m_stack) + m_offset; }
+    u32 top() const { return m_top; }
 
     size_t size() const { return m_size; }
     size_t offset() const { return m_offset; }
@@ -24,6 +26,7 @@ public:
 
 private:
     u32 m_stack = 0;
+    u32 m_top;
 
     size_t m_size = 0;
     size_t m_offset = 0;

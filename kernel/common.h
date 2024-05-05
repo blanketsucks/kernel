@@ -21,6 +21,9 @@ constexpr u32 SECTOR_SIZE = 0x200;
 
 constexpr u32 INITIAL_KERNEL_HEAP_SIZE = 0x200000; // 1 MiB
 
+using VirtualAddress = uintptr_t;
+using PhysicalAddress = uintptr_t;
+
 namespace kernel {
 
 constexpr u32 page_base_of(u32 address) {

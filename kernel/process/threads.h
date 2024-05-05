@@ -1,7 +1,5 @@
 #pragma once
 
-#include <kernel/cpu/idt.h>
-#include <kernel/cpu/cpu.h>
 #include <kernel/posix/sys/types.h>
 #include <kernel/process/stack.h>
 
@@ -47,10 +45,12 @@ public:
     Entry entry() const { return m_entry; }
 
     bool is_kernel() const;
-    memory::PageDirectory* page_directory() const;
+    arch::PageDirectory* page_directory() const;
 
     Process* process() { return m_process; }
     Registers& registers() { return m_registers; }
+
+    Stack& kernel_stack() { return m_kernel_stack; }
 
     void* exit_value() const { return m_exit_value; }
 
@@ -62,6 +62,7 @@ public:
     void unblock();
 
     void exit(void* value);
+    void kill();
 
 private:
     friend class Process;

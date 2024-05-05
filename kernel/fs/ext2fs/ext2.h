@@ -174,7 +174,7 @@ struct Inode {
     u32 disk_sectors;
     u32 flags;
     u32 os_specific_value1;
-    Array<u32, 12> block_pointers;
+    u32 block_pointers[12];
     u32 singly_indirect_block_pointer;
     u32 doubly_indirect_block_pointer;
     u32 triply_indirect_block_pointer;

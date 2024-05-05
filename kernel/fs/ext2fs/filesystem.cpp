@@ -67,7 +67,7 @@ void FileSystem::read_block_group(u32 index, BlockGroupDescriptor* group) const 
     this->read_block(block, buffer);
 
     u32 offset = (index * sizeof(BlockGroupDescriptor)) % this->block_size();
-    std::memcpy(group, buffer + offset, sizeof(BlockGroupDescriptor));
+    memcpy(group, buffer + offset, sizeof(BlockGroupDescriptor));
 }
 
 void FileSystem::write_block_group(u32 index, const BlockGroupDescriptor* group) const {
@@ -84,7 +84,7 @@ void FileSystem::write_block_group(u32 index, const BlockGroupDescriptor* group)
     this->read_block(block, buffer);
 
     u32 offset = (index * sizeof(BlockGroupDescriptor)) % this->block_size();
-    std::memcpy(buffer + offset, group, sizeof(BlockGroupDescriptor));
+    memcpy(buffer + offset, group, sizeof(BlockGroupDescriptor));
 
     this->write_block(block, buffer);
 }
@@ -136,7 +136,7 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
     ext2fs::Inode result = {};
 
     u32 offset = (index * sizeof(ext2fs::Inode)) % block_size;
-    std::memcpy(&result, buffer + offset, sizeof(ext2fs::Inode));
+    memcpy(&result, buffer + offset, sizeof(ext2fs::Inode));
     
     auto entry = new InodeEntry(this, result, inode);
     m_inodes.set(inode, entry);

@@ -2,24 +2,58 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/scheduler.h>
 
+#include <kernel/posix/unistd.h>
+
 namespace kernel {
 
 Process* Process::create_kernel_process(String name, void (*entry)()) {
     return new Process(1, move(name), true, entry);
 }
 
-Process* Process::create_user_process(String name, void (*entry)()) {
-    return new Process(generate_id(), move(name), false, entry);
+Process* Process::create_user_process(String name, ELF& elf) {
+    auto* process = new Process(generate_id(), move(name), false, nullptr);
+    process->create_user_entry(elf);
+
+    return process;
 }
 
 Process::Process(pid_t id, String name, bool kernel, void (*entry)()) : m_id(id), m_name(move(name)), m_kernel(kernel) {
     if (!kernel) {
-        m_page_directory = memory::PageDirectory::create_user();
+        m_page_directory = arch::PageDirectory::create_user_page_directory();
+        m_memory_region = memory::Region(PAGE_SIZE, KERNEL_VIRTUAL_BASE - PAGE_SIZE, m_page_directory);
     } else {
-        m_page_directory = memory::PageDirectory::kernel_page_directory();
+        m_page_directory = arch::PageDirectory::kernel_page_directory();
+        
+        auto thread = Thread::create(m_id, "main", this, entry);
+        this->add_thread(thread);
+    }
+}
+
+void Process::create_user_entry(ELF& elf) {
+    auto& file = elf.file();
+    elf.load();
+
+    m_page_directory->switch_to();
+    for (auto& ph : elf.program_headers()) {
+        if (ph.p_type != PT_LOAD || ph.p_vaddr == 0) {
+            continue;
+        }
+
+        uintptr_t address = std::align_down(ph.p_vaddr, static_cast<size_t>(PAGE_SIZE));
+        size_t size = std::align_up(ph.p_memsz, static_cast<size_t>(PAGE_SIZE));
+        
+        u8* region = reinterpret_cast<u8*>(this->allocate_at(address, size, PageFlags::Write));
+
+        file.seek(ph.p_offset, SEEK_SET);
+        file.read(region + (ph.p_vaddr - address), ph.p_filesz);
     }
 
-    auto thread = Thread::create(m_id, "main", this, entry);
+    auto entry = reinterpret_cast<void(*)()>(elf.entry());
+
+    auto* dir = arch::PageDirectory::kernel_page_directory();
+    dir->switch_to();
+    
+    auto* thread = Thread::create(m_id, "main", this, entry);
     this->add_thread(thread);
 }
 
@@ -53,8 +87,37 @@ Thread* Process::spawn(String name, void (*entry)()) {
     return thread;
 }
 
+void* Process::allocate(size_t size, PageFlags flags) {
+    if (this->is_kernel()) {
+        return MM->allocate_kernel_region(size);
+    }
+
+    return MM->allocate(m_memory_region, size, flags | PageFlags::User);
+}
+
+void* Process::allocate_at(uintptr_t address, size_t size, PageFlags flags) {
+    if (this->is_kernel()) {
+        return MM->allocate_kernel_region(size);
+    }
+
+    return MM->allocate_at(m_memory_region, address, size, flags | PageFlags::User);
+}
+
 void Process::notify_exit(Thread* thread) {
     this->remove_thread(thread);
+}
+
+void Process::kill() {
+    for (auto& [_, thread] : m_threads) {
+        thread->kill();
+    }
+
+    Scheduler::yield();
+}
+
+void Process::sys$exit(int status) {
+    m_exit_status = status;
+    this->kill();
 }
 
 }

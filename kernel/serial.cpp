@@ -5,7 +5,13 @@
 #define STB_SPRINTF_NOFLOAT
 #include <std/stb_sprintf.h>
 
-#include <std/string.h>
+size_t strlen(const char* str) {
+    size_t len = 0;
+    while (str[len]) {
+        len++;
+    }
+    return len;
+}
 
 constexpr u16 SERIAL_PORT = 0x3F8;
 
@@ -65,7 +71,7 @@ void write(const char* str, size_t len) {
 }
 
 void write(const char* str) {
-    write(str, std::strlen(str));
+    write(str, strlen(str));
 }
 
 void printf(const char* fmt, ...) {

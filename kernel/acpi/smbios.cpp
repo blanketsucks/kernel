@@ -1,5 +1,5 @@
 #include <kernel/acpi/smbios.h>
-#include <kernel/memory/mm.h>
+#include <kernel/memory/manager.h>
 
 #include <std/cstring.h>
 
@@ -47,10 +47,10 @@ void DMIParser::find_entry_points() {
     }
 
     for (u32 i = 0; i < MAX_SIZE; i += 16) {
-        if (!std::memcmp(region + i, "_SM3_", 5)) {
+        if (!memcmp(region + i, "_SM3_", 5)) {
             m_64_bit_entry_point = reinterpret_cast<EntryPoint64Bit*>(region + i);
             return;
-        } else if (!std::memcmp(region + i, "_SM_", 4)) {
+        } else if (!memcmp(region + i, "_SM_", 4)) {
             m_32_bit_entry_point = reinterpret_cast<EntryPoint32Bit*>(region + i);
             return;
         }

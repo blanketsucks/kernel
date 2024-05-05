@@ -45,7 +45,6 @@ public:
     }
 
     ino_t id() const { return m_id; }
-    FileSystem& fs() const { return *m_fs; }
 
     virtual mode_t mode() const = 0;
     virtual size_t size() const = 0;
@@ -77,20 +76,20 @@ public:
 
 protected:
     Inode() = default;
-    Inode(FileSystem* fs, ino_t id) : m_fs(fs), m_id(id) {}
+    Inode(ino_t id) : m_id(id) {}
 
-    FileSystem* m_fs;
     ino_t m_id;
 };
 
 class ResolvedInode {
 public:
     ResolvedInode(
-        String name, RefPtr<Inode> inode, RefPtr<ResolvedInode> parent
-    ) : m_name(move(name)), m_parent(parent), m_inode(inode) {}
+        String name, FileSystem* fs, 
+        RefPtr<Inode> inode, RefPtr<ResolvedInode> parent
+    ) : m_name(move(name)), m_fs(fs), m_parent(parent), m_inode(inode) {}
 
-    static RefPtr<ResolvedInode> create(String name, RefPtr<Inode> inode, RefPtr<ResolvedInode> parent) {
-        return RefPtr<ResolvedInode>(new ResolvedInode(move(name), inode, parent));
+    static RefPtr<ResolvedInode> create(String name, FileSystem* fs, RefPtr<Inode> inode, RefPtr<ResolvedInode> parent) {
+        return RefPtr<ResolvedInode>(new ResolvedInode(move(name), fs, inode, parent));
     }
 
     ResolvedInode* parent() { return m_parent.ptr(); }
@@ -99,15 +98,18 @@ public:
     Inode& inode() { return *m_inode; }
     const Inode& inode() const { return *m_inode; }
 
-    FileSystem& fs() { return m_inode->fs(); }
-    const FileSystem& fs() const { return m_inode->fs(); }
+    FileSystem* fs() { return m_fs; }
+    const FileSystem* fs() const { return m_fs; }
 
     const String& name() const { return m_name; }
 
     String fullpath() const;
 
 private:
+    friend class VFS;
+
     String m_name;
+    FileSystem* m_fs;
 
     RefPtr<ResolvedInode> m_parent;
     RefPtr<Inode> m_inode;

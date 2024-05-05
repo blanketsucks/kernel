@@ -3,6 +3,8 @@
 #include <kernel/common.h>
 #include <kernel/posix/sys/stat.h>
 
+#include <std/memory.h>
+
 namespace kernel::fs {
 
 class Inode;
@@ -19,9 +21,10 @@ public:
 
 class InodeFile : public File {
 public:
-    InodeFile(Inode& inode) : m_inode(inode) {}
+    InodeFile(RefPtr<Inode> inode) : m_inode(inode) {}
 
-    Inode& inode() { return m_inode; }
+    Inode& inode() { return *m_inode; }
+    Inode const& inode() const { return *m_inode; }
 
     size_t read(void* buffer, size_t size, size_t offset) override;
     size_t write(const void* buffer, size_t size, size_t offset) override;
@@ -29,7 +32,7 @@ public:
     size_t size() const override;
 
 private:
-    Inode& m_inode;
+    RefPtr<Inode> m_inode;
 };
 
 }

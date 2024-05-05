@@ -1,11 +1,9 @@
 #include <kernel/devices/pata.h>
-#include <kernel/cpu/pic.h>
-#include <kernel/cpu/idt.h>
 #include <kernel/io.h>
 #include <kernel/serial.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/scheduler.h>
-#include <kernel/memory/mm.h>
+#include <kernel/memory/manager.h>
 
 namespace kernel::devices {
 
@@ -78,7 +76,7 @@ PATADevice::PATADevice(
     serial::printf("  48 bit PIO: %s\n", m_has_48bit_pio ? "Yes" : "No");
 }
 
-void PATADevice::handle_interrupt(cpu::Registers*) {
+void PATADevice::handle_interrupt(arch::InterruptRegisters*) {
     u16 port = m_bus_master_port;
     u8 status = io::read<u8>(port + ATARegister::BusMasterStatus);
 

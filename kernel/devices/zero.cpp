@@ -4,7 +4,7 @@
 namespace kernel::devices {
 
 size_t ZeroDevice::read(void* buffer, size_t size, size_t) {
-    std::memset(buffer, 0, size);
+    memset(buffer, 0, size);
     return size;
 }
 

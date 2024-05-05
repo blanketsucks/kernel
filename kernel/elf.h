@@ -2,7 +2,7 @@
 
 #include <kernel/common.h>
 
-#include <kernel/fs/file.h>
+#include <kernel/fs/fd.h>
 
 #include <std/memory.h>
 #include <std/vector.h>
@@ -15,21 +15,25 @@ constexpr u32 ELF_MAGIC = 0x464C457F;
 
 class ELF {
 public:
-    ELF(OwnPtr<fs::File> file) : m_file(move(file)) {}
+    ELF(RefPtr<fs::FileDescriptor> file) : m_file(file) {}
 
-    fs::File& file() { return *m_file; }
+    fs::FileDescriptor& file() { return *m_file; }
     Elf32_Ehdr const* header() const { return m_header; }
+
+    uintptr_t entry() const { return m_header->e_entry; }
 
     String const& interpreter() const { return m_interpreter; }
     bool has_interpreter() const { return !m_interpreter.empty(); }
 
     Vector<Elf32_Phdr> const& program_headers() const { return m_program_headers; }
 
+    bool load();
+
     bool read_header();
     void read_program_headers();
 private:
     Elf32_Ehdr* m_header = nullptr;
-    OwnPtr<fs::File> m_file;
+    RefPtr<fs::FileDescriptor> m_file;
 
     String m_interpreter;
     Vector<Elf32_Phdr> m_program_headers;    

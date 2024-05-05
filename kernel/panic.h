@@ -2,7 +2,7 @@
 
 #include <kernel/common.h>
 
-#define PANIC(message) kernel::panic(message, __FILE__, __LINE__, false)
+#define PANIC(message) kernel::panic(message, __FILE__, __LINE__)
 
 #define ASSERT(condition, message)                  \
     do {                                            \
@@ -19,7 +19,7 @@ struct StackFrame {
 StackFrame* get_stack_frame();
 void print_stack_trace();
 
-[[noreturn]] void panic(const char* message, bool vga = true);
-[[noreturn]] void panic(const char* message, const char* file, u32 line, bool vga = true);
+[[noreturn]] void panic(const char* message, bool vga = false);
+[[noreturn]] void panic(const char* message, const char* file, u32 line, bool vga = false);
 
 }

@@ -1,5 +1,5 @@
 #include <kernel/memory/liballoc.h>
-#include <kernel/memory/mm.h>
+#include <kernel/memory/manager.h>
 
 #include <kernel/common.h>
 

@@ -23,7 +23,6 @@ public:
     InodeEntry(FileSystem* fs, ext2fs::Inode inode, ino_t id);
 
     ext2fs::Inode const& inode() const { return m_inode; }
-    inline FileSystem* ext2fs() const;
 
     Vector<u32> const& block_pointers() const { return m_block_pointers; }
     Vector<fs::DirectoryEntry> const& entries() const { return m_entries; }
@@ -93,6 +92,7 @@ public:
 
 private:
     ext2fs::Inode m_inode;
+    FileSystem* m_fs = nullptr;
 
     Vector<fs::DirectoryEntry> m_entries;
 

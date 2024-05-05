@@ -12,3 +12,5 @@ cp ./kernel.map ./mnt/boot
 
 mkdir ./mnt/home
 touch ./mnt/home/test.txt
+
+cp ./test ./mnt/home

@@ -25,46 +25,46 @@ bool Thread::is_kernel() const {
     return m_process->is_kernel();
 }
 
-memory::PageDirectory* Thread::page_directory() const {
+arch::PageDirectory* Thread::page_directory() const {
     return m_process->page_directory();
 }
 
 void Thread::create_stack() {
-    void* kernel_stack = MM->allocate(KERNEL_STACK_SIZE);
+    void* kernel_stack = MM->allocate_kernel_region(KERNEL_STACK_SIZE);
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
-    u8 selector = 0x08; // Data segment selector
-    u8 segment = 0x10;  // Code segment selector
+    u8 cs = 0x08; // Data segment selector
+    u8 ss = 0x10;  // Code segment selector
 
     if (!this->is_kernel()) {
-        void* user_stack = MM->allocate(USER_STACK_SIZE);
+        void* user_stack = m_process->allocate(USER_STACK_SIZE, PageFlags::Write);
         m_user_stack = Stack(user_stack, USER_STACK_SIZE);
 
-        selector = 0x18;
-        segment = 0x20;
+        cs = 0x1B;
+        ss = 0x23;
     } else {
         m_user_stack = m_kernel_stack;
     }
 
-    u32 eflags = 0;
-    asm volatile("pushf; pop %0" : "=r"(eflags));
+    // Only enable interrupts
+    u32 eflags = 0x202;
 
     // Setup registers for the `iret` inside of `_first_yield`
     m_registers.eflags = eflags;
-    m_registers.cs = selector;
+    m_registers.cs = cs;
     m_registers.eip = reinterpret_cast<u32>(m_entry);
 
     m_registers.cr3 = this->page_directory()->cr3();
-    m_registers.ebp = m_user_stack.base();
+    m_registers.ebp = m_user_stack.value();
 
-    m_registers.ds = segment;
-    m_registers.es = segment;
-    m_registers.fs = segment;
-    m_registers.gs = segment;
+    m_registers.ds = ss;
+    m_registers.es = ss;
+    m_registers.fs = ss;
+    m_registers.gs = ss;
 
-    // If we are returning to a different privilege level, we need to push `ss` and `esp` onto the stack for the iret
+    // If we are returning to a different privilege level, we need to push `ss` and `esp` onto the stack for `iret`
     if (!this->is_kernel()) {
-        m_kernel_stack.push(0x23);
+        m_kernel_stack.push(ss);
         m_kernel_stack.push(m_user_stack.value());
     }
 
@@ -94,14 +94,19 @@ void Thread::create_stack() {
     m_kernel_stack.push(0); // ebp
 
     m_registers.esp0 = m_kernel_stack.value();
-    m_registers.esp = m_user_stack.base();
+    m_registers.esp = m_user_stack.value();
 }
 
 void Thread::exit(void* value) {
     m_exit_value = value;
-    m_state = Dead;
-
     m_process->notify_exit(this);
+
+    this->kill();
+    Scheduler::yield();
+}
+
+void Thread::kill() {
+    m_state = Dead;
     if (Scheduler::next_thread() == this) {
         Scheduler::set_next_thread(next);
     }
@@ -111,8 +116,6 @@ void Thread::exit(void* value) {
     } if (next) {
         next->prev = prev;
     }
-
-    Scheduler::yield();
 }
 
 bool Thread::should_unblock() const {

@@ -3,6 +3,7 @@
 #include <std/types.h>
 #include <std/kmalloc.h>
 #include <std/initializer_list.h>
+#include <std/cstring.h>
 
 #include <kernel/serial.h>
 
@@ -179,6 +180,8 @@ public:
         }
 
         T* data = reinterpret_cast<T*>(kmalloc(sizeof(T) * capacity));
+        memset(data, 0, sizeof(T) * capacity);
+
         for (size_t i = 0; i < m_size; i++) {
             new (data + i) T(m_data[i]);
         }

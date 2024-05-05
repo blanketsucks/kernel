@@ -13,7 +13,6 @@ namespace std::traits {
     Op(u16)             \
     Op(u32)             \
     Op(u64)             \
-    Op(unsigned long)
 
 template<typename T>
 struct Hash {

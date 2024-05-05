@@ -7,17 +7,15 @@ QEMU_ARGS=(
     -kernel "$KERNEL"
     -drive format=raw,file="$DISK_IMAGE",id=disk,if=ide
     -serial stdio
-    -cpu max
     -audiodev sdl,id=speaker
     -device ac97,audiodev=speaker
+    -D qemu.log
+    -d cpu_reset,int
+    -no-reboot
 )
 
 if [ -n "$QEMU_DEBUG" ]; then
-    QEMU_ARGS+=(
-        -s -S
-        -D qemu.log
-        -d cpu_reset,int -no-reboot
-    )
+    QEMU_ARGS+=( -s -S )
 fi
 
 if [ -n "$QEMU_AUDIO" ]; then

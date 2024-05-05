@@ -1,11 +1,21 @@
 #pragma once
 
 #include <kernel/common.h>
-
+#include <kernel/panic.h>
 #include <kernel/posix/errno.h>
+
 #include <std/utility.h>
 
 #define TRY(expr)                       \
+    ({                                  \
+        auto result = (expr);           \
+        if (result.is_err()) {          \
+            return result.error();      \
+        }                               \
+        result.value();                 \
+    })
+
+#define IGNORE(expr)                    \
     ({                                  \
         auto result = (expr);           \
         if (result.is_err()) {          \
@@ -32,6 +42,14 @@ public:
 
     const E& error() const { return m_error; }
     E& error() { return m_error; }
+
+    T& unwrap() {
+        if (this->is_err()) {
+            kernel::panic("Result::unwrap() called on an error");
+        }
+
+        return m_value;
+    }
 
 private:
     T m_value;

@@ -2,8 +2,7 @@
 
 #include <kernel/common.h>
 #include <kernel/devices/character.h>
-#include <kernel/cpu/pic.h>
-#include <kernel/cpu/idt.h>
+#include <kernel/arch/pic.h>
 
 #include <std/enums.h>
 
@@ -78,7 +77,7 @@ private:
     static MouseDevice* s_instance;
 
     void update_mouse_state();
-    void handle_interrupt(cpu::Registers*) override;
+    void handle_interrupt(arch::InterruptRegisters*) override;
 
     MouseDevice() : CharacterDevice(13, 0), IRQHandler(12) {}
 

@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 option(USE_CLANG "Use clang as the compiler" OFF)
 option(DEBUG "Enable debug mode" OFF)
+option(X86_64 "Build for x86_64" OFF)
 
 if (USE_CLANG)
     set(CMAKE_CXX_COMPILER clang++)

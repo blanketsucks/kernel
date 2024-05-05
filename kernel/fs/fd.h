@@ -14,7 +14,9 @@ public:
     FileDescriptor(RefPtr<File> file, int flags) : m_file(file), m_offset(0), m_flags(flags) {};
 
     size_t size() const { return m_file->size(); }
+
     const File* file() const { return m_file.ptr(); }
+    File* file() { return m_file.ptr(); }
 
     off_t offset() const { return m_offset; }
     int flags() const { return m_flags; }

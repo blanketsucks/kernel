@@ -1,5 +1,5 @@
 #include <kernel/memory/region.h>
-#include <kernel/memory/mm.h>
+#include <kernel/memory/manager.h>
 
 #include <kernel/panic.h>
 #include <kernel/vga.h>
@@ -7,8 +7,8 @@
 
 namespace kernel::memory {
 
-Region::Region(u32 start, size_t size) : m_start(start), m_size(size) {
-    m_head = new Space(size, start);
+Region::Region(uintptr_t start, uintptr_t end, arch::PageDirectory* pd) : m_start(start), m_end(end), m_page_directory(pd) {
+    m_head = new Space(this->size(), start);
 }
 
 void Region::insert_space_before(Space* space, Space* new_space) {
@@ -35,7 +35,7 @@ void Region::insert_space_after(Space* space, Space* new_space) {
     space->next = new_space;
 }
 
-Space* Region::reserve(u32 address, size_t size, Permissions perms) {
+Space* Region::reserve(uintptr_t address, size_t size, Permissions perms) {
     Space* space = m_head;
     while (space) {
         if (!space->contains(address)) {
@@ -84,7 +84,7 @@ Space* Region::reserve(u32 address, size_t size, Permissions perms) {
     return nullptr;
 }
 
-Space* Region::find_space(u32 address) const {
+Space* Region::find_space(uintptr_t address) const {
     auto* space = m_head;
     while (space) {
         if (space->m_address == address) {
@@ -144,7 +144,11 @@ Space* Region::allocate(size_t size, Permissions perms, bool page_aligned) {
     return space;
 }
 
-void Region::free(u32 address) {
+Space* Region::allocate_at(uintptr_t address, size_t size, Permissions perms) {
+    return this->reserve(address, size, perms);
+}
+
+void Region::free(uintptr_t address) {
     auto* space = this->find_space(address);
     if (!space) {
         return;

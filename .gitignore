@@ -4,5 +4,10 @@ mnt/
 
 .clangd
 
+scripts/limine
+scripts/disk.img.lock
+scripts/qemu.log
+scripts/test
+
 disk.img
 kernel.map

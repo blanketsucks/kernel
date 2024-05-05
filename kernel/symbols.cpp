@@ -46,7 +46,7 @@ void parse_symbols(StringView symbols) {
         StringView name = line.substr(index + 1);
 
         char* buffer = new char[name.size() + 1];
-        std::memcpy(buffer, name.data(), name.size());
+        memcpy(buffer, name.data(), name.size());
 
         buffer[name.size()] = '\0';
         u32 addr = std::strntoul(address.data(), address.size(), nullptr, 16);

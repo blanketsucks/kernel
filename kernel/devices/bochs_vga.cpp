@@ -2,7 +2,7 @@
 #include <kernel/pci.h>
 #include <kernel/io.h>
 #include <kernel/serial.h>
-#include <kernel/memory/mm.h>
+#include <kernel/memory/manager.h>
 
 namespace kernel::devices {
 

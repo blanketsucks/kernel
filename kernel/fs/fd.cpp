@@ -1,5 +1,5 @@
 #include <kernel/fs/fd.h>
-
+#include <kernel/serial.h>
 #include <kernel/posix/errno.h>
 #include <kernel/posix/unistd.h>
 

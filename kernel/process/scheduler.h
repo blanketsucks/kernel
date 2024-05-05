@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/cpu/gdt.h>
+#include <kernel/arch/tss.h>
 
 #include <std/vector.h>
 
@@ -30,7 +30,7 @@ public:
 
     static Thread* get_next_thread();
 
-    static cpu::TSS& tss();
+    static arch::TSS& tss();
 
 };
 

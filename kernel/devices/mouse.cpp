@@ -2,9 +2,6 @@
 #include <kernel/io.h>
 #include <kernel/serial.h>
 
-#include <kernel/cpu/idt.h>
-#include <kernel/cpu/pic.h>
-
 #include <std/string.h>
 #include <std/utility.h>
 
@@ -41,7 +38,7 @@ void MouseDevice::update_mouse_state() {
     m_state = state;
 }
 
-void MouseDevice::handle_interrupt(cpu::Registers*) {
+void MouseDevice::handle_interrupt(arch::InterruptRegisters*) {
     u8 status = io::read<u8>(MOUSE_STATUS);
     while (status & MOUSE_B_BIT) {
         if (!(status & MOUSE_F_BIT)) {

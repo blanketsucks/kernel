@@ -1,3 +1,4 @@
+#include "kernel/fs/filesystem.h"
 #include <kernel/fs/vfs.h>
 
 #include <kernel/devices/device.h>
@@ -24,7 +25,7 @@ bool VFS::mount_root(FileSystem* fs) {
         return false;
     }
 
-    m_root = ResolvedInode::create("/", inode, nullptr);
+    m_root = ResolvedInode::create("/", fs, inode, nullptr);
     m_mounts.append(Mount(fs, m_root));
 
     return true;
@@ -48,6 +49,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
         current = m_root;
     }
 
+    FileSystem* fs = current->fs();
     while (!path.empty()) {
         if (!current->inode().is_directory()) {
             return Error(ENOTDIR);
@@ -80,14 +82,15 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
         }
 
         // TODO: Handle symbolic links
-        current = ResolvedInode::create(component, entry, current);
+        current = ResolvedInode::create(component, fs, entry, current);
         auto* mount = this->find_mount(*current);
 
         if (mount) {
             auto* guest = mount->guest();
+            fs = guest;
 
             auto root = guest->inode(guest->root());
-            current = ResolvedInode::create(component, root, current);
+            current = ResolvedInode::create(component, fs, root, current);
         }
     }
 
@@ -119,7 +122,7 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int flags, mode_t) {
         return RefPtr<FileDescriptor>::make(device, flags);
     }
 
-    auto file = RefPtr<InodeFile>::make(inode);
+    auto file = RefPtr<InodeFile>::make(resolved->m_inode);
     return RefPtr<FileDescriptor>::make(file, flags);
 }
 

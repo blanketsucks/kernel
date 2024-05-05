@@ -1,7 +1,7 @@
 
 #include <kernel/acpi/acpi.h>
 #include <kernel/acpi/lai.h>
-#include <kernel/memory/mm.h>
+#include <kernel/memory/manager.h>
 #include <kernel/serial.h>
 
 #include <std/utility.h>
@@ -53,7 +53,7 @@ bool Parser::find_rsdt() {
 
 
     for (u32 i = 0; i < size; i += 16) {
-        if (std::memcmp(region + i, "RSD PTR ", 8) == 0) {
+        if (memcmp(region + i, "RSD PTR ", 8) == 0) {
             m_rsdp = reinterpret_cast<RSDP*>(region + i);
             break;
         }
@@ -96,12 +96,12 @@ void Parser::parse_acpi_tables() {
 }
 
 SDTHeader* Parser::find_table(const char* signature) {
-    if (std::memcmp(signature, "DSDT", 4) == 0) {
+    if (memcmp(signature, "DSDT", 4) == 0) {
         return m_dsdt;
     }
 
     for (auto* table : m_tables) {
-        if (std::memcmp(table->signature, signature, 4) == 0) {
+        if (memcmp(table->signature, signature, 4) == 0) {
             return table;
         }
     }

@@ -17,7 +17,7 @@ size_t Inode::read(void* buffer, size_t size, size_t offset) const {
         size = m_size - offset;
     }
 
-    std::memcpy(buffer, reinterpret_cast<u8*>(m_data) + offset, size);
+    memcpy(buffer, reinterpret_cast<u8*>(m_data) + offset, size);
     return size;
 }
 
@@ -26,7 +26,7 @@ size_t Inode::write(const void* buffer, size_t size, size_t offset) {
         this->truncate(offset + size);
     }
 
-    std::memcpy(reinterpret_cast<u8*>(m_data) + offset, buffer, size);
+    memcpy(reinterpret_cast<u8*>(m_data) + offset, buffer, size);
     return size;
 }
 
@@ -36,7 +36,7 @@ void Inode::truncate(size_t size) {
     }
 
     void* data = kmalloc(size);
-    std::memcpy(data, m_data, size);
+    memcpy(data, m_data, size);
 
     kfree(m_data);
 

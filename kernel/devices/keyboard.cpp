@@ -1,10 +1,8 @@
 #include <kernel/devices/keyboard.h>
-#include <kernel/cpu/pic.h>
-#include <kernel/cpu/apic.h>
-#include <std/string.h>
-
 #include <kernel/vga.h>
 #include <kernel/io.h>
+
+#include <std/string.h>
 
 namespace kernel::devices {
 
@@ -43,7 +41,7 @@ static bool s_shift = false;
 static bool s_ctrl  = false;
 static bool s_alt   = false;
 
-void KeyboardDevice::handle_interrupt(cpu::Registers*) {
+void KeyboardDevice::handle_interrupt(arch::InterruptRegisters*) {
     u8 scancode = io::read<u8>(0x60);
     u8 modifiers = None;
 
@@ -72,7 +70,7 @@ void KeyboardDevice::handle_interrupt(cpu::Registers*) {
         ascii = SCANCODE_MAP[scancode & 0x7F];
     }
 
-    KeyEvent key = {
+    KeyEvent event = {
         .ascii = ascii,
         .scancode = scancode,
         .modifiers = modifiers
@@ -82,14 +80,14 @@ void KeyboardDevice::handle_interrupt(cpu::Registers*) {
         m_key_buffer.remove(0);
     }
 
-    m_key_buffer.append(key);
+    m_key_buffer.append(event);
 }
 
 size_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
     size_t i = 0;
     while (i < size && !m_key_buffer.empty()) {
         auto key = m_key_buffer.take_first();
-        std::memcpy(reinterpret_cast<u8*>(buffer) + i, &key, sizeof(KeyEvent));
+        memcpy(reinterpret_cast<u8*>(buffer) + i, &key, sizeof(KeyEvent));
 
         i += sizeof(KeyEvent);   
     }

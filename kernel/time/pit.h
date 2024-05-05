@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/cpu/pic.h>
+#include <kernel/arch/pic.h>
 
 namespace kernel::pit {
 

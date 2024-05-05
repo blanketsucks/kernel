@@ -2,8 +2,7 @@
 
 #include <kernel/common.h>
 #include <kernel/devices/character.h>
-#include <kernel/cpu/idt.h>
-#include <kernel/cpu/pic.h>
+#include <kernel/arch/pic.h>
 
 #include <std/vector.h>
 
@@ -47,7 +46,7 @@ private:
 
     KeyboardDevice() : CharacterDevice(13, 1), IRQHandler(1) {}
 
-    void handle_interrupt(cpu::Registers*) override;
+    void handle_interrupt(arch::InterruptRegisters*) override;
 
     Vector<KeyEvent> m_key_buffer;
     u8 m_key_buffer_offset = 0;

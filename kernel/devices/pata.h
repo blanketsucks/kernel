@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/pci.h>
-#include <kernel/cpu/pic.h>
+#include <kernel/arch/pic.h>
 #include <kernel/devices/disk.h>
 #include <kernel/process/blocker.h>
 
@@ -111,7 +111,7 @@ public:
 private:
     PATADevice(ATAChannel channel, ATADrive drive, pci::Address address);
 
-    void handle_interrupt(cpu::Registers*) override;
+    void handle_interrupt(arch::InterruptRegisters*) override;
 
     ATAChannel m_channel;
     ATADrive m_drive;
