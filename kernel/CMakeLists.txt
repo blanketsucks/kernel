@@ -5,10 +5,6 @@ link_directories(${CMAKE_SOURCE_DIR}/include/lai)
 if (X86_64)
     list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86/.*")
 
-    # list(FILTER CPP_SOURCES EXCLUDE REGEX ".*")
-
-    # list(APPEND CPP_SOURCES arch/x86_64/limine.cpp serial.cpp io.cpp)
-
     add_compile_definitions(__x86_64__)
     add_compile_options(-fno-stack-protector -fno-stack-check -fno-lto -fPIE -mno-80387 -mno-sse -mno-sse2 -mno-red-zone -mno-mmx)
 
