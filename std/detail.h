@@ -17,6 +17,7 @@ using underlying_type = __underlying_type(T);
 
 template<typename T> inline constexpr bool is_integral_v = __is_integral(T);
 template<typename T> inline constexpr bool is_signed_v = __is_signed(T);
+template<typename T> inline constexpr bool is_unsigned_v = __is_unsigned(T);
 
 #else
 

@@ -97,7 +97,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
     return current;
 }
 
-ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int flags, mode_t) {
+ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int flags, mode_t, RefPtr<ResolvedInode> relative_to) {
     if (path.empty()) {
         return Error(ENOENT);
     } else if ((flags & O_DIRECTORY) && (flags & O_CREAT)) {
@@ -105,7 +105,7 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int flags, mode_t) {
     }
 
     // TODO: Handle O_CREAT and O_EXCL
-    auto resolved = TRY(this->resolve(path));
+    auto resolved = TRY(this->resolve(path, relative_to));
     auto& inode = resolved->inode();
 
     if (inode.is_directory() && (flags & O_DIRECTORY) == 0) {

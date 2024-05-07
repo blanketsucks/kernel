@@ -4,6 +4,23 @@
 
 namespace std {
 
+constexpr bool isdigit(char c) {
+    return c >= '0' && c <= '9';
+}
+
+constexpr bool isalpha(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+constexpr bool islower(char c) {
+    return c >= 'a' && c <= 'z';
+}
+
+constexpr bool tolower(char c) {
+    return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+}
+
+
 size_t strlen(const char* str);
 void itoa(i32 n, char* str, u32 base);
 

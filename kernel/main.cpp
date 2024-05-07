@@ -15,6 +15,7 @@
 #include <std/utility.h>
 #include <std/memory.h>
 #include <std/hash_map.h>
+#include <std/format.h>
 
 #include <kernel/acpi/smbios.h>
 #include <kernel/acpi/acpi.h>
@@ -262,9 +263,10 @@ extern "C" void main(arch::BootInfo const& boot_info) {
     auto fd = vfs->open("/home/test", O_RDONLY, 0).unwrap();
     ELF elf(fd);
 
-    auto* process = Process::create_user_process("Userland", elf);
-    Scheduler::add_process(process);
+    auto root = vfs->resolve("/").unwrap();
+    auto* process = Process::create_user_process("Userland", elf, root);
 
+    Scheduler::add_process(process);
     Scheduler::init();
 
 #if 0

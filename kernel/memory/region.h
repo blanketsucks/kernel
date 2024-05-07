@@ -73,6 +73,7 @@ public:
     Space* reserve(uintptr_t address, size_t size, Permissions perms);
 
     Space* find_space(uintptr_t address) const;
+    Space* find_space_containing(uintptr_t address) const;
 
     Space* find_free(size_t size, bool page_aligned);
     Space* find_free_pages(size_t pages);

@@ -8,6 +8,7 @@ scripts/limine
 scripts/disk.img.lock
 scripts/qemu.log
 scripts/test
+test
 
 disk.img
 kernel.map

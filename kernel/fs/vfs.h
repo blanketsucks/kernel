@@ -31,7 +31,7 @@ public:
 
     ErrorOr<RefPtr<ResolvedInode>> resolve(StringView path, RefPtr<ResolvedInode> relative_to = nullptr);
 
-    ErrorOr<RefPtr<FileDescriptor>> open(StringView path, int flags, mode_t mode);
+    ErrorOr<RefPtr<FileDescriptor>> open(StringView path, int flags, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
 
     bool mount_root(FileSystem* fs);
     ErrorOr<void> mount(FileSystem* fs, RefPtr<ResolvedInode> target);
@@ -43,7 +43,7 @@ private:
     Vector<Mount> m_mounts;
 };
 
-[[gnu::always_inline]] inline VFS* vfs() {
+ALWAYS_INLINE inline VFS* vfs() {
     return VFS::instance();
 }
 

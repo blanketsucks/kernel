@@ -23,23 +23,6 @@ MemoryManager::MemoryManager() {
 
     m_heap_region = Region(KERNEL_HEAP_ADDRESS, 0xFFFFFFFF, dir);
     m_kernel_region = Region(KERNEL_VIRTUAL_BASE, KERNEL_HEAP_ADDRESS, dir);
-
-    PageFault fault = 0004;
-    if (!fault.present) {
-        serial::printf(" - Page not present\n");
-    }
-
-    if (fault.rw) {
-        serial::printf(" - Write access\n");
-    } else {
-        serial::printf(" - Read access\n");
-    }
-
-    if (fault.user) {
-        serial::printf(" - User mode\n\n");
-    } else {
-        serial::printf(" - Kernel mode\n\n");
-    }
 }
 
 void MemoryManager::init(arch::BootInfo const& boot_info) {

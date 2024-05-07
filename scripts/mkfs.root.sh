@@ -11,6 +11,6 @@ mkdir -p ./mnt/boot
 cp ./kernel.map ./mnt/boot
 
 mkdir ./mnt/home
-touch ./mnt/home/test.txt
+cp ./test.txt ./mnt/home/test.txt
 
 cp ./test ./mnt/home

@@ -9,6 +9,7 @@
 #define PACKED __attribute__((packed))
 #define INTERRUPT [[gnu::interrupt]]
 #define ALIGNED(x) __attribute__((aligned(x)))
+#define ALWAYS_INLINE [[gnu::always_inline]]
 
 constexpr u32 KERNEL_VIRTUAL_BASE = 0xC0000000;
 constexpr u32 KERNEL_HEAP_ADDRESS = 0xE0000000; // Could this be replaced with the address of _kernel_end?

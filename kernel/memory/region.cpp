@@ -97,6 +97,19 @@ Space* Region::find_space(uintptr_t address) const {
     return nullptr;
 }
 
+Space* Region::find_space_containing(uintptr_t address) const {
+    auto* space = m_head;
+    while (space) {
+        if (space->contains(address)) {
+            return space;
+        }
+
+        space = space->next;
+    }
+
+    return nullptr;
+}
+
 Space* Region::find_free(size_t size, bool page_aligned) {
     auto* space = m_head;
     while (space) {

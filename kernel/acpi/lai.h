@@ -66,13 +66,13 @@ public:
 
     template<typename T> T as() = delete;
 
-    template<> u64 as<u64>();
-    template<> char* as<char*>();
-
     char* path() const;
 
     NodeIterator begin();
     NodeIterator end();
 };
+
+template<> u64 Node::as<u64>();
+template<> char* Node::as<char*>();
 
 }

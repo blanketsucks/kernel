@@ -247,7 +247,8 @@ u32 InodeEntry::get_block_pointer(size_t index) const {
 }
 
 void InodeEntry::read_block_pointers() {
-    for (u32 block_pointer : m_inode.block_pointers) {
+    for (u32 i = 0; i < 12; i++) {
+        u32 block_pointer = m_inode.block_pointers[i];
         if (!block_pointer) {
             continue;
         }
