@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/devices/block.h>
+#include <kernel/devices/block_device.h>
 
 namespace kernel::devices {
 

@@ -1,10 +1,11 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/devices/character.h>
+#include <kernel/devices/character_device.h>
 #include <kernel/arch/pic.h>
 
 #include <std/enums.h>
+#include <std/circular_queue.h>
 
 namespace kernel::devices {
 
@@ -59,8 +60,8 @@ public:
     static void init();
     static MouseDevice* instance();
 
-    size_t read(void* buffer, size_t size, size_t offset) override;
-    size_t write(const void* buffer, size_t size, size_t offset) override;
+    ssize_t read(void* buffer, size_t size, size_t offset) override;
+    ssize_t write(const void* buffer, size_t size, size_t offset) override;
 
     bool has_scroll_wheel() const { return m_has_scroll_wheel; }
 
@@ -74,6 +75,7 @@ public:
     MouseState state();
 
 private:
+    static constexpr u8 MAX_BUFFER_SIZE = 255;
     static MouseDevice* s_instance;
 
     void update_mouse_state();
@@ -81,7 +83,7 @@ private:
 
     MouseDevice() : CharacterDevice(13, 0), IRQHandler(12) {}
 
-    MouseState m_state;
+    CircularQueue<MouseState, MAX_BUFFER_SIZE> m_state_buffer;
     u8 m_cycle;
     u8 m_bytes[4];
 

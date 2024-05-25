@@ -15,9 +15,13 @@ public:
     void disable_irq_handler();
 
     u8 irq() const { return m_irq; }
+    bool did_eoi() const { return m_did_eoi; }
+    
+    void eoi();
 
 private:
     u8 m_irq;
+    bool m_did_eoi = false;
 };
 
 }

@@ -12,6 +12,7 @@ struct FormatStyle {
     bool uppercase = false;
 
     bool prefix = false;
+    bool character = false;
 
     bool left_pad = false;
     bool right_pad = false;
@@ -53,24 +54,30 @@ struct Formatter {
 
 template<typename T, bool is_signed> 
 void __format_integer(FormatBuffer& buffer, const T& value, const FormatStyle& style) {
-    char temp[64];
+    char temp[70];
 
     if (style.pointer) {
-        stbsp_sprintf(temp, "%p", reinterpret_cast<void*>(value));
+        if (style.prefix) {
+            stbsp_sprintf(temp, "0x%p", reinterpret_cast<void*>(value));
+        } else {
+            stbsp_sprintf(temp, "%p", reinterpret_cast<void*>(value));
+        }
     } else if (style.hex) {
         if (style.prefix) {
-            if (style.uppercase) {
+            if (!style.uppercase) {
                 stbsp_sprintf(temp, "%#x", value);
             } else {
                 stbsp_sprintf(temp, "%#X", value);
             }
         } else {
-            if (style.uppercase) {
+            if (!style.uppercase) {
                 stbsp_sprintf(temp, "%x", value);
             } else {
                 stbsp_sprintf(temp, "%X", value);
             }
         }
+    } else if (style.character) {
+        stbsp_sprintf(temp, "%c", static_cast<char>(value));
     } else {
         if constexpr (is_signed) {
             stbsp_sprintf(temp, "%d", value);
@@ -84,24 +91,30 @@ void __format_integer(FormatBuffer& buffer, const T& value, const FormatStyle& s
 
 template<typename T, bool is_signed>
 void __format_64_integer(FormatBuffer& buffer, const T& value, const FormatStyle& style) {
-    char temp[64];
+    char temp[70];
 
     if (style.pointer) {
-        stbsp_sprintf(temp, "%p", reinterpret_cast<void*>(value));
+        if (style.prefix) {
+            stbsp_sprintf(temp, "0x%p", reinterpret_cast<void*>(value));
+        } else {
+            stbsp_sprintf(temp, "%p", reinterpret_cast<void*>(value));
+        }
     } else if (style.hex) {
         if (style.prefix) {
-            if (style.uppercase) {
+            if (!style.uppercase) {
                 stbsp_sprintf(temp, "%#llx", value);
             } else {
                 stbsp_sprintf(temp, "%#llX", value);
             }
         } else {
-            if (style.uppercase) {
+            if (!style.uppercase) {
                 stbsp_sprintf(temp, "%llx", value);
             } else {
                 stbsp_sprintf(temp, "%llX", value);
             }
         }
+    } else if (style.character) {
+        stbsp_sprintf(temp, "%c", static_cast<char>(value));
     } else {
         if constexpr (is_signed) {
             stbsp_sprintf(temp, "%lld", value);
@@ -113,21 +126,24 @@ void __format_64_integer(FormatBuffer& buffer, const T& value, const FormatStyle
     buffer.append(temp);
 }
 
-#define _INTEGER_FROMATTER(Type, signed)                                                            \
+#define _INTEGER_FORMATTER(Type, signed)                                                            \
     template<> struct Formatter<Type> {                                                             \
         static void format(FormatBuffer& buffer, const Type& value, const FormatStyle& style) {     \
             __format_integer<Type, signed>(buffer, value, style);                                   \
         }                                                                                           \
     };
 
-_INTEGER_FROMATTER(i8, true)
-_INTEGER_FROMATTER(i16, true)
-_INTEGER_FROMATTER(i32, true)
-_INTEGER_FROMATTER(u8, false)
-_INTEGER_FROMATTER(u16, false)
-_INTEGER_FROMATTER(u32, false)
+_INTEGER_FORMATTER(i8, true)
+_INTEGER_FORMATTER(i16, true)
+_INTEGER_FORMATTER(i32, true)
+_INTEGER_FORMATTER(u8, false)
+_INTEGER_FORMATTER(u16, false)
+_INTEGER_FORMATTER(u32, false)
 
-#undef _INTEGER_FROMATTER
+_INTEGER_FORMATTER(unsigned long, false)
+_INTEGER_FORMATTER(long, true)
+
+#undef _INTEGER_FORMATTER
 
 template<> struct Formatter<u64> {
     static void format(FormatBuffer& buffer, const u64& value, const FormatStyle& style) {
@@ -183,7 +199,7 @@ template<> struct Formatter<bool> {
 
 template<typename T> struct Formatter<T*> {
     static void format(FormatBuffer& buffer, const T* value, const FormatStyle& style) {
-        char temp[64];
+        char temp[66];
         if (style.prefix) {
             stbsp_sprintf(temp, "0x%p", value);
         } else {

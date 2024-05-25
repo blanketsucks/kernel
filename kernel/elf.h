@@ -20,7 +20,9 @@ public:
     fs::FileDescriptor& file() { return *m_file; }
     Elf32_Ehdr const* header() const { return m_header; }
 
-    uintptr_t entry() const { return m_header->e_entry; }
+    uintptr_t entry() const {
+        return m_header ? m_header->e_entry : 0;
+    }
 
     String const& interpreter() const { return m_interpreter; }
     bool has_interpreter() const { return !m_interpreter.empty(); }

@@ -60,3 +60,5 @@ constexpr bool has_any_flag(T value, T mask) {
 }
 
 using std::to_underlying;
+using std::has_flag;
+using std::has_any_flag;

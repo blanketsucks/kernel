@@ -9,8 +9,8 @@ class BlockDevice : public Device {
 public:
     virtual ~BlockDevice() = default;
 
-    size_t read(void* buffer, size_t size, size_t offset) override;
-    size_t write(const void* buffer, size_t size, size_t offset) override;
+    ssize_t read(void* buffer, size_t size, size_t offset) override;
+    ssize_t write(const void* buffer, size_t size, size_t offset) override;
 
     bool read_block(void* buffer, size_t block);
     bool write_block(const void* buffer, size_t block);

@@ -1,38 +1,25 @@
 #include <kernel/devices/device.h>
+#include <kernel/fs/fd.h>
 
-namespace kernel::devices {
+namespace kernel {
 
-DeviceManager* DeviceManager::s_instance = nullptr;
+static HashMap<u32, Device*> s_devices;
 
-DeviceManager::DeviceManager() {
-    
+Device::Device(u32 major, u32 minor) : m_major(major), m_minor(minor) {
+    s_devices.set(encode(major, minor), this);
 }
 
-void DeviceManager::init() {
-    s_instance = new DeviceManager();
-}
-
-DeviceManager* DeviceManager::instance() {
-    return s_instance;
-}
-
-bool DeviceManager::register_device(Device* device) {
-    u32 encoded = Device::encode(device->major(), device->minor());
-    if (m_devices.contains(encoded)) {
-        return false;
-    }
-
-    m_devices.set(encoded, device);
-    return true;
-}
-
-RefPtr<Device> DeviceManager::get_device(u32 major, u32 minor) {
-    auto iterator = m_devices.find(Device::encode(major, minor));
-    if (iterator == m_devices.end()) {
+Device* Device::get_device(u32 major, u32 minor) {
+    auto iterator = s_devices.find(encode(major, minor));
+    if (iterator == s_devices.end()) {
         return nullptr;
     }
 
     return iterator->value;
+}
+
+RefPtr<fs::FileDescriptor> Device::open(int options) {
+    return fs::FileDescriptor::create(this, options);
 }
 
 }

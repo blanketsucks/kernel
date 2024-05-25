@@ -7,7 +7,7 @@
 #include <kernel/fs/ext2fs/block_group.h>
 #include <kernel/fs/filesystem.h>
 
-#include <kernel/devices/block.h>
+#include <kernel/devices/block_device.h>
 
 #include <std/function.h>
 #include <std/memory.h>

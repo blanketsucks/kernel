@@ -1,6 +1,12 @@
 #include <std/cstring.h>
 
+#ifndef __KERNEL__
+    #include <string.h>
+#endif
+
 namespace std {
+
+#ifdef __KERNEL__
 
 size_t strlen(const char* str) {
     size_t len = 0;
@@ -96,11 +102,12 @@ extern "C" void* memset(void* ptr, int c, size_t n) {
     return ptr;
 }
 
-extern "C" void* memcpy(void* dst, const void* src, size_t n) {
-    u8* dst_bytes = reinterpret_cast<u8*>(dst);
-    const u8* src_bytes = reinterpret_cast<const u8*>(src);
+extern "C" void* memcpy(void* d, const void* s, size_t n) {
+    u8* dst = reinterpret_cast<u8*>(d);
+    const u8* src = reinterpret_cast<const u8*>(s);
+    
     for (size_t i = 0; i < n; i++) {
-        dst_bytes[i] = src_bytes[i];
+        dst[i] = src[i];
     }
 
     return dst;
@@ -118,5 +125,25 @@ extern "C" int memcmp(const void* ptr1, const void* ptr2, size_t n) {
 
     return 0;
 }
+
+#else
+
+size_t strlen(const char* str) {
+    return ::strlen(str);
+}
+
+void* memset(void* ptr, int c, size_t n) {
+    return ::memset(ptr, c, n);
+}
+
+void* memcpy(void* dst, const void* src, size_t n) {
+    return ::memcpy(dst, src, n);
+}
+
+int memcmp(const void* ptr1, const void* ptr2, size_t n) {
+    return ::memcmp(ptr1, ptr2, n);
+}
+
+#endif
 
 }

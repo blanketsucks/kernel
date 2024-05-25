@@ -7,6 +7,7 @@
 namespace kernel {
 
 enum class PageFlags : u32 {
+    None = 0,
     Write = 1 << 1,
     User = 1 << 2,
     CacheDisable = 1 << 3
@@ -15,7 +16,7 @@ enum class PageFlags : u32 {
 MAKE_ENUM_BITWISE_OPS(PageFlags)
 
 namespace memory {
-    class Region;
+    class RegionAllocator;
 }
 
 }
@@ -108,7 +109,7 @@ public:
     };
 
     static PageDirectory* create_user_page_directory();
-    static void create_kernel_page_directory(arch::BootInfo const&, memory::Region& kernel_region);
+    static void create_kernel_page_directory(arch::BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
 
     Type type() const { return m_type; }
     bool is_kernel() const { return m_type == Kernel; }

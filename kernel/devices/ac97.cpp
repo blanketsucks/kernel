@@ -25,11 +25,11 @@ AC97Device::AC97Device(pci::Address address) : CharacterDevice(4, 0) {
     address.set_interrupt_line(true);
 }
 
-size_t AC97Device::read(void*, size_t, size_t) {
+ssize_t AC97Device::read(void*, size_t, size_t) {
     return 0;
 }
 
-size_t AC97Device::write(const void*, size_t, size_t) {
+ssize_t AC97Device::write(const void*, size_t, size_t) {
     return 0;
 }
 

@@ -1,8 +1,5 @@
 #include <kernel/serial.h>
 #include <kernel/io.h>
-
-#define STB_SPRINTF_IMPLEMENTATION
-#define STB_SPRINTF_NOFLOAT
 #include <std/stb_sprintf.h>
 
 size_t strlen(const char* str) {

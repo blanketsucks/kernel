@@ -116,6 +116,10 @@ Thread* Scheduler::current_thread() {
     return s_current_thread;
 }
 
+Process* Scheduler::current_process() {
+    return s_current_thread->process();
+}
+
 void Scheduler::set_current_thread(Thread* thread) {
     s_current_thread = thread;
 }

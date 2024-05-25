@@ -1,5 +1,6 @@
 #include <kernel/memory/physical.h>
 #include <kernel/memory/manager.h>
+#include <kernel/memory/region.h>
 
 #include <kernel/vga.h>
 #include <kernel/serial.h>
@@ -15,6 +16,7 @@ PhysicalMemoryManager* PhysicalMemoryManager::instance() {
 
 void PhysicalMemoryManager::init(arch::BootInfo const& boot_info) {
     serial::printf("Memory map:\n");
+
     for (u32 i = 0; i < boot_info.mmap.count; i++) {
         auto& entry = boot_info.mmap.entries[i];
 

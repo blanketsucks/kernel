@@ -5,6 +5,8 @@
 
 namespace std {
 
+using nullptr_t = decltype(nullptr);
+
 enum class IterationAction {
     Continue,
     Break
@@ -23,6 +25,16 @@ constexpr T max(const T& a, const T& b) {
 template<typename T> requires(std::detail::is_integral_v<T>)
 constexpr T abs(T value) {
     return value < 0 ? -value : value;
+}
+
+template<typename T, typename U> requires(std::detail::is_integral_v<T> && std::detail::is_integral_v<U>)
+constexpr T align_up(T value, U alignment) {
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
+template<typename T, typename U> requires(std::detail::is_integral_v<T> && std::detail::is_integral_v<U>)
+constexpr T align_down(T value, U alignment) {
+    return value & ~(alignment - 1);
 }
 
 template<typename T> requires(std::detail::is_integral_v<T>)

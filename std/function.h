@@ -10,6 +10,8 @@ class Function;
 template<typename ReturnType, typename... Args>
 class Function<ReturnType(Args...)> {
 public:
+    Function(nullptr_t) : callable(nullptr) {}
+
     template<typename Functor>
     Function(Functor functor) : callable(new CallableImpl<Functor>(functor)) {}
 
@@ -21,20 +23,32 @@ public:
 
     Function(Function&& other) : callable(other.callable) { other.callable = nullptr; }
 
-    ~Function() { delete callable; }
+    ~Function() { 
+        if (callable) {
+            delete callable;
+        }
+    }
 
     Function& operator=(const Function& other) {
-        if (this != &other) {
-            delete callable;
-            callable = other.callable;
+        if (this == &other) {
+            return *this;
         }
 
-        return *this;
+        if (callable) {
+            delete callable;
+            callable = nullptr;
+        }
+
+        if (other.callable) {
+            callable = other.callable->clone();
+        }
     }
 
     Function& operator=(Function&& other) {
         if (this != &other) {
-            delete callable;
+            if (callable) {
+                delete callable;
+            }
 
             callable = other.callable;
             other.callable = nullptr;
@@ -44,6 +58,10 @@ public:
     }
 
     ReturnType operator()(Args... args) const {
+        if (!callable) {
+            return ReturnType();
+        }
+
         return callable->invoke(std::forward<Args>(args)...);
     }
 

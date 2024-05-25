@@ -1,5 +1,6 @@
-#include <kernel/arch/x86/paging.h>
+#include <kernel/arch/x86/page_directory.h>
 #include <kernel/memory/region.h>
+#include <kernel/posix/sys/mman.h>
 #include <kernel/serial.h>
 #include <kernel/panic.h>
 
@@ -161,7 +162,7 @@ PageDirectory* PageDirectory::kernel_page_directory() {
     return &s_kernel_page_directory;
 }
 
-void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info, memory::Region& kernel_region) {
+void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info, memory::RegionAllocator& kernel_region_allocator) {
     PageDirectory* dir = PageDirectory::kernel_page_directory();
     dir->clear();
     
@@ -178,7 +179,7 @@ void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info
         dir->m_entries[i + 0x300].value = ((size_t)&s_kernel_page_table_entries[i] - KERNEL_VIRTUAL_BASE) | 0x3;
     }
 
-    size_t size = std::align_up(boot_info.kernel_size, static_cast<size_t>(PAGE_SIZE));
+    size_t size = std::align_up(boot_info.kernel_size, PAGE_SIZE);
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         uintptr_t phys = boot_info.kernel_physical_base + i;
         uintptr_t virt = boot_info.kernel_virtual_base + i;
@@ -186,9 +187,8 @@ void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info
         dir->map(virt, phys, PageFlags::Write); 
     }
 
-    // Reserve space in the MemoryManager's kernel region so we don't end up getting some forbidden address
-    // when trying to allocate from it.
-    kernel_region.reserve(static_cast<u32>(boot_info.kernel_virtual_base), size, memory::Permissions::Read | memory::Permissions::Write);
+    // Reserve space in the MemoryManager's kernel region so we don't end up getting some forbidden address when trying to allocate from it.
+    kernel_region_allocator.reserve(static_cast<u32>(boot_info.kernel_virtual_base), size, PROT_READ | PROT_WRITE);
 
     dir->map(VIRTUAL_VGA_ADDRESS, PHYSICAL_VGA_ADDRESS, PageFlags::Write);
     dir->switch_to();

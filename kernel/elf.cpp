@@ -1,6 +1,7 @@
 #include <kernel/elf.h>
 #include <kernel/serial.h>
 #include <kernel/posix/unistd.h>
+#include <kernel/fs/vfs.h>
 
 namespace kernel {
 
@@ -39,10 +40,10 @@ void ELF::read_program_headers() {
             continue;
         }
 
-        m_interpreter.resize(ph.p_filesz);
+        m_interpreter.resize(ph.p_filesz - 1);
 
         m_file->seek(ph.p_offset, SEEK_SET);
-        m_file->read(m_interpreter.data(), ph.p_filesz);
+        m_file->read(m_interpreter.data(), ph.p_filesz - 1);
     }
 }
 

@@ -30,7 +30,7 @@ public:
 
     StringView() : m_data(nullptr), m_size(0) {}
     StringView(const char* data, size_t size) : m_data(data), m_size(size) {}
-    StringView(const char* data) : m_data(data), m_size(strlen(data)) {}
+    StringView(const char* data) : m_data(data), m_size(std::strlen(data)) {}
 
     StringView(const String& str);
 
@@ -93,5 +93,6 @@ struct Hash<StringView> {
 }
 
 }
+
 
 using std::StringView;

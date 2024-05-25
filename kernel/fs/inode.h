@@ -35,8 +35,8 @@ class Inode {
 public:
     virtual ~Inode() = default;
 
-    virtual size_t read(void* buffer, size_t size, size_t offset) const = 0;
-    virtual size_t write(const void* buffer, size_t size, size_t offset) = 0;
+    virtual ssize_t read(void* buffer, size_t size, size_t offset) const = 0;
+    virtual ssize_t write(const void* buffer, size_t size, size_t offset) = 0;
 
     virtual void truncate(size_t size) = 0;
 
@@ -101,7 +101,7 @@ public:
     FileSystem* fs() { return m_fs; }
     const FileSystem* fs() const { return m_fs; }
 
-    const String& name() const { return m_name; }
+    String name() const { return m_name; }
 
     String fullpath() const;
 

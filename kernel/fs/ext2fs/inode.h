@@ -49,8 +49,8 @@ public:
 
     size_t size() const override { return m_inode.size_lower; }
 
-    size_t read(void* buffer, size_t size, size_t offset) const override;
-    size_t write(void const* buffer, size_t size, size_t offset) override;
+    ssize_t read(void* buffer, size_t size, size_t offset) const override;
+    ssize_t write(void const* buffer, size_t size, size_t offset) override;
     void truncate(size_t size) override;
 
     struct stat stat() const override;

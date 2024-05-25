@@ -1,8 +1,12 @@
 #include <kernel/devices/bochs_vga.h>
+#include <kernel/posix/sys/ioctl.h>
+#include <kernel/process/process.h>
+#include <kernel/memory/manager.h>
+#include <kernel/process/process.h>
+#include <kernel/process/scheduler.h>
+#include <kernel/serial.h>
 #include <kernel/pci.h>
 #include <kernel/io.h>
-#include <kernel/serial.h>
-#include <kernel/memory/manager.h>
 
 namespace kernel::devices {
 
@@ -99,11 +103,20 @@ bool BochsVGADevice::map() {
 bool BochsVGADevice::remap() {
     // We just mark the old framebuffer as free for use and call map again.
     if (m_framebuffer) {
-        auto& kernel_region = MM->kernel_region();
-        kernel_region.free(reinterpret_cast<u32>(m_framebuffer));
+        auto& allocator = MM->kernel_region_allocator();
+        allocator.free(reinterpret_cast<VirtualAddress>(m_framebuffer));
     }
 
     return this->map();
+}
+
+ErrorOr<void*> BochsVGADevice::mmap(Process& process, size_t size, int prot) {
+    if (size < std::align_up(this->size(), PAGE_SIZE)) {
+        return Error(EINVAL);
+    }
+    
+    void* region = process.allocate_with_physical_region(m_physical_address, size, prot);
+    return region;
 }
 
 void BochsVGADevice::set_pixel(i32 x, i32 y, u32 color) {
@@ -112,6 +125,24 @@ void BochsVGADevice::set_pixel(i32 x, i32 y, u32 color) {
     }
 
     m_framebuffer[y * m_width + x] = color;
+}
+
+ErrorOr<int> BochsVGADevice::ioctl(unsigned request, unsigned arg) {
+    auto* process = Scheduler::current_process();
+    switch (request) {
+        case FB_GET_RESOLUTION: {
+            auto* resolution = reinterpret_cast<FrameBufferResolution*>(arg);
+            process->validate_write(resolution, sizeof(FrameBufferResolution));
+
+            resolution->width = m_width;
+            resolution->height = m_height;
+            resolution->pitch = m_width * (m_bpp / 8);
+
+            return 0;
+        }
+        default:
+            return Error(EINVAL);
+    }
 }
 
 }

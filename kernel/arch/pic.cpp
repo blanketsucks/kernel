@@ -21,6 +21,11 @@ void IRQHandler::disable_irq_handler() {
     pic::set_irq_handler(m_irq, (IRQHandler*)nullptr); // A bit jank but whatever
 }
 
+void IRQHandler::eoi() {
+    pic::eoi(m_irq);
+    m_did_eoi = true;
+}
+
 namespace pic {
 
 static IRQHandler* s_irq_handlers[16] = {};
@@ -33,6 +38,9 @@ extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
 
     if (handler) {
         handler->handle_interrupt(regs);
+        if (handler->did_eoi()) {
+            return;
+        }
     }
 
     eoi(irq);

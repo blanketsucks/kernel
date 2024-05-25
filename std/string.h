@@ -3,8 +3,7 @@
 #include <std/traits.h>
 #include <std/string_view.h>
 #include <std/kmalloc.h>
-
-#include <kernel/serial.h>
+#include <std/utility.h>
 
 namespace std {
 
@@ -50,8 +49,12 @@ public:
     }
 
     void clear() {
-        m_data = nullptr;
+        std::memset(m_data, 0, m_size);
         m_size = 0;
+    }
+
+    bool is_null_terminated() const {
+        return m_data[m_size] == '\0';
     }
 
     const char* data() const { return m_data; }
@@ -77,9 +80,10 @@ public:
     bool operator==(const String& other) const;
     bool operator!=(const String& other) const;
 
-    String& operator=(const StringView& other);
-    String& operator=(const String& other);
     String& operator=(String&& other);
+    String& operator=(const String& other);
+
+    String& operator=(const StringView& other);
     String& operator=(const char* other);
 
     char operator[](size_t index) const { return m_data[index]; }
@@ -87,11 +91,18 @@ public:
     void reserve(size_t capacity);
     void resize(size_t size);
 
+    void grow(size_t new_capacity) {
+        if (new_capacity <= m_capacity) {
+            return;
+        }
+
+        this->reserve(max(new_capacity, m_capacity * 2));
+    }
+
     void append(char c);
     void append(const char* str);
     void append(const char* str, size_t len);
     void append(const StringView& str);
-    void append(const String& str);
 
     char pop();
 
@@ -106,13 +117,17 @@ public:
     size_t rfind(char c, size_t start = StringView::npos) const;
 
     bool startswith(const StringView& str) const { return this->substr(0, str.size()) == str; }
+    bool startswith(char c) const { return m_size > 0 && m_data[0] == c; }
+
     bool endswith(const StringView& str) const { return this->substr(m_size - str.size()) == str; }
+    bool endswith(char c) const { return m_size > 0 && m_data[m_size - 1] == c; }
 
     static String join(const Vector<String>& vec, char sep);
     static String format(const char* fmt, ...);
 
 private:
     char* m_data = nullptr;
+    
     size_t m_size = 0;
     size_t m_capacity = 0;
 };

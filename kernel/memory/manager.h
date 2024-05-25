@@ -5,7 +5,7 @@
 #include <kernel/memory/region.h>
 #include <kernel/sync/spinlock.h>
 
-#include <kernel/arch/paging.h>
+#include <kernel/arch/page_directory.h>
 #include <kernel/arch/boot_info.h>
 #include <kernel/arch/registers.h>
 
@@ -64,7 +64,7 @@ union PageFault {
     u32 value;
 
     PageFault(u32 value) : value(value) {}
-};  
+};
 
 class MemoryManager {
 public:
@@ -77,8 +77,8 @@ public:
 
     static arch::PageDirectory* kernel_page_directory();
 
-    Region& heap_region() { return m_heap_region; }
-    Region& kernel_region() { return m_kernel_region; }
+    RegionAllocator& heap_region_allocator() { return m_heap_region_allocator; }
+    RegionAllocator& kernel_region_allocator() { return m_kernel_region_allocator; }
 
     bool is_mapped(void* addr);
     u32 get_physical_address(void* addr);
@@ -86,10 +86,10 @@ public:
     [[nodiscard]] void* allocate_physical_frame();
     ErrorOr<void> free_physical_frame(void* frame);
     
-    void* allocate(Region&, size_t size, PageFlags flags);
-    void* allocate_at(Region&, uintptr_t address, size_t size, PageFlags flags);
+    void* allocate(RegionAllocator&, size_t size, PageFlags flags);
+    void* allocate_at(RegionAllocator&, uintptr_t address, size_t size, PageFlags flags);
     
-    ErrorOr<void> free(Region&, void* ptr, size_t size);
+    ErrorOr<void> free(RegionAllocator&, void* ptr, size_t size);
 
     [[nodiscard]] void* allocate_heap_region(size_t size);
     ErrorOr<void> free_heap_region(void* start, size_t size);
@@ -101,11 +101,13 @@ public:
     void* map_physical_region(uintptr_t start, size_t size);
     void unmap_physical_region(void* ptr);
 
-    SpinLock& alloc_lock() { return m_alloc_lock; }
-private:
+    void* map_from_page_directory(arch::PageDirectory*, void* ptr, size_t size);
 
-    Region m_heap_region;
-    Region m_kernel_region;
+    SpinLock& alloc_lock() { return m_alloc_lock; }
+    
+private:
+    RegionAllocator m_heap_region_allocator;
+    RegionAllocator m_kernel_region_allocator;
 
     SpinLock m_alloc_lock;
 };

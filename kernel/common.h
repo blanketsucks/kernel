@@ -20,7 +20,7 @@ constexpr u32 VIRTUAL_VGA_ADDRESS = KERNEL_VIRTUAL_BASE + PHYSICAL_VGA_ADDRESS;
 constexpr u32 PAGE_SIZE = 0x1000;
 constexpr u32 SECTOR_SIZE = 0x200;
 
-constexpr u32 INITIAL_KERNEL_HEAP_SIZE = 0x200000; // 1 MiB
+constexpr u32 INITIAL_KERNEL_HEAP_SIZE = 0x400000; // 1 MiB
 
 using VirtualAddress = uintptr_t;
 using PhysicalAddress = uintptr_t;

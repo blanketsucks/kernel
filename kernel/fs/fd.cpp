@@ -28,11 +28,11 @@ size_t FileDescriptor::write(const void* buffer, size_t size) {
 }
 
 bool FileDescriptor::is_readable() const {
-    return m_flags & O_RDONLY || m_flags & O_RDWR;
+    return m_options & O_RDONLY || m_options & O_RDWR;
 }
 
 bool FileDescriptor::is_writable() const {
-    return m_flags & O_WRONLY || m_flags & O_RDWR;
+    return m_options & O_WRONLY || m_options & O_RDWR;
 }
 
 void FileDescriptor::seek(off_t offset, int whence) {
@@ -49,6 +49,19 @@ void FileDescriptor::seek(off_t offset, int whence) {
         default:
             break;
     }
+}
+
+ErrorOr<void*> FileDescriptor::mmap(Process& process, size_t size, int prot) {
+    return m_file->mmap(process, size, prot);
+}
+
+int FileDescriptor::ioctl(unsigned request, unsigned arg) {
+    auto result = m_file->ioctl(request, arg);
+    if (result.is_err()) {
+        return -result.error().errno();
+    }
+
+    return 0;
 }
 
 }

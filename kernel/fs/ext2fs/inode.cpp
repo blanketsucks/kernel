@@ -5,6 +5,8 @@
 #include <kernel/devices/device.h>
 #include <kernel/serial.h>
 
+#include <std/format.h>
+
 #define VERIFY_BLOCK(block)                         \
     if (!block) {                                   \
         auto result = m_fs->allocate_block();   \
@@ -13,8 +15,6 @@
         }                                           \
         block = result.value();                     \
     }
-
-using kernel::devices::Device;
 
 namespace kernel::ext2fs {
 
@@ -47,7 +47,7 @@ u32 InodeEntry::block_group_offset() const {
     return (m_id - 1) % m_fs->superblock()->inodes_per_group;
 }
 
-size_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
+ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
     if (offset >= this->size()) {
         return 0;
     } else if (offset + size > this->size()) {
@@ -75,7 +75,7 @@ size_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
     return bytes_read;
 }
 
-size_t InodeEntry::write(const void* buffer, size_t size, size_t offset) {
+ssize_t InodeEntry::write(const void* buffer, size_t size, size_t offset) {
     if (!size) {
         return 0;
     } else if (offset + size > this->size()) {

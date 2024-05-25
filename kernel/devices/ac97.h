@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/devices/character.h>
+#include <kernel/devices/character_device.h>
 #include <kernel/pci.h>
 
 namespace kernel::devices {
@@ -39,8 +39,8 @@ public:
 
     static AC97Device* create();
 
-    size_t read(void* buffer, size_t size, size_t offset) override;
-    size_t write(const void* buffer, size_t size, size_t offset) override;
+    ssize_t read(void* buffer, size_t size, size_t offset) override;
+    ssize_t write(const void* buffer, size_t size, size_t offset) override;
 
 private:
     AC97Device(pci::Address address);

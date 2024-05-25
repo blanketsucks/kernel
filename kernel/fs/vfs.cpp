@@ -1,13 +1,12 @@
-#include "kernel/fs/filesystem.h"
 #include <kernel/fs/vfs.h>
 
 #include <kernel/devices/device.h>
 #include <kernel/common.h>
 #include <kernel/serial.h>
 
-namespace kernel::fs {
+#include <std/format.h>
 
-using devices::DeviceManager;
+namespace kernel::fs {
 
 static VFS s_vfs_instance = {};
 
@@ -75,7 +74,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
 
             continue;
         }
-
+        
         auto entry = current->inode().lookup(component);
         if (!entry) {
             return Error(ENOENT);
@@ -97,10 +96,10 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
     return current;
 }
 
-ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int flags, mode_t, RefPtr<ResolvedInode> relative_to) {
+ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t, RefPtr<ResolvedInode> relative_to) {
     if (path.empty()) {
         return Error(ENOENT);
-    } else if ((flags & O_DIRECTORY) && (flags & O_CREAT)) {
+    } else if ((options & O_DIRECTORY) && (options & O_CREAT)) {
         return Error(EINVAL);
     }
 
@@ -108,22 +107,24 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int flags, mode_t, Re
     auto resolved = TRY(this->resolve(path, relative_to));
     auto& inode = resolved->inode();
 
-    if (inode.is_directory() && (flags & O_DIRECTORY) == 0) {
+    if (inode.is_directory() && (options & O_DIRECTORY) == 0) {
         return Error(EISDIR);
     }
 
     if (inode.is_device()) {
-        auto* manager = DeviceManager::instance();
-        auto device = manager->get_device(inode.major(), inode.minor());
+        auto device = Device::get_device(inode.major(), inode.minor());
         if (!device) {
             return Error(ENODEV);
         }
 
-        return RefPtr<FileDescriptor>::make(device, flags);
+        return device->open(options);
     }
 
     auto file = RefPtr<InodeFile>::make(resolved->m_inode);
-    return RefPtr<FileDescriptor>::make(file, flags);
+    auto fd = RefPtr<FileDescriptor>::make(file, options);
+
+    fd->set_path(path);
+    return move(fd);
 }
 
 ErrorOr<void> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {

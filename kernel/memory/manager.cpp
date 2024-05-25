@@ -4,12 +4,14 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
+#include <kernel/posix/sys/mman.h>
 #include <kernel/panic.h>
 #include <kernel/vga.h>
 #include <kernel/serial.h>
 
 #include <std/cstring.h>
 #include <std/utility.h>
+#include <std/format.h>
 
 namespace kernel::memory {
 
@@ -21,33 +23,32 @@ static MemoryManager s_memory_manager = MemoryManager();
 MemoryManager::MemoryManager() {
     auto* dir = arch::PageDirectory::kernel_page_directory();
 
-    m_heap_region = Region(KERNEL_HEAP_ADDRESS, 0xFFFFFFFF, dir);
-    m_kernel_region = Region(KERNEL_VIRTUAL_BASE, KERNEL_HEAP_ADDRESS, dir);
+    m_heap_region_allocator = RegionAllocator({ KERNEL_HEAP_ADDRESS, 0xFFFFFFFF - KERNEL_HEAP_ADDRESS }, dir);
+    m_kernel_region_allocator = RegionAllocator({ KERNEL_VIRTUAL_BASE, KERNEL_HEAP_ADDRESS - KERNEL_VIRTUAL_BASE }, dir);
 }
 
 void MemoryManager::init(arch::BootInfo const& boot_info) {
     PhysicalMemoryManager::init(boot_info);
-    arch::PageDirectory::create_kernel_page_directory(boot_info, s_memory_manager.m_kernel_region);
+    arch::PageDirectory::create_kernel_page_directory(boot_info, s_memory_manager.m_kernel_region_allocator);
 }
 
 void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
     u32 address = 0;
     asm volatile("mov %%cr2, %0" : "=r"(address));
 
-    PageFault fault = regs->errno;
-    serial::printf("Page fault (address=0x%x) at EIP=%#x (%c%c%c):\n", address, regs->eip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
-
     auto* thread = Scheduler::current_thread();
     if (!thread || thread->is_kernel()) {
+        PageFault fault = regs->errno;
+
+        // dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->eip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        // dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+
         kernel::panic("Kernel page fault");
     }
 
     // TODO: Print stacktrace
     auto* process = thread->process();
-    serial::printf("  In process: '%s' (PID %u)\n", process->name().data(), process->id());
-
-    // FIXME: Send proper signal once that is implemented
-    process->kill();
+    process->handle_page_fault(regs, address);
 }
 
 MemoryManager* MemoryManager::instance() {
@@ -68,116 +69,131 @@ ErrorOr<void> MemoryManager::free_physical_frame(void* frame) {
     return pmm->free(frame);
 }
 
-void* MemoryManager::allocate(Region& region, size_t size, PageFlags flags) {
+void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags) {
     size = std::align_up(size, PAGE_SIZE);
-    auto space = region.allocate(size, Permissions::Read | Permissions::Write, true);
-    
-    if (!space) {
+    auto* region = allocator.allocate(size, PROT_READ | PROT_WRITE);
+    if (!region) {
         return nullptr;
     }
 
-    auto dir = region.page_directory();
+    auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         void* frame = this->allocate_physical_frame();
-        if (!frame) return nullptr;
+        if (!frame) {
+            return nullptr;
+        }
 
-        dir->map(space->address() + i, reinterpret_cast<PhysicalAddress>(frame), flags);
+        page_directory->map(region->base() + i, reinterpret_cast<PhysicalAddress>(frame), flags);
     }
 
-    return reinterpret_cast<void*>(space->address());
+    return reinterpret_cast<void*>(region->base());
 }
 
-void* MemoryManager::allocate_at(Region& region, uintptr_t address, size_t size, PageFlags flags) {
+void* MemoryManager::allocate_at(RegionAllocator& allocator, uintptr_t address, size_t size, PageFlags flags) {
     size = std::align_up(size, PAGE_SIZE);
-    auto space = region.allocate_at(address, size, Permissions::Read | Permissions::Write);
-
-    if (!space) {
+    auto region = allocator.allocate_at(address, size, PROT_READ | PROT_WRITE);
+    if (!region) {
         return nullptr;
     }
 
-    auto dir = region.page_directory();
+    auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         void* frame = this->allocate_physical_frame();
-        if (!frame) return nullptr;
+        if (!frame) {
+            return nullptr;
+        }
 
-        dir->map(space->address() + i, reinterpret_cast<PhysicalAddress>(frame), flags);
+        page_directory->map(region->base() + i, reinterpret_cast<PhysicalAddress>(frame), flags);
     }
 
-    return reinterpret_cast<void*>(space->address());
+    return reinterpret_cast<void*>(region->base());
 }
 
-ErrorOr<void> MemoryManager::free(Region& region, void* ptr, size_t size) {
-    if (!this->is_mapped(ptr)) {
+ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t size) {
+    VirtualAddress address = reinterpret_cast<VirtualAddress>(ptr);
+    auto* page_directory = allocator.page_directory();
+
+    if (!page_directory->is_mapped(address)) {
         return Error(EINVAL);
     }
 
-    auto space = region.find_space(reinterpret_cast<u32>(ptr));
-    if (!space) {
+    auto* region = allocator.find_region(address);
+    if (!region) {
         return Error(EINVAL);
     }
 
-    auto dir = region.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        u32 virt = space->address() + i;
-
-        PhysicalAddress physical = dir->get_physical_address(virt);
-        dir->unmap(virt);
+        PhysicalAddress physical = page_directory->get_physical_address(region->base() + i);
+        page_directory->unmap(region->base() + i);
 
         TRY(this->free_physical_frame(reinterpret_cast<void*>(physical)));
     }
 
-    space->m_used = false;
+    allocator.free(region);
     return {};
 }
 
 void* MemoryManager::allocate_heap_region(size_t size) {
-    return this->allocate(m_heap_region, size, PageFlags::Write);
+    return this->allocate(m_heap_region_allocator, size, PageFlags::Write);
 }
 
 ErrorOr<void> MemoryManager::free_heap_region(void* start, size_t size) {
-    return this->free(m_heap_region, start, size);
+    return this->free(m_heap_region_allocator, start, size);
 }
 
 void* MemoryManager::allocate_kernel_region(size_t size) {
-    return this->allocate(m_kernel_region, size, PageFlags::Write);
+    return this->allocate(m_kernel_region_allocator, size, PageFlags::Write);
 }
 
 ErrorOr<void> MemoryManager::free_kernel_region(void* start, size_t size) {
-    return this->free(m_kernel_region, start, size);
+    return this->free(m_kernel_region_allocator, start, size);
 }
 
 void* MemoryManager::map_physical_region(uintptr_t start, size_t size) {
-    size_t pages = std::ceil_div(size, static_cast<size_t>(PAGE_SIZE));
-    auto dir = arch::PageDirectory::kernel_page_directory();
+    size = std::align_up(size, PAGE_SIZE);
+    auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
-    auto space = m_kernel_region.find_free_pages(pages);
-    if (!space) {
+    auto* region = m_kernel_region_allocator.allocate(size, PROT_READ | PROT_WRITE);
+    if (!region) {
         return nullptr;
     }
 
-    for (size_t i = 0; i < pages; i++) {
-        dir->map(space->address() + i * PAGE_SIZE, start + i * PAGE_SIZE, PageFlags::Write);
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+        page_directory->map(region->base() + i, start + i, PageFlags::Write);
     }
 
-    space->m_used = true;
-    space->m_perms = Permissions::Read | Permissions::Write;
-
-    return reinterpret_cast<void*>(space->address());
+    return reinterpret_cast<void*>(region->base());
 }
 
 void MemoryManager::unmap_physical_region(void* ptr) {
-    auto dir = arch::PageDirectory::kernel_page_directory();
-    auto space = m_kernel_region.find_space(reinterpret_cast<u32>(ptr));
-    if (!space) {
+    auto* page_directory = arch::PageDirectory::kernel_page_directory();
+    auto* region = m_kernel_region_allocator.find_region(reinterpret_cast<VirtualAddress>(ptr));
+
+    if (!region) {
         return;
     }
 
-    size_t pages = space->size() / PAGE_SIZE;
-    for (size_t i = 0; i < pages; i++) {
-        dir->unmap(space->address() + i * PAGE_SIZE);
+    for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
+        page_directory->unmap(region->base() + i);
     }
 
-    space->m_used = false;
+    m_kernel_region_allocator.free(region);
+}
+
+void* MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory, void* ptr, size_t size) {
+    size = std::align_up(size, PAGE_SIZE);
+    auto* region = m_kernel_region_allocator.allocate(size, PROT_READ | PROT_WRITE);
+    if (!region) {
+        return nullptr;
+    }
+
+    auto* kernel_page_directory = arch::PageDirectory::kernel_page_directory();
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+        PhysicalAddress address = page_directory->get_physical_address(reinterpret_cast<VirtualAddress>(ptr));
+        kernel_page_directory->map(region->base() + i, address, PageFlags::Write);
+    }
+
+    return reinterpret_cast<void*>(region->base());
 }
 
 

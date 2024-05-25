@@ -1,9 +1,9 @@
-#include <kernel/devices/block.h>
+#include <kernel/devices/block_device.h>
 #include <std/string.h>
 
 namespace kernel::devices {
 
-size_t BlockDevice::read(void* buffer, size_t size, size_t offset) {
+ssize_t BlockDevice::read(void* buffer, size_t size, size_t offset) {
     size_t block = offset / this->block_size();
     size_t block_offset = offset % this->block_size();
 
@@ -25,7 +25,7 @@ size_t BlockDevice::read(void* buffer, size_t size, size_t offset) {
     return bytes_read;
 }
 
-size_t BlockDevice::write(const void* buffer, size_t size, size_t offset) {
+ssize_t BlockDevice::write(const void* buffer, size_t size, size_t offset) {
     size_t block = offset / this->block_size();
     size_t block_offset = offset % this->block_size();
 

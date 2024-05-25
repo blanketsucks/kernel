@@ -1,5 +1,8 @@
 #include <std/string.h>
 #include <std/vector.h>
+#include <std/format.h>
+
+#include <kernel/serial.h>
 
 namespace std {
 
@@ -22,15 +25,33 @@ bool String::operator==(const String& other) const { return *this == StringView(
 bool String::operator!=(const String& other) const { return !(*this == other); }
 
 String& String::operator=(const StringView& other) {
-    this->clear();
-    this->append(other);
+    if (m_data) {
+        kfree(m_data);
+    }
+
+    m_size = other.size();
+    m_capacity = other.size();
+
+    m_data = new char[m_capacity];
+    memcpy(m_data, other.data(), m_size);
 
     return *this;
 }
 
 String& String::operator=(const String& other) {
-    this->clear();
-    this->append(other);
+    if (this == &other) {
+        return *this;
+    }
+
+    if (m_data) {
+        kfree(m_data);
+    }
+
+    m_size = other.m_size;
+    m_capacity = other.m_capacity;
+
+    m_data = new char[m_capacity];
+    memcpy(m_data, other.m_data, m_size);
 
     return *this;
 }
@@ -69,6 +90,7 @@ void String::reserve(size_t capacity) {
         m_data = reinterpret_cast<char*>(krealloc(m_data, capacity));
     } else {
         m_data = reinterpret_cast<char*>(kmalloc(capacity));
+        memset(m_data, 0, capacity);
     }
 
     m_capacity = capacity;
@@ -89,45 +111,27 @@ void String::resize(size_t size) {
 }
 
 void String::append(char c) {
-    if (m_size + 1 >= m_capacity || !m_data) {
-        this->reserve(m_capacity == 0 ? 1 : m_capacity * 2);
-    }
-
+    this->grow(m_size + 1);
     m_data[m_size++] = c;
 }
 
 void String::append(const char* str) {
     size_t len = strlen(str);    
-    if (m_size + len >= m_capacity || !m_data) {
-        this->reserve(m_capacity == 0 ? m_size + len : m_capacity * 2);
-    }
+    this->grow(m_size + len);
 
     memcpy(m_data + m_size, str, len);
     m_size += len;
 }
 
 void String::append(const char* str, size_t len) {
-    if (m_size + len >= m_capacity || !m_data) {
-        this->reserve(m_capacity == 0 ? m_size + len : m_capacity * 2);
-    }
+    this->grow(m_size + len);
 
     memcpy(m_data + m_size, str, len);
     m_size += len;
 }
 
 void String::append(const StringView& str) {
-    if (m_size + str.size() >= m_capacity || !m_data) {
-        this->reserve(m_capacity == 0 ? m_size + str.size() : m_capacity * 2);
-    }
-
-    memcpy(m_data + m_size, str.data(), str.size());
-    m_size += str.size();
-}
-
-void String::append(const String& str) {
-    if (m_size + str.size() >= m_capacity || !m_data) {
-        this->reserve(m_capacity == 0 ? m_size + str.size() : m_capacity * 2);
-    }
+    this->grow(m_size + str.size());
 
     memcpy(m_data + m_size, str.data(), str.size());
     m_size += str.size();

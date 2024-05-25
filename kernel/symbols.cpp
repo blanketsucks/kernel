@@ -2,6 +2,7 @@
 #include <kernel/fs/vfs.h>
 
 #include <std/vector.h>
+#include <std/format.h>
 
 namespace kernel {
 

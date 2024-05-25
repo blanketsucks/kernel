@@ -1,98 +1,131 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/posix/sys/mman.h>
 
 #include <std/enums.h>
 
 namespace kernel::arch {
+    class PageDirectory;
+}
 
-class PageDirectory;
-
+namespace kernel::fs {
+    class File;
 }
 
 namespace kernel::memory {
 
-enum class Permissions : u8 {
-    None    = 0,
-    Read    = 1,
-    Write   = 2,
-    Execute = 4,
-};
-
-MAKE_ENUM_BITWISE_OPS(Permissions);
-
-struct Space {
+struct Range {
 public:
-    Space(size_t size, uintptr_t address) : m_size(size), m_address(address) {}
+    Range() = default;
+    Range(VirtualAddress base, size_t size) : m_base(base), m_size(size) {}
 
+    VirtualAddress base() const { return m_base; }
     size_t size() const { return m_size; }
-    uintptr_t address() const { return m_address; }
-    
-    bool used() const { return m_used; }
 
-    Permissions permissions() const { return m_perms; }
+    VirtualAddress end() const { return m_base + m_size; }
 
-    uintptr_t end() const { return m_address + m_size; }
-    bool contains(uintptr_t addr) const { return addr >= m_address && addr < end(); }
-
-    bool is_readable() const { return std::has_flag(m_perms, Permissions::Read); }
-    bool is_writable() const { return std::has_flag(m_perms, Permissions::Write); }
-    bool is_executable() const { return std::has_flag(m_perms, Permissions::Execute); }
+    bool contains(VirtualAddress addr) const { return addr >= m_base && addr < end(); }
+    bool contains(Range const& other) const {
+        return other.base() >= m_base && other.end() <= end();
+    }
 
 private:
+    VirtualAddress m_base;
     size_t m_size;
-    uintptr_t m_address;
-
-    bool m_used;
-    Permissions m_perms;
-
-    Space* next = nullptr;
-    Space* prev = nullptr;
 
     friend class Region;
-    friend class MemoryManager;
 };
 
 class Region {
 public:
-    Region() = default;
-    Region(uintptr_t start, uintptr_t end, arch::PageDirectory*);
+    Region(const Range& range) : m_range(range) {}
 
-    uintptr_t start() const { return m_start; }
-    uintptr_t end() const { return m_end; }
+    Range const& range() const { return m_range; }
 
-    arch::PageDirectory* page_directory() const { return m_page_directory; }
+    fs::File* file() { return m_file; }
+    fs::File const* file() const { return m_file; }
 
-    bool is_kernel() const { return m_start >= KERNEL_VIRTUAL_BASE ;}
-    size_t size() const { return m_end - m_start; }
+    bool is_file_backed() const { return m_file != nullptr; }
 
-    Space* base() const { return m_head; }
+    size_t size() const { return m_range.size(); }
 
-    bool contains(uintptr_t address) const { return address >= m_start && address < this->end(); }
+    VirtualAddress base() const { return m_range.base(); }
+    VirtualAddress end() const { return m_range.end(); }
+    
+    bool used() const { return m_used; }
 
-    Space* reserve(uintptr_t address, size_t size, Permissions perms);
+    int prot() const { return m_prot; }
+    void set_prot(int prot) { m_prot = prot; }
 
-    Space* find_space(uintptr_t address) const;
-    Space* find_space_containing(uintptr_t address) const;
+    bool contains(VirtualAddress address) const { return m_range.contains(address); }
 
-    Space* find_free(size_t size, bool page_aligned);
-    Space* find_free_pages(size_t pages);
+    bool is_readable() const { return m_prot & PROT_READ; }
+    bool is_writable() const { return m_prot & PROT_WRITE; }
+    bool is_executable() const { return m_prot & PROT_EXEC; }
 
-    Space* allocate(size_t size, Permissions perms, bool page_aligned = false);
-    Space* allocate_at(uintptr_t address, size_t size, Permissions perms);
-
-    void free(uintptr_t address);
+    bool is_shared() const { return m_shared; }
+    void set_shared(bool shared) { m_shared = shared; }
 
 private:
-    void insert_space_before(Space* space, Space* new_space);
-    void insert_space_after(Space* space, Space* new_space);
+    void set_size(size_t size) { m_range.m_size = size; }
+    void set_base(VirtualAddress base) { m_range.m_base = base; }
 
-    uintptr_t m_start;
-    uintptr_t m_end;
+    Range m_range;
 
-    arch::PageDirectory* m_page_directory;
+    bool m_used = false;
+    bool m_shared = false;
 
-    Space* m_head;
+    int m_prot;
+
+    fs::File* m_file = nullptr;
+
+    Region* next = nullptr;
+    Region* prev = nullptr;
+
+    friend class RegionAllocator;
+    friend class MemoryManager;
 };
+
+class RegionAllocator {
+public:
+    RegionAllocator() = default;
+    RegionAllocator(const Range& range, arch::PageDirectory* page_directory);
+
+    Range const& range() const { return m_range; }
+    arch::PageDirectory* page_directory() const { return m_page_directory; }
+
+    bool is_kernel() const { return m_range.base() >= KERNEL_VIRTUAL_BASE; }
+    size_t usage() const { return m_usage; }
+
+    Region* allocate(size_t size, int prot);
+    Region* allocate_at(VirtualAddress address, size_t size, int prot);
+
+    void reserve(VirtualAddress address, size_t size, int prot);
+
+    void free(VirtualAddress address);
+    void free(Region* region);
+
+    Region* create_file_backed_region(fs::File* file, size_t size);
+
+    Region* find_region(void* address, bool contains = false) const {
+        return find_region(VirtualAddress(address), contains);
+    }
+    
+    Region* find_region(VirtualAddress address, bool contains = false) const;
+
+private:
+    void insert_region_before(Region* region, Region* new_region);
+    void insert_region_after(Region* region, Region* new_region);
+
+    Region* find_free_region(size_t size);
+
+    Range m_range;
+    Region* m_head = nullptr;
+
+    size_t m_usage = 0;
+    arch::PageDirectory* m_page_directory;
+};
+
 
 }

@@ -57,3 +57,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(kernel.bin PRIVATE -mgeneral-regs-only)
     target_link_libraries(kernel.bin PRIVATE gcc)
 endif()
+
+# Install kernel headers
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/kernel DESTINATION usr/include FILES_MATCHING PATTERN "*.h")

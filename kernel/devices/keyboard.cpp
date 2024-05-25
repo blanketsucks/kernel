@@ -42,6 +42,8 @@ static bool s_ctrl  = false;
 static bool s_alt   = false;
 
 void KeyboardDevice::handle_interrupt(arch::InterruptRegisters*) {
+    pic::eoi(1);
+
     u8 scancode = io::read<u8>(0x60);
     u8 modifiers = None;
 
@@ -83,9 +85,13 @@ void KeyboardDevice::handle_interrupt(arch::InterruptRegisters*) {
     m_key_buffer.append(event);
 }
 
-size_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
+ssize_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
     size_t i = 0;
-    while (i < size && !m_key_buffer.empty()) {
+    while (i < size) {
+        if (m_key_buffer.empty()) {
+            break;
+        }
+
         auto key = m_key_buffer.take_first();
         memcpy(reinterpret_cast<u8*>(buffer) + i, &key, sizeof(KeyEvent));
 
@@ -95,7 +101,7 @@ size_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
     return i;
 }
 
-size_t KeyboardDevice::write(const void*, size_t, size_t) {
+ssize_t KeyboardDevice::write(const void*, size_t, size_t) {
     return 0;
 }
 

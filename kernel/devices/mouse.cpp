@@ -34,8 +34,8 @@ void MouseDevice::update_mouse_state() {
     } else {
         state.z = 0;
     }
-    
-    m_state = state;
+
+    m_state_buffer.push(state);
 }
 
 void MouseDevice::handle_interrupt(arch::InterruptRegisters*) {
@@ -158,13 +158,19 @@ void MouseDevice::set_sample_rate(u8 rate) {
     this->write(rate); this->read();
 }
 
-MouseState MouseDevice::state() { return m_state; }
+ssize_t MouseDevice::read(void* buffer, size_t size, size_t) {
+    size_t i = 0;
+    while (i < size && !m_state_buffer.empty()) {
+        auto state = m_state_buffer.pop();
+        memcpy(reinterpret_cast<u8*>(buffer) + i, &state, sizeof(MouseState));
 
-size_t MouseDevice::read(void*, size_t, size_t) {
-    return 0;
+        i += sizeof(MouseState);
+    }
+
+    return i;
 }
 
-size_t MouseDevice::write(const void*, size_t, size_t) {
+ssize_t MouseDevice::write(const void*, size_t, size_t) {
     return 0;
 }
 

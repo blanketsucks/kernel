@@ -4,8 +4,7 @@
 #include <std/kmalloc.h>
 #include <std/initializer_list.h>
 #include <std/cstring.h>
-
-#include <kernel/serial.h>
+#include <std/utility.h>
 
 namespace std {
 
@@ -64,11 +63,15 @@ public:
 
     Vector() : m_size(0), m_capacity(0), m_data(nullptr) {}
     
-    Vector(size_t size, const T& initial) : m_size(size), m_capacity(size) {
-        this->reserve(m_capacity);
+    Vector(size_t size, const T& initial) : m_size(size) {
+        this->reserve(size);
         for (size_t i = 0; i < size; i++) {
             m_data[i] = initial;
         }
+    }
+
+    Vector(size_t size) : m_size(size) {
+        this->reserve(size);
     }
 
     Vector(const Vector<T>& other) {
@@ -107,11 +110,13 @@ public:
     Vector& operator=(Vector<T>&& other) {
         if (this != &other) {
             this->clear();
-            this->reserve(other.m_capacity);
-
-            for (auto& item : other) {
-                this->append(item);
+            if (m_data) {
+                kfree(m_data);
             }
+
+            m_size = other.m_size;
+            m_capacity = other.m_capacity;
+            m_data = other.m_data;
 
             other.m_data = nullptr;
             other.m_size = 0;
@@ -152,7 +157,7 @@ public:
 
     T take_first() {
         T item = m_data[0];
-        this->remove(0);
+        this->remove_first();
 
         return item;
     }
@@ -180,18 +185,15 @@ public:
         }
 
         T* data = reinterpret_cast<T*>(kmalloc(sizeof(T) * capacity));
-        memset(data, 0, sizeof(T) * capacity);
+        std::memset(data, 0, sizeof(T) * capacity);
 
         for (size_t i = 0; i < m_size; i++) {
-            new (data + i) T(m_data[i]);
+            new (data + i) T(move(m_data[i]));
+            m_data[i].~T();
         }
 
         m_capacity = capacity;
         if (m_data) {
-            for (size_t i = 0; i < m_size; i++) {
-                m_data[i].~T();
-            }
-
             kfree(m_data);
         }
 
@@ -200,7 +202,19 @@ public:
 
     void resize(size_t size) {
         this->reserve(size);
+        for (size_t i = m_size; i < size; i++) {
+            new (m_data + i) T();
+        }
+
         m_size = size;
+    }
+
+    void grow_capacity(size_t new_capacity) {
+        if (new_capacity <= m_capacity) {
+            return;
+        }
+
+        this->reserve(max(new_capacity, m_capacity * 2));
     }
 
     void shrink_to_fit() {
@@ -211,14 +225,15 @@ public:
         this->reserve(m_size);
     }
 
-    void append(const T& value) {
-        if (m_size >= m_capacity) {
-            this->reserve(m_capacity == 0 ? 1 : m_capacity * 2);
-        }
+    void append(T&& value) {
+        this->grow_capacity(m_size + 1);
 
-        
-        new (m_data + m_size) T(value);
+        new (m_data + m_size) T(move(value));
         m_size++;
+    }
+
+    void append(const T& value) {
+        this->append(T(value));
     }
 
     void append(const T* data, size_t size) {
@@ -237,7 +252,12 @@ public:
         }
     }
 
-    void remove(size_t index) {
+    void remove(const Iterator& it) {
+        if (it == this->end()) {
+            return;
+        }
+
+        auto index = it.offset();
         if (index >= m_size) {
             return;
         }
@@ -249,15 +269,6 @@ public:
         }
 
         m_size--;
-    }
-
-    void remove(const Iterator& it) {
-        if (it == this->end()) {
-            return;
-        }
-
-        auto offset = it.offset();
-        this->remove(offset);
     }
 
     void remove(const T& value) {
@@ -273,13 +284,8 @@ public:
         m_size--;
     }
 
-    void reverse() {
-        for (size_t i = 0; i < m_size / 2; i++) {
-            T temp = m_data[i];
-
-            m_data[i] = m_data[m_size - i - 1];
-            m_data[m_size - i - 1] = temp;
-        }
+    void remove_first() {
+        this->remove(this->begin());
     }
 
     Iterator find(const T& value) {

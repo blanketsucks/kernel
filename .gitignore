@@ -10,5 +10,7 @@ scripts/qemu.log
 scripts/test
 test
 
+root
+
 disk.img
 kernel.map

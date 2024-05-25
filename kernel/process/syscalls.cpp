@@ -4,10 +4,14 @@
 #include <kernel/process/process.h>
 #include <kernel/arch/interrupts.h>
 #include <kernel/arch/registers.h>
+#include <kernel/posix/sys/mman.h>
+
+#include <std/format.h>
 
 namespace kernel {
 
-static int handle_syscall(Process* process, arch::Registers* regs) {
+static int handle_syscall(Thread* thread, arch::Registers* regs) {
+    auto* process = thread->process();
     switch (regs->eax) {
         case SYS_EXIT: {
             process->sys$exit(regs->ebx);
@@ -24,8 +28,39 @@ static int handle_syscall(Process* process, arch::Registers* regs) {
         case SYS_WRITE: {
             return process->sys$write(regs->ebx, reinterpret_cast<const void*>(regs->ecx), regs->edx);
         }
+        case SYS_FSTAT: {
+            return process->sys$fstat(regs->ebx, reinterpret_cast<stat*>(regs->ecx));
+        }
+        case SYS_MMAP: {
+            auto* args = reinterpret_cast<mmap_args*>(regs->ebx);
+            return reinterpret_cast<int>(process->sys$mmap(args->addr, args->size, args->prot, args->flags, args->fd, args->offset));
+        }
+        case SYS_GETPID: {
+            return process->id();
+        }
+        case SYS_GETPPID: {
+            return process->parent_id();
+        }
+        case SYS_GETTID: {
+            return thread->id();
+        }
+        case SYS_DUP: {
+            return process->sys$dup(regs->ebx);
+        }
+        case SYS_DUP2: {
+            return process->sys$dup2(regs->ebx, regs->ecx);
+        }
+        case SYS_GETCWD: {
+            return process->sys$getcwd(reinterpret_cast<char*>(regs->ebx), regs->ecx);
+        }
+        case SYS_CHDIR: {
+            return process->sys$chdir(reinterpret_cast<const char*>(regs->ebx), regs->ecx);
+        }
+        case SYS_IOCTL: {
+            return process->sys$ioctl(regs->ebx, regs->ecx, regs->edx);
+        }
         default:
-            serial::printf("Unknown syscall: %d\n", regs->eax);
+            dbgln("Unknown syscall {}", regs->eax);
     }
 
     return 0;
@@ -35,9 +70,7 @@ extern "C" void _syscall_interrupt_handler(arch::InterruptRegisters*);
 
 extern "C" void _syscall_handler(arch::Registers* regs) {
     auto* thread = Scheduler::current_thread();
-    auto* process = thread->process();
-
-    regs->eax = handle_syscall(process, regs);
+    regs->eax = handle_syscall(thread, regs);
 }
 
 void setup_syscall_handler() {

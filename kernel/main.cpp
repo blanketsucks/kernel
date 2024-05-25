@@ -41,11 +41,14 @@
 #include <kernel/process/syscalls.h>
 
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/ptsfs.h>
 #include <kernel/fs/ramfs/filesystem.h>
 #include <kernel/fs/ext2fs/filesystem.h>
 
 #include <kernel/arch/arch.h>
 #include <kernel/arch/boot_info.h>
+
+#include <kernel/tty/virtual.h>
 
 using namespace kernel;
 using namespace kernel::devices;
@@ -173,7 +176,6 @@ extern "C" void main(arch::BootInfo const& boot_info) {
 
     setup_syscall_handler();
 
-    DeviceManager::init();
     KeyboardDevice::init();
     MouseDevice::init();
 
@@ -221,7 +223,6 @@ extern "C" void main(arch::BootInfo const& boot_info) {
         entries.resize(gpt.partition_count);
 
         disk->read_sectors(gpt.partition_table_lba, gpt.partition_count, reinterpret_cast<u8*>(entries.data()));
-
         for (auto& entry : entries) {
             if (!entry.is_valid()) {
                 continue;
@@ -260,11 +261,25 @@ extern "C" void main(arch::BootInfo const& boot_info) {
     auto* parser = acpi::Parser::instance();
     parser->init();
 
-    auto fd = vfs->open("/home/test", O_RDONLY, 0).unwrap();
+    auto* ptsfs = new fs::PTSFS();
+    ptsfs->init();
+
+    vfs->mount(ptsfs, vfs->resolve("/dev/pts").unwrap());
+
+    auto* tty0 = new VirtualTTY(0);
+    dbgln("TTY0: {}", tty0);
+
+    auto fd = vfs->open("/bin/shell", O_RDONLY, 0).unwrap();
     ELF elf(fd);
 
-    auto root = vfs->resolve("/").unwrap();
-    auto* process = Process::create_user_process("Userland", elf, root);
+    dbgln("ELF entry: {}", elf.entry());
+
+    auto cwd = vfs->resolve("/res/fonts").unwrap();
+
+    ProcessArguments arguments;
+    arguments.argv = { "/bin/shell" };
+
+    auto* process = Process::create_user_process("/bin/shell", elf, cwd, move(arguments), tty0);
 
     Scheduler::add_process(process);
     Scheduler::init();

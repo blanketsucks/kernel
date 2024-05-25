@@ -23,8 +23,8 @@ public:
 
     static RefPtr<Inode> create(String name, int flags, ino_t parent);
 
-    size_t read(void* buffer, size_t size, size_t offset) const override;
-    size_t write(const void* buffer, size_t size, size_t offset) override;
+    ssize_t read(void* buffer, size_t size, size_t offset) const override;
+    ssize_t write(const void* buffer, size_t size, size_t offset) override;
 
     void truncate(size_t size) override;
 

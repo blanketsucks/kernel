@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/devices/character.h>
+#include <kernel/devices/character_device.h>
 #include <kernel/arch/pic.h>
 
 #include <std/vector.h>
@@ -21,6 +21,10 @@ struct KeyEvent {
     u8 modifiers;
 
     bool is_pressed() const { return this->scancode & 0x80; }
+
+    bool operator==(const KeyEvent& other) const {
+        return this->ascii == other.ascii && this->scancode == other.scancode && this->modifiers == other.modifiers;
+    }
 };
 
 class KeyboardDevice : public CharacterDevice, IRQHandler {
@@ -35,8 +39,8 @@ public:
     static void init();
     static KeyboardDevice* instance();
 
-    size_t read(void* buffer, size_t size, size_t offset) override;
-    size_t write(const void* buffer, size_t size, size_t offset) override;
+    ssize_t read(void* buffer, size_t size, size_t offset) override;
+    ssize_t write(const void* buffer, size_t size, size_t offset) override;
 
     bool is_full() const { return m_key_buffer.size() == MAX_KEY_BUFFER_SIZE; }
 

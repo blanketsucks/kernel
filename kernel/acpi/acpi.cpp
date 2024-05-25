@@ -5,6 +5,7 @@
 #include <kernel/serial.h>
 
 #include <std/utility.h>
+#include <std/format.h>
 #include <std/cstring.h>
 
 #include <lai/core.h>

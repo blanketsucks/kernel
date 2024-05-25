@@ -7,7 +7,9 @@
 
 namespace kernel {
 
+struct ProcessArguments;
 class Process;
+
 class Blocker;
 
 class Thread {
@@ -32,8 +34,8 @@ public:
         u32 cr3;
     } PACKED;
 
-    static Thread* create(u32 id, String name, Process*, Entry);
-    static Thread* create(String name, Process*, Entry);
+    static Thread* create(u32 id, String name, Process*, Entry, ProcessArguments&);
+    static Thread* create(String name, Process*, Entry, ProcessArguments&);
 
     u32 id() const { return m_id; }
     State state() const { return m_state; }
@@ -68,9 +70,10 @@ private:
     friend class Process;
     friend class Scheduler;
 
-    Thread(String name, Process*, u32 id, Entry);
+    Thread(String name, Process*, u32 id, Entry, ProcessArguments&);
 
     void create_stack();
+    void setup_thread_arguments();
 
     void enqueue(Thread*);
     Thread* take_next();
@@ -87,6 +90,7 @@ private:
     Registers m_registers;
 
     Process* m_process;
+    ProcessArguments& m_arguments;
 
     void* m_exit_value = nullptr;
 

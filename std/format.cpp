@@ -7,6 +7,7 @@
     #include <kernel/process/threads.h>
     #include <kernel/process/process.h>
 #else
+    #include <unistd.h>
     #include <stdio.h>
 #endif
 
@@ -56,6 +57,7 @@ StyleResult parse_format_style(const char* fmt) {
         case 'x': style.hex = true; break;
         case 'X': style.hex = true; style.uppercase = true; break;
         case 'p': style.pointer = true; break;
+        case 'c': style.character = true; break;
     }
 
     while (*fmt && *fmt != '}') {
@@ -125,7 +127,7 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
 #ifdef __KERNEL__
     kernel::serial::write(value.data(), value.size());
 #else
-    printf("%.*s", value.size(), value.data());
+    write(1, value.data(), value.size());
 #endif
 }
 

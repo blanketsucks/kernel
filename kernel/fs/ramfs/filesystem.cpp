@@ -10,7 +10,7 @@ RefPtr<Inode> Inode::create(String name, int flags, ino_t parent) {
     return RefPtr(new Inode(s_next_id++, move(name), flags, parent));
 }
 
-size_t Inode::read(void* buffer, size_t size, size_t offset) const {
+ssize_t Inode::read(void* buffer, size_t size, size_t offset) const {
     if (offset >= m_size) {
         return 0;
     } else if (offset + size > m_size) {
@@ -21,7 +21,7 @@ size_t Inode::read(void* buffer, size_t size, size_t offset) const {
     return size;
 }
 
-size_t Inode::write(const void* buffer, size_t size, size_t offset) {
+ssize_t Inode::write(const void* buffer, size_t size, size_t offset) {
     if (offset + size > m_size) {
         this->truncate(offset + size);
     }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/devices/block_device.h>
+#include <kernel/posix/errno.h>
 
 namespace kernel::devices {
 
@@ -32,15 +34,18 @@ constexpr u16 VBE_DISABLED = 0x00;
 constexpr u16 VBE_ENABLED = 0x01;
 constexpr u16 VBE_LFB_ENABLED = 0x40;
 
-class BochsVGADevice {
+class BochsVGADevice : public BlockDevice {
 public:
     static constexpr u16 VENDOR_ID = 0x1234;
     static constexpr u16 DEVICE_ID = 0x1111;
 
-    BochsVGADevice() = default;
+    BochsVGADevice() : BlockDevice(29, 0, 0) {}
 
     static BochsVGADevice* create(i32 width, i32 height);
     static BochsVGADevice* instance();
+
+    bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
+    bool write_blocks(const void*, size_t, size_t) override { return -EINVAL; }
 
     u32* framebuffer() const { return m_framebuffer; }
     u32 physical_address() const { return m_physical_address; }
@@ -49,7 +54,7 @@ public:
     i32 height() const { return m_height; }
     i32 bpp() const { return m_bpp; }
 
-    size_t size() const { return m_width * m_height * (m_bpp / 8); }
+    size_t size() const override { return m_width * m_height * (m_bpp / 8); }
 
     void write_register(u16 index, u16 value);
     u16 read_register(u16 index);
@@ -61,6 +66,9 @@ public:
 
     void set_pixel(i32 x, i32 y, u32 color);
 
+    ErrorOr<void*> mmap(Process&, size_t size, int prot) override;
+    ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
+    
 private:
     static BochsVGADevice* s_instance;
 
