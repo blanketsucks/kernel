@@ -8,7 +8,7 @@ void* mmap(void* addr, size_t size, int prot, int flags, int fd, off_t offset) {
     return reinterpret_cast<void*>(syscall(SYS_MMAP, reinterpret_cast<uintptr_t>(&args)));
 }
 
-int munmap(void* addr, size_t size) {
+int munmap(void*, size_t) {
     // FIXME: Implement
     return 0;
 }

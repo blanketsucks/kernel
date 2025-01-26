@@ -12,7 +12,7 @@
         if (result.is_err()) {          \
             return result.error();      \
         }                               \
-        result.value();                 \
+        result.release_value();         \
     })
 
 #define IGNORE(expr)                    \
@@ -43,6 +43,8 @@ public:
     const E& error() const { return m_error; }
     E& error() { return m_error; }
 
+    T release_value() { return move(m_value); }
+
     T& unwrap() {
         if (this->is_err()) {
             kernel::panic("Result::unwrap() called on an error");
@@ -67,7 +69,8 @@ public:
     bool is_err() const { return has_err; }
     bool is_ok() const { return !is_err(); }
 
-    void value() const { return; } // Added here to make it possible to use the TRY() macro
+    void value() const { return; }
+    void release_value() { return; }
 
     const E& error() const { return m_error; }
     E& error() { return m_error; }

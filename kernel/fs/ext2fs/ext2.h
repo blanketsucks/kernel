@@ -50,7 +50,7 @@ enum class RequiredFeature : u32 {
 enum class ReadOnlyFeature : u32 {
     SparseSuperblock = 0x0001,          // Sparse superblocks and group descriptor tables
     LargeFileSize = 0x0002,             // Large file size support (File system uses a 64-bit file size)
-    BTreeDirectory = 0x0004             // 	Directory contents are stored in the form of a Binary Tree
+    BTreeDirectory = 0x0004             // Directory contents are stored in the form of a Binary Tree
 };
 
 MAKE_ENUM_BITWISE_OPS(OptionalFeature)
@@ -100,51 +100,52 @@ MAKE_ENUM_BITWISE_OPS(InodeType)
 MAKE_ENUM_BITWISE_OPS(InodePermission)
 
 struct Superblock {
-	u32 total_inodes;
-	u32 total_blocks;
-	u32 superuser_blocks;
-	u32 free_blocks;
-	u32 free_inodes;
-	u32 superblock_block;
-	u32 block_size;            // log2(block size) - 10 (block size = 1024 << block_size)
-	u32 fragment_size;         // log2(fragment size) - 10 (fragment size = 1024 << fragment_size)
-	u32 blocks_per_group;
-	u32 fragments_per_group;
-	u32 inodes_per_group;
-	u32 last_mount_time;       // In POSIX time
-	u32 last_write_time;       // In POSIX time
-	u16 times_mounted;         // Number of times the volume has been mounted since its last consistency check (fsck)
-	u16 mounts_allowed;        // Number of mounts allowed before a consistency check (fsck) must be done
-	u16 magic;
-	FileSystemStatus state;
-	ErrorHandlingMethod error_handling_method;
-	u16 version_minor;
-	u32 last_check;            // POSIX time of last consistency check (fsck)
-	u32 forced_check_interval; // POSIX time interval between forced consistency checks (fsck)
-	OSID os_id;
-	u32 version_major;
-	u16 reserved_user;
-	u16 reserved_group;
+    u32 total_inodes;
+    u32 total_blocks;
+    u32 superuser_blocks;
+    u32 free_blocks;
+    u32 free_inodes;
+    u32 superblock_block;
+    u32 block_size;            // log2(block size) - 10 (block size = 1024 << block_size)
+    u32 fragment_size;         // log2(fragment size) - 10 (fragment size = 1024 << fragment_size)
+    u32 blocks_per_group;
+    u32 fragments_per_group;
+    u32 inodes_per_group;
+    u32 last_mount_time;       // In POSIX time
+    u32 last_write_time;       // In POSIX time
+    u16 times_mounted;         // Number of times the volume has been mounted since its last consistency check (fsck)
+    u16 mounts_allowed;        // Number of mounts allowed before a consistency check (fsck) must be done
+    u16 magic;
+    FileSystemStatus state;
+    ErrorHandlingMethod error_handling_method;
+    u16 version_minor;
+    u32 last_check;            // POSIX time of last consistency check (fsck)
+    u32 forced_check_interval; // POSIX time interval between forced consistency checks (fsck)
+    OSID os_id;
+    u32 version_major;
+    u16 reserved_user;
+    u16 reserved_group;
 
     // Extended superblock fields
-	u32 first_inode;
-	u16 inode_size;
-	u16 superblock_group;
-	OptionalFeature optional_features;
-	RequiredFeature required_features;
-	ReadOnlyFeature ro_features;
+    u32 first_inode;
+    u16 inode_size;
+    u16 superblock_group;
+    OptionalFeature optional_features;
+    RequiredFeature required_features;
+    ReadOnlyFeature ro_features;
     Array<u8, 16> uuid;
     Array<u8, 16> volume_name;
     Array<u8, 64> last_mount_path;
-	u32 compression_algorithm;
-	u8 preallocated_file_blocks; // Number of blocks to preallocate for files
-	u8 preallocated_directory_blocks;
-	u16 unused;
+    u32 compression_algorithm;
+    u8 preallocated_file_blocks; // Number of blocks to preallocate for files
+    u8 preallocated_directory_blocks;
+    u16 unused;
     Array<u8, 16> journal_id;
-	u32 journal_inode;
-	u32 journal_device;
-	u32 orphan_inode_head;
-	u8 padding[788];
+    u32 journal_inode;
+    u32 journal_device;
+    u32 orphan_inode_head;
+    
+    u8 padding[788];
 } PACKED;
 
 static_assert(sizeof(Superblock) == SECTOR_SIZE * 2);

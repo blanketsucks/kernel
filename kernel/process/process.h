@@ -34,7 +34,7 @@ public:
     };
 
     static Process* create_kernel_process(String name, void (*entry)());
-    static Process* create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments&&, TTY* = nullptr);
+    static Process* create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments, TTY* = nullptr);
 
     State state() const { return m_state; }
 
@@ -63,7 +63,7 @@ public:
 
     Thread* spawn(String name, void (*entry)());
 
-    Process* fork();
+    Process* fork(arch::Registers&);
 
     void kill();
     void handle_page_fault(arch::InterruptRegisters*, VirtualAddress);
@@ -76,11 +76,9 @@ public:
     void validate_read(const void* ptr, size_t size);
     void validate_write(const void* ptr, size_t size);
 
-    
-
     void sys$exit(int status);
 
-    int sys$open(const char* path, size_t path_length, int flags, mode_t mode);
+    int sys$open(const char* path, int flags, mode_t mode);
     int sys$close(int fd);
     ssize_t sys$read(int fd, void* buffer, size_t size);
     ssize_t sys$write(int fd, const void* buffer, size_t size);
@@ -93,9 +91,13 @@ public:
     void* sys$mmap(void* address, size_t size, int prot, int flags, int fd, off_t offset);
 
     int sys$getcwd(char* buffer, size_t size);
-    int sys$chdir(const char* path, size_t path_length);
+    int sys$chdir(const char* path);
 
     int sys$ioctl(int fd, unsigned request, unsigned arg);
+
+    int sys$fork(arch::Registers&);
+
+    int sys$execve(const char* path, char* const argv[], char* const envp[]);
     
 private:
     friend class Scheduler;
@@ -117,6 +119,8 @@ private:
 
     memory::Region* validate_pointer_access(const void* ptr, bool write);
     void validate_pointer_access(const void* ptr, size_t size, bool write);
+
+    size_t validate_string(const char* ptr);
 
     RefPtr<fs::FileDescriptor> get_file_descriptor(int fd);
 

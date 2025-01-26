@@ -28,18 +28,6 @@ struct Line {
     size_t prompt_length;
 };
 
-class Cursor {
-public:
-    int x() const { return m_x; }
-    int y() const { return m_y; }
-
-    void move(gfx::RenderContext&, int x, int y, int height);
-
-private:
-    int m_x = 0;
-    int m_y = 0;
-};
-
 class Terminal {
 public:
     Terminal(gfx::RenderContext&, RefPtr<gfx::Font>);
@@ -50,7 +38,9 @@ public:
     Line const& current_line() const;
 
     void on_char(char);
+    
     void add_line(String text);
+    void add_line_without_prompt(String text);
 
     void render(int size = 16);
 
@@ -62,8 +52,6 @@ private:
 
     Vector<Line> m_lines;
     u32 m_current_line = 0;
-
-    Cursor m_cursor;
 };
 
 }

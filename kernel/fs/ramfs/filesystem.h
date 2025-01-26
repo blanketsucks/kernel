@@ -71,7 +71,7 @@ class FileSystem : public fs::FileSystem {
 public:
     static FileSystem* create();
 
-    u8 id() const override { return 0x01; }
+    fs::FileSystemID id() const override { return fs::FileSystemID::RamFS; }
     StringView name() const override { return "ramfs"; }
 
     ino_t root() const override { return ROOT_INODE; }

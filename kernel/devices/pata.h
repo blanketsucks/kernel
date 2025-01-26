@@ -11,12 +11,20 @@ namespace kernel::devices {
 
 enum class ATACommand : u8 {
     Identify = 0xEC,
-    Read = 0x20,    // For 28-bit PIO mode
-    Write = 0x30,   // For 28-bit PIO mode
     CacheFlush = 0xE7,
 
-    ReadExt = 0x24, // For 48-bit PIO mode
-    WriteExt = 0x34 // For 48-bit PIO mode
+    // For 28-bit mode
+    Read        = 0x20,
+    ReadDMA     = 0xC8,
+    Write       = 0x30,
+    WriteDMA    = 0xCA,
+
+    // For 48-bit mode
+    ReadExt     = 0x24,
+    ReadDMAExt  = 0x25,
+    WriteExt    = 0x34,
+    WriteDMAExt = 0x35
+
 };
 
 enum class ATAStatus : u8 {
@@ -45,7 +53,9 @@ enum class ATARegister : u8 {
     Control = 0x0C,
     AltStatus = 0x0C,
 
-    BusMasterStatus = 0x2
+    BMStatus = 0x2,
+    BMPRDT = 0x4,
+    BMRead = 0x8
 };
 
 enum class ATADrive : u8 {
@@ -74,6 +84,8 @@ public:
 
     constexpr static u16 PRIMARY_IRQ = 14;
     constexpr static u16 SECONDARY_IRQ = 15;
+
+    constexpr static size_t DMA_BUFFER_SIZE = PAGE_SIZE * 10;
     
     static PATADevice* create(ATAChannel channel, ATADrive drive);
 
@@ -88,7 +100,7 @@ public:
 
     bool has_48bit_pio() const { return m_has_48bit_pio; }
 
-    size_t max_io_block_count() const; // The maximum number of blocks that can be read/written in a single operation
+    size_t max_io_block_count() const override;
 
     u16 control_port() const { return m_control_port; }
     u16 data_port() const { return m_data_port; }
@@ -98,7 +110,7 @@ public:
     void wait_for_irq();
     void poll() const; // An alternative to IRQs
 
-    void prepare_for(ATACommand command, u32 lba, u16 sectors) const;
+    void prepare_for(ATACommand command, u32 lba, u16 sectors);
 
     bool read_blocks(void* buffer, size_t count, size_t block) override;
     bool write_blocks(const void* buffer, size_t count, size_t block) override;

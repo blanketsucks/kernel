@@ -12,10 +12,10 @@ public:
     Stack() = default;
     Stack(
         void* stack, size_t size
-    ) : m_stack(reinterpret_cast<u32>(stack) + size), m_top(m_stack), m_size(size) {}
+    ) : m_stack(reinterpret_cast<uintptr_t>(stack) + size), m_top(m_stack), m_size(size) {}
 
-    u32 value() const { return reinterpret_cast<u32>(m_stack); }
-    u32 top() const { return m_top; }
+    uintptr_t value() const { return m_stack; }
+    uintptr_t top() const { return m_top; }
 
     size_t size() const { return m_size; }
     size_t offset() const { return m_offset; }
@@ -28,9 +28,18 @@ public:
         *reinterpret_cast<T*>(m_stack) = value;
     }
 
+    template<typename T>
+    void walk(T&& callback) {
+        uintptr_t stack = m_stack;
+        while (stack < m_top) {
+            callback(reinterpret_cast<void*>(stack));
+            stack += sizeof(uintptr_t);
+        }
+    }
+
 private:
-    u32 m_stack = 0;
-    u32 m_top;
+    uintptr_t m_stack = 0;
+    uintptr_t m_top = 0;
 
     size_t m_size = 0;
     size_t m_offset = 0;

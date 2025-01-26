@@ -52,7 +52,7 @@ bool PhysicalMemoryManager::is_allocated(void* frame) const {
         return false;
     }
 
-    auto iterator = m_physical_frames.find(reinterpret_cast<u32>(frame));
+    auto iterator = m_physical_frames.find(reinterpret_cast<uintptr_t>(frame));
     return iterator == m_physical_frames.end();
 }
 
@@ -63,7 +63,7 @@ ErrorOr<void> PhysicalMemoryManager::free(void* frame) {
         return Error(EINVAL);
     }
 
-    m_physical_frames.push(reinterpret_cast<u32>(frame));
+    m_physical_frames.push(reinterpret_cast<uintptr_t>(frame));
     m_allocations--;
 
     return {};

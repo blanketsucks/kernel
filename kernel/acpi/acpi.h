@@ -5,8 +5,8 @@
 
 namespace kernel::acpi {
 
-constexpr u32 RSDP_START = 0x000E0000;
-constexpr u32 RSDP_END = 0x000FFFFF;
+constexpr PhysicalAddress RSDP_START = 0x000E0000;
+constexpr PhysicalAddress RSDP_END = 0x000FFFFF;
 
 struct RSDP {
     char signature[8];

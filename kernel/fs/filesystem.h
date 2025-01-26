@@ -8,6 +8,12 @@
 
 namespace kernel::fs {
 
+enum class FileSystemID : u8 {
+    RamFS = 0x01,
+    Ext2FS = 0x02,
+    PtsFS = 0x03
+};
+
 class FileSystem {
 public:
     virtual ~FileSystem() = default;
@@ -16,7 +22,7 @@ public:
         return this->id() == other.id();
     }
 
-    virtual u8 id() const = 0;
+    virtual FileSystemID id() const = 0;
     virtual StringView name() const = 0;
 
     virtual ino_t root() const = 0;

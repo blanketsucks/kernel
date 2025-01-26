@@ -164,125 +164,136 @@ Vector2 barycentric(Vector2 a, Vector2 b, Vector2 c) {
     };
 }
 
+static PATADevice* disk = nullptr;
+
+void stage2();
+
 extern "C" void main(arch::BootInfo const& boot_info) {
     serial::init();
-    vga::clear();
-
     kernel::run_global_constructors();
     arch::init();
 
-    pic::init();
-    pit::init();
+    dbgln("{:#p}", boot_info.kernel_virtual_base);
+    dbgln("{:#p}", boot_info.kernel_physical_base);
 
-    setup_syscall_handler();
+    // pic::init();
+    // pit::init();
 
-    KeyboardDevice::init();
-    MouseDevice::init();
+    // setup_syscall_handler();
 
-    memory::MemoryManager::init(boot_info);
+    // KeyboardDevice::init();
+    // MouseDevice::init();
 
-    asm volatile("sti");
+    // memory::MemoryManager::init(boot_info);
 
-    auto* device = BochsVGADevice::create(800, 600);
+    // asm volatile("sti");
 
-    serial::printf("PCI Bus:\n");
-    pci::enumerate([](pci::Device device) {
-        serial::printf("  Device: '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
-    });
+    // BochsVGADevice::create(800, 600);
 
-    PATADevice* disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
-    if (!disk) {
-        serial::printf("Failed to create ATA device\n");
-        return;
-    }
+    // serial::printf("PCI Bus:\n");
+    // pci::enumerate([](pci::Device device) {
+    //     serial::printf("  Device: '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
+    // });
 
-    MasterBootRecord mbr = {};
-    disk->read_sectors(0, 1, reinterpret_cast<u8*>(&mbr));
+    // disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
+    // if (!disk) {
+    //     serial::printf("Failed to create ATA device\n");
+    //     return;
+    // }
 
-    u32 offset = 0;
-    // FIXME: This assumes that the OS partition is always the first
-    if (!mbr.is_protective()) {
-        for (auto& partition : mbr.partitions) {
-            if (!partition.is_bootable()) {
-                continue;
-            }
+    // auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
+    // Scheduler::add_process(process);
 
-            offset = partition.offset;
-            break;
-        }
-    } else {
-        GPTHeader gpt = {};
-        disk->read_sectors(1, 1, reinterpret_cast<u8*>(&gpt));
+    // Scheduler::init();
 
-        if (memcmp(gpt.signature, "EFI PART", 8) != 0) {
-            serial::printf("Invalid GPT header signature\n");
-            return;
-        }
+    // MasterBootRecord mbr = {};
+    // disk->read_sectors(0, 1, reinterpret_cast<u8*>(&mbr));
 
-        Vector<GPTEntry> entries;
-        entries.resize(gpt.partition_count);
+    // u32 offset = 0;
+    // // FIXME: This assumes that the OS partition is always the first
+    // if (!mbr.is_protective()) {
+    //     for (auto& partition : mbr.partitions) {
+    //         if (!partition.is_bootable()) {
+    //             continue;
+    //         }
 
-        disk->read_sectors(gpt.partition_table_lba, gpt.partition_count, reinterpret_cast<u8*>(entries.data()));
-        for (auto& entry : entries) {
-            if (!entry.is_valid()) {
-                continue;
-            }
+    //         offset = partition.offset;
+    //         break;
+    //     }
+    // } else {
+    //     GPTHeader gpt = {};
+    //     disk->read_sectors(1, 1, reinterpret_cast<u8*>(&gpt));
 
-            offset = entry.first_lba;
-            break;
-        }
-    }
+    //     if (memcmp(gpt.signature, "EFI PART", 8) != 0) {
+    //         serial::printf("Invalid GPT header signature\n");
+    //         return;
+    //     }
 
-    BlockDevice* partition = nullptr;
-    if (offset != 0) {
-        partition = PartitionDevice::create(3, 1, disk, offset);
-    } else {
-        partition = disk;
-    }
+    //     Vector<GPTEntry> entries;
+    //     entries.resize(gpt.partition_count);
 
-    auto fs = ext2fs::FileSystem::create(partition);
-    if (!fs) {
-        serial::printf("Could not create main ext2 filesystem.\n");
-        return;
-    }
+    //     disk->read_sectors(gpt.partition_table_lba, gpt.partition_count, reinterpret_cast<u8*>(entries.data()));
+    //     for (auto& entry : entries) {
+    //         if (!entry.is_valid()) {
+    //             continue;
+    //         }
 
-    auto vfs = fs::vfs();
-    vfs->mount_root(fs);
+    //         offset = entry.first_lba;
+    //         break;
+    //     }
+    // }
 
-    Vector2 a = { 100, 25 };
-    Vector2 b = { 200, 50 };
-    Vector2 c = { 150, 200 };
+    // BlockDevice* partition = nullptr;
+    // if (offset != 0) {
+    //     partition = PartitionDevice::create(3, 1, disk, offset);
+    // } else {
+    //     partition = disk;
+    // }
 
-    draw_triangle(device, a, b, c, 0x34EBB7);
+    // auto* fs = ext2fs::FileSystem::create(partition);
+    // if (!fs) {
+    //     serial::printf("Could not create main ext2 filesystem.\n");
+    //     return;
+    // }
 
-    Vector2 center = barycentric(a, b, c);
-    device->set_pixel(center.x, center.y, 0xFF0000);
+    // auto* vfs = fs::vfs();
+    // vfs->mount_root(fs);
 
-    auto* parser = acpi::Parser::instance();
-    parser->init();
+    // Vector2 a = { 100, 25 };
+    // Vector2 b = { 200, 50 };
+    // Vector2 c = { 150, 200 };
 
-    auto* ptsfs = new fs::PTSFS();
-    ptsfs->init();
+    // draw_triangle(device, a, b, c, 0x34EBB7);
 
-    vfs->mount(ptsfs, vfs->resolve("/dev/pts").unwrap());
+    // Vector2 center = barycentric(a, b, c);
+    // device->set_pixel(center.x, center.y, 0xFF0000);
 
-    auto* tty0 = new VirtualTTY(0);
-    dbgln("TTY0: {}", tty0);
+    // parse_symbols_from_fs();
 
-    auto fd = vfs->open("/bin/shell", O_RDONLY, 0).unwrap();
-    ELF elf(fd);
+    // auto* parser = acpi::Parser::instance();
+    // parser->init();
 
-    dbgln("ELF entry: {}", elf.entry());
+    // auto* ptsfs = new fs::PTSFS();
+    // ptsfs->init();
 
-    auto cwd = vfs->resolve("/res/fonts").unwrap();
+    // vfs->mount(ptsfs, vfs->resolve("/dev/pts").unwrap());
 
-    ProcessArguments arguments;
-    arguments.argv = { "/bin/shell" };
+    // auto* tty0 = new VirtualTTY(0);
 
-    auto* process = Process::create_user_process("/bin/shell", elf, cwd, move(arguments), tty0);
+    // auto fd = vfs->open("/bin/shell", O_RDONLY, 0).unwrap();
+    // ELF elf(fd);
 
-    Scheduler::add_process(process);
-    Scheduler::init();
+    // auto cwd = vfs->resolve("/").unwrap();
+
+    // ProcessArguments arguments;
+    // arguments.argv = { "/bin/shell" };
+
+    // auto* process = Process::create_user_process("/bin/shell", elf, cwd, move(arguments), tty0);
+
+    // auto* kprocess = Process::create_kernel_process("kernel");
+
+    // Scheduler::add_process(process);
+    // Scheduler::init();
 
 #if 0
     ELF elf(inode->file());
@@ -322,6 +333,37 @@ extern "C" void main(arch::BootInfo const& boot_info) {
     }
 }
 
-multiboot_info_t* load_multiboot_header(u32 address) {
-    return reinterpret_cast<multiboot_info_t*>(address);
+void stage2() {
+    auto* process = Scheduler::current_process();
+
+    auto* fs = ext2fs::FileSystem::create(disk);
+    if (!fs) {
+        serial::printf("Could not create main ext2 filesystem.\n");
+    }
+
+    auto* vfs = fs::vfs();
+    vfs->mount_root(fs);
+    
+    parse_symbols_from_fs();
+    auto* ptsfs = new fs::PTSFS();
+    ptsfs->init();
+
+    vfs->mount(ptsfs, vfs->resolve("/dev/pts").unwrap());
+
+    auto* tty0 = new VirtualTTY(0);
+    
+    auto fd = vfs->open("/bin/test", O_RDONLY, 0).unwrap();
+    ELF elf(fd);
+
+    auto cwd = vfs->resolve("/").unwrap();
+
+    ProcessArguments arguments;
+    arguments.argv = { "/bin/test" };
+
+    auto* shell = Process::create_user_process("/bin/test", elf, cwd, move(arguments), tty0);
+    dbgln("Kernel Stage 2 finished");
+    Scheduler::add_process(shell);
+
+
+    process->sys$exit(0);
 }

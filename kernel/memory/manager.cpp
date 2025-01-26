@@ -7,7 +7,6 @@
 #include <kernel/posix/sys/mman.h>
 #include <kernel/panic.h>
 #include <kernel/vga.h>
-#include <kernel/serial.h>
 
 #include <std/cstring.h>
 #include <std/utility.h>
@@ -33,17 +32,20 @@ void MemoryManager::init(arch::BootInfo const& boot_info) {
 }
 
 void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
-    u32 address = 0;
+    VirtualAddress address = 0;
     asm volatile("mov %%cr2, %0" : "=r"(address));
 
     auto* thread = Scheduler::current_thread();
     if (!thread || thread->is_kernel()) {
         PageFault fault = regs->errno;
 
-        // dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->eip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
-        // dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+        dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->rip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
 
-        kernel::panic("Kernel page fault");
+        kernel::print_stack_trace();
+        
+        asm volatile("cli");
+        asm volatile("hlt");
     }
 
     // TODO: Print stacktrace
@@ -145,11 +147,11 @@ void* MemoryManager::allocate_kernel_region(size_t size) {
     return this->allocate(m_kernel_region_allocator, size, PageFlags::Write);
 }
 
-ErrorOr<void> MemoryManager::free_kernel_region(void* start, size_t size) {
-    return this->free(m_kernel_region_allocator, start, size);
+ErrorOr<void> MemoryManager::free_kernel_region(void* ptr, size_t size) {
+    return this->free(m_kernel_region_allocator, ptr, size);
 }
 
-void* MemoryManager::map_physical_region(uintptr_t start, size_t size) {
+void* MemoryManager::map_physical_region(void* ptr, size_t size) {
     size = std::align_up(size, PAGE_SIZE);
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
@@ -158,6 +160,7 @@ void* MemoryManager::map_physical_region(uintptr_t start, size_t size) {
         return nullptr;
     }
 
+    PhysicalAddress start = reinterpret_cast<PhysicalAddress>(ptr);
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         page_directory->map(region->base() + i, start + i, PageFlags::Write);
     }
@@ -189,23 +192,39 @@ void* MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory
 
     auto* kernel_page_directory = arch::PageDirectory::kernel_page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        PhysicalAddress address = page_directory->get_physical_address(reinterpret_cast<VirtualAddress>(ptr));
+        PhysicalAddress address = page_directory->get_physical_address(reinterpret_cast<VirtualAddress>(ptr) + i);
         kernel_page_directory->map(region->base() + i, address, PageFlags::Write);
     }
 
     return reinterpret_cast<void*>(region->base());
 }
 
+void MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
+    void* dst = this->map_physical_region(d, size);
+    void* src = this->map_physical_region(s, size);
 
+    memcpy(dst, src, size);
+
+    this->unmap_physical_region(dst);
+    this->unmap_physical_region(src);
+}
 
 bool MemoryManager::is_mapped(void* addr) {
     auto dir = arch::PageDirectory::kernel_page_directory();
-    return dir->is_mapped(reinterpret_cast<u32>(addr));
+    return dir->is_mapped(reinterpret_cast<VirtualAddress>(addr));
 }
 
 u32 MemoryManager::get_physical_address(void* addr) {
     auto dir = arch::PageDirectory::kernel_page_directory();
-    return dir->get_physical_address(reinterpret_cast<u32>(addr));
+    return dir->get_physical_address(reinterpret_cast<VirtualAddress>(addr));
+}
+
+TemporaryMapping::TemporaryMapping(arch::PageDirectory& page_directory, void* ptr, size_t size) : m_size(size) {
+    m_ptr = (u8*)s_memory_manager.map_from_page_directory(&page_directory, ptr, size);
+}
+
+TemporaryMapping::~TemporaryMapping() {
+    s_memory_manager.unmap_physical_region(m_ptr);
 }
 
 }

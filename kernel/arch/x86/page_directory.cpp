@@ -1,3 +1,4 @@
+#include "kernel/common.h"
 #include <kernel/arch/x86/page_directory.h>
 #include <kernel/memory/region.h>
 #include <kernel/posix/sys/mman.h>
@@ -5,9 +6,6 @@
 #include <kernel/panic.h>
 
 #include <std/string.h>
-
-extern "C" u64 _kernel_start;
-extern "C" u64 _kernel_end;
 
 namespace kernel::arch {
 
@@ -23,7 +21,7 @@ PageTable* PageTable::create() {
     PageTable* table = new PageTable;
     ASSERT(table != nullptr, "Failed to allocate PageTable");
 
-    table->m_entries = static_cast<PageTableEntry*>(MM->allocate_kernel_region(1));
+    table->m_entries = static_cast<PageTableEntry*>(MM->allocate_kernel_region(PAGE_SIZE));
     return table;
 }
 
@@ -49,6 +47,47 @@ PageDirectory* PageDirectory::create_user_page_directory() {
     }
 
     return dir;
+}
+
+void PageDirectory::clone_into(PageDirectory* other) const {
+    for (u32 i = 0; i < 768; i++) {
+        auto entry = m_entries[i];
+        if (!entry.is_present()) {
+            continue;
+        }
+
+        auto* page_table = this->get_page_table(i);
+        auto* cloned = PageTable::create();
+
+        for (u32 j = 0; j < 1024; j++) {
+            auto& entry = page_table->at(j);
+            if (!entry.is_present()) {
+                continue;
+            }
+
+            auto& cloned_entry = cloned->at(j);
+            cloned_entry.value = entry.value;
+            
+            cloned_entry.set_physical_address((PhysicalAddress)MM->allocate_physical_frame());
+        }
+
+        // It's safe to modify `entry` since we don't take it by reference
+        entry.set_page_table_address(this->get_physical_address(cloned->address()));
+
+        other->m_entries[i] = entry;
+        other->m_tables[i] = cloned;
+    }
+}
+
+PageDirectory* PageDirectory::clone() const {
+    if (this->is_kernel()) {
+        return nullptr;
+    }
+
+    auto* page_directory = this->create_user_page_directory();
+    this->clone_into(page_directory);
+    
+    return page_directory;
 }
 
 PageTable* PageDirectory::get_page_table(u32 pd) {
@@ -117,17 +156,25 @@ void PageDirectory::unmap(VirtualAddress virt) {
     invlpg(reinterpret_cast<void*>(virt));
 }
 
-PhysicalAddress PageDirectory::get_physical_address(VirtualAddress virt) const {
+PageTableEntry const* PageDirectory::get_page_table_entry(VirtualAddress virt) const {
     u32 pd = get_page_directory_index(virt);
     u32 pt = get_page_table_index(virt);
 
     PageDirectoryEntry const& dir = m_entries[pd];
     if (!dir.is_present()) {
+        return nullptr;
+    }
+
+    return &this->get_page_table(pd)->at(pt);
+}
+
+PhysicalAddress PageDirectory::get_physical_address(VirtualAddress virt) const {
+    PageTableEntry const* entry = this->get_page_table_entry(virt);
+    if (!entry) {
         return 0;
     }
 
-    PageTableEntry const& entry = this->get_page_table(pd)->at(pt);
-    return entry.get_physical_address();
+    return entry->get_physical_address();
 }
 
 bool PageDirectory::is_mapped(VirtualAddress virt) const {
@@ -144,12 +191,10 @@ bool PageDirectory::is_mapped(VirtualAddress virt) const {
 }
 
 void PageDirectory::clear() {
-    for (u32 i = 0; i < 1024; i++) {
-        m_entries[i].value = 0;
-    }
+    memset(m_entries, 0, sizeof(PageDirectoryEntry) * 1024);
 }
 
-u32 PageDirectory::cr3() const {
+VirtualAddress PageDirectory::cr3() const {
     return this->get_physical_address(reinterpret_cast<VirtualAddress>(m_entries));
 }
 
@@ -181,8 +226,8 @@ void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info
 
     size_t size = std::align_up(boot_info.kernel_size, PAGE_SIZE);
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        uintptr_t phys = boot_info.kernel_physical_base + i;
-        uintptr_t virt = boot_info.kernel_virtual_base + i;
+        PhysicalAddress phys = boot_info.kernel_physical_base + i;
+        VirtualAddress virt = boot_info.kernel_virtual_base + i;
 
         dir->map(virt, phys, PageFlags::Write); 
     }

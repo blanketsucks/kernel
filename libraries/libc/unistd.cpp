@@ -53,7 +53,11 @@ char* getcwd(char* buffer, size_t size) {
 }
 
 int chdir(const char* path) {
-    return syscall(SYS_CHDIR, path, strlen(path));
+    return syscall(SYS_CHDIR, path);
+}
+
+pid_t fork(void) {
+    return syscall(SYS_FORK);
 }
 
 }

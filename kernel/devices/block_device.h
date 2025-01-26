@@ -17,6 +17,9 @@ public:
 
     size_t block_size() const { return m_block_size; }
 
+    // The maximum number of blocks that can be read/written in a single operation
+    virtual size_t max_io_block_count() const = 0;
+
     virtual bool read_blocks(void* buffer, size_t count, size_t block) = 0;
     virtual bool write_blocks(const void* buffer, size_t count, size_t block) = 0;
 

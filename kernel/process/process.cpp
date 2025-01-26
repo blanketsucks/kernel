@@ -1,3 +1,4 @@
+#include "kernel/memory/manager.h"
 #include <kernel/process/process.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/scheduler.h>
@@ -10,10 +11,10 @@
 namespace kernel {
 
 Process* Process::create_kernel_process(String name, void (*entry)()) {
-    return new Process(1, move(name), true, entry);
+    return new Process(generate_id(), move(name), true, entry);
 }
 
-Process* Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments&& arguments, TTY* tty) {
+Process* Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty) {
     auto* process = new Process(generate_id(), move(name), false, nullptr, cwd, move(arguments), tty);
     process->create_user_entry(elf);
 
@@ -57,8 +58,6 @@ void Process::create_user_entry(ELF elf) {
         m_arguments.argv.extend(move(argv));
     }
 
-    m_page_directory->switch_to(); // FIXME: Should we do this?
-
     auto& file = elf.file();
     for (auto& ph : elf.program_headers()) {
         if (ph.p_type != PT_LOAD || ph.p_vaddr == 0) {
@@ -69,22 +68,26 @@ void Process::create_user_entry(ELF elf) {
         size_t size = std::align_up(ph.p_memsz, PAGE_SIZE);
         
         u8* region = reinterpret_cast<u8*>(this->allocate_at(address, size, PageFlags::Write));
+        memory::TemporaryMapping temp(*m_page_directory, region, size);
 
         file.seek(ph.p_offset, SEEK_SET);
-        file.read(region + (ph.p_vaddr - address), ph.p_filesz);
+        file.read(temp.ptr() + (ph.p_vaddr - address), ph.p_filesz);
     }
 
     auto entry = reinterpret_cast<void(*)()>(elf.entry());
-
-    auto* dir = arch::PageDirectory::kernel_page_directory();
-    dir->switch_to();
     
     auto* thread = Thread::create(m_id, "main", this, entry, m_arguments);
     this->add_thread(thread);
 }
 
-Process* Process::fork() {
-    return nullptr;
+Process* Process::fork(arch::Registers& registers) {
+    auto* process = new Process(generate_id(), m_name, false, nullptr, m_cwd, m_arguments, m_tty);
+    process->m_allocator = m_allocator.clone_with_page_directory(process->m_page_directory);
+
+    auto* thread = new Thread(process, registers);
+    process->add_thread(thread);
+
+    return process;
 }
 
 void Process::add_thread(Thread* thread) {
@@ -157,13 +160,22 @@ void Process::notify_exit(Thread* thread) {
 }
 
 void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress address) {
-    // FIXME: Send proper signal once that is implemented
+    // TODO: Send proper signal once that is implemented
     memory::PageFault fault = regs->errno;
 
     auto* region = m_allocator.find_region(address, true);
     if (!region || !region->is_file_backed()) {
-        dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->eip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
-        dbgln("  \033[1;31mUnrecoverable page fault.\033[0m", m_name.data(), m_id);
+        dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->rip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+
+        dbgln("Process memory regions:");
+        m_allocator.for_each_region([](memory::Region* region) {
+            if (!region->used()) {
+                return;
+            }
+
+            dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
+        });
 
         this->kill();
     }
@@ -182,10 +194,10 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
 memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
     auto* region = m_allocator.find_region(reinterpret_cast<VirtualAddress>(ptr), true);
     if (!region) {
-        dbgln("Invalid memory access at {:#}. Killing.", m_id, ptr);
+        dbgln("Invalid memory access at {:#}. Killing.", ptr);
         this->kill();
     } else if (write && !region->is_writable()) {
-        dbgln("Invalid memory access at {:#}. Killing.", m_id, ptr);
+        dbgln("Invalid memory access at {:#}. Killing.", ptr);
         this->kill();
     } 
     
@@ -205,7 +217,7 @@ void Process::validate_pointer_access(const void* ptr, size_t size, bool write) 
 
     size_t offset = reinterpret_cast<VirtualAddress>(ptr) - region->base();
     if (offset + size > region->size()) {
-        dbgln("Invalid memory access at {:#}. Killing.", m_id, ptr);
+        dbgln("Invalid memory access at {:#}. Killing.", ptr);
         this->kill();
     }
 }
@@ -216,6 +228,27 @@ void Process::validate_read(const void* ptr, size_t size) {
 
 void Process::validate_write(const void* ptr, size_t size) {
     this->validate_pointer_access(ptr, size, true);
+}
+
+size_t Process::validate_string(const char* ptr) {
+    memory::Region* region = this->validate_pointer_access(ptr, false);
+    size_t offset = reinterpret_cast<VirtualAddress>(ptr) - region->base();
+
+    size_t length = 0;
+    while (*ptr) {
+        // The string could be split across multiple memory regions. I don't know how likely this is to happen in practice.
+        if (offset >= region->size()) {
+            region = this->validate_pointer_access(ptr, false);
+            offset = 0;
+        }
+
+        ptr++;
+        offset++;
+
+        length++;
+    }
+
+    return length;
 }
 
 RefPtr<fs::FileDescriptor> Process::get_file_descriptor(int fd) {
@@ -242,8 +275,8 @@ void Process::sys$exit(int status) {
     this->kill();
 }
 
-int Process::sys$open(const char* path, size_t path_length, int flags, mode_t mode) {
-    this->validate_read(path, path_length);
+int Process::sys$open(const char* path, int flags, mode_t mode) {
+    size_t path_length = this->validate_string(path);
     auto vfs = fs::vfs();
 
     auto result = vfs->open({ path, path_length }, flags, mode, m_cwd);
@@ -364,6 +397,10 @@ void* Process::sys$mmap(void*, size_t size, int prot, int flags, int fileno, off
     auto* region = m_allocator.find_region(address);
     region->set_prot(prot);
 
+    if (flags & MAP_SHARED) {
+        region->set_shared(true);
+    }
+
     return address;
 }
 
@@ -386,8 +423,8 @@ int Process::sys$getcwd(char* buffer, size_t size) {
     return 0;
 }
 
-int Process::sys$chdir(const char* path, size_t path_length) {
-    this->validate_read(path, path_length);
+int Process::sys$chdir(const char* path) {
+    size_t path_length = this->validate_string(path);
 
     auto vfs = fs::vfs();
     auto result = vfs->resolve({ path, path_length }, m_cwd);
@@ -406,6 +443,17 @@ int Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
     }
 
     return file->ioctl(request, arg);
+}
+
+int Process::sys$fork(arch::Registers& registers) {
+    auto* process = this->fork(registers);
+    Scheduler::add_process(process);
+
+    return process->id();
+}
+
+int Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {
+    return 0;
 }
 
 }

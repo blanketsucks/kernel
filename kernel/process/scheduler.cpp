@@ -2,12 +2,14 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
 
+#include <std/format.h>
+
 namespace kernel {
 
 extern "C" void _switch_context(Thread::Registers*, Thread::Registers*);
 extern "C" void _switch_context_no_state(Thread::Registers*);
 
-static u32 s_next_id = 1;
+static u32 s_next_id = 0;
 
 static Vector<Process*> s_processes;
 
@@ -32,42 +34,51 @@ u32 generate_id() {
 void Scheduler::init() {
     memset(&s_tss, 0, sizeof(arch::TSS));
 
-	s_tss.ss0 = 0x10;
-	s_tss.cs = 0x0b;
-	s_tss.ss = 0x13;
-	s_tss.ds = 0x13;
-	s_tss.es = 0x13;
-	s_tss.fs = 0x13;
-	s_tss.gs = 0x13;
+	// s_tss.ss0 = 0x10;
+	// s_tss.cs = 0x0b;
+	// s_tss.ss = 0x13;
+	// s_tss.ds = 0x13;
+	// s_tss.es = 0x13;
+	// s_tss.fs = 0x13;
+	// s_tss.gs = 0x13;
 
-    s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);
-    auto thread = s_kernel_process->get_main_thread();
+    // s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);
 
-    s_current_thread = thread;
-    _switch_context_no_state(&thread->m_registers);
+    // auto thread = s_kernel_process->get_main_thread();
+    // s_current_thread = thread;
+
+    // _switch_context_no_state(&thread->m_registers);
 }
 
-void Scheduler::yield() {
-    for (auto& process : s_processes) {
-        for (auto& [_, thread] : process->threads()) {
-            if (thread->is_blocked() && thread->should_unblock()) {
-                thread->unblock();
-            }
-        }
-    }
+void Scheduler::yield(bool if_idle) {
+    // for (auto& process : s_processes) {
+    //     for (auto& [_, thread] : process->threads()) {
+    //         if (thread->is_blocked() && thread->should_unblock()) {
+    //             thread->unblock();
+    //         }
+    //     }
+    // }
 
-    Thread* next = Scheduler::get_next_thread();
-    if (!next || next == s_current_thread) {
-        return;
-    }
+    // Thread* next = Scheduler::get_next_thread();
+    // if (!next || next == s_current_thread) {
+    //     return;
+    // }
+    
+    // if (if_idle && s_current_thread->process() != s_kernel_process) {
+    //     return;
+    // }
 
-    auto& kernel_stack = next->kernel_stack();
-    s_tss.esp0 = kernel_stack.top();
+    // auto& kernel_stack = next->kernel_stack();
+    // s_tss.esp0 = kernel_stack.top();
 
-    Thread* old = s_current_thread;
-    s_current_thread = next;
+    // Thread* old = s_current_thread;
+    // s_current_thread = next;
 
-    _switch_context(&old->m_registers, &next->m_registers);
+    // if (old->is_running() && old->pid() != s_kernel_process->id()) {
+    //     Scheduler::queue(old);
+    // }
+
+    // _switch_context(&old->m_registers, &next->m_registers);
 }
 
 void Scheduler::add_process(Process* process) {
@@ -94,7 +105,7 @@ Thread* Scheduler::get_next_thread() {
         if (s_current_thread->is_running()) {
             return s_current_thread;
         }
-
+        
         return s_kernel_process->get_main_thread();
     }
 

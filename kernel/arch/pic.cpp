@@ -18,7 +18,7 @@ void IRQHandler::enable_irq_handler() {
 }
 
 void IRQHandler::disable_irq_handler() {
-    pic::set_irq_handler(m_irq, (IRQHandler*)nullptr); // A bit jank but whatever
+    pic::set_irq_handler(m_irq, nullptr); // A bit jank but whatever
 }
 
 void IRQHandler::eoi() {
@@ -36,11 +36,13 @@ extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
     u8 irq = regs->intno - 32;
     IRQHandler* handler = s_irq_handlers[irq];
 
-    if (handler) {
-        handler->handle_interrupt(regs);
-        if (handler->did_eoi()) {
-            return;
-        }
+    if (!handler) {
+        return eoi(irq);
+    }
+    
+    handler->handle_interrupt(regs);
+    if (handler->did_eoi()) {
+        return;
     }
 
     eoi(irq);
@@ -109,7 +111,7 @@ void init() {
     remap();
 
     for (u8 i = 0; i < 16; i++) {
-        arch::set_interrupt_handler(32 + i, reinterpret_cast<u32>(_irq_stub_table[i]), 0x8E);
+        arch::set_interrupt_handler(32 + i, reinterpret_cast<uintptr_t>(_irq_stub_table[i]), 0x8E);
     }
 }
 

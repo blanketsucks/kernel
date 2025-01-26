@@ -9,7 +9,7 @@
 
 #define VERIFY_BLOCK(block)                         \
     if (!block) {                                   \
-        auto result = m_fs->allocate_block();   \
+        auto result = m_fs->allocate_block();       \
         if (result.is_err()) {                      \
             return Error(ENOSPC);                   \
         }                                           \
@@ -54,16 +54,45 @@ ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
         size = this->size() - offset;
     }
 
-    size_t block = offset / m_fs->block_size();
-    size_t block_offset = offset % m_fs->block_size();
+    size_t block_size = m_fs->block_size();
+
+    size_t block = offset / block_size;
+    size_t block_offset = offset % block_size;
+
+    // size_t total_blocks = size / block_size;
+    // size_t remaining_bytes = size % block_size;
+
+    // FIXME: There is something wrong with the following codeblock and I don't know what it is.
+    // if (total_blocks > 1) {
+    //     u8* buf = reinterpret_cast<u8*>(buffer);
+    //     u8 block_buffer[block_size];
+    
+    //     if (block_offset) {
+    //         this->read_blocks(block, 1, block_buffer);
+    //         memcpy(buf, block_buffer + block_offset, block_size - block_offset);
+
+    //         buf += block_size - block_offset;
+
+    //         block++;
+    //         total_blocks--;
+    //     }
+
+    //     this->read_blocks(block, total_blocks, buf);
+    //     if (remaining_bytes) {
+    //         this->read_blocks(block + total_blocks, 1, block_buffer);
+    //         memcpy(buf + size - remaining_bytes, block_buffer, remaining_bytes);
+    //     }
+        
+    //     return size;
+    // }
 
     size_t bytes_read = 0;
-    u8 block_buffer[m_fs->block_size()];
+    u8 block_buffer[block_size];
  
     while (bytes_read < size) {
         this->read_blocks(block, 1, block_buffer);
 
-        size_t bytes_to_read = std::min(size - bytes_read, m_fs->block_size() - block_offset);
+        size_t bytes_to_read = std::min(size - bytes_read, block_size - block_offset);
         memcpy(reinterpret_cast<u8*>(buffer) + bytes_read, block_buffer + block_offset, bytes_to_read);
 
         bytes_read += bytes_to_read;
@@ -153,15 +182,63 @@ struct stat InodeEntry::stat() const {
 }
 
 void InodeEntry::read_blocks(size_t block, size_t count, u8* buffer) const {
+    if (count == 1) {
+        u32 block_pointer = this->get_block_pointer(block);
+        if (block_pointer) {
+            m_fs->read_block(block_pointer, buffer);
+        }
+
+        return;
+    }
+    
+    bool is_contiguous = false;
+
+    u32 start_block = 0;
+    size_t contiguous_count = 0;
+
+    size_t max_contiguous_blocks = m_fs->max_io_block_count();
     for (size_t i = 0; i < count; i++) {
         i32 block_pointer = this->get_block_pointer(block + i);
-        if (block_pointer == 0) {
+        if (!block_pointer) {
             continue;
         }
 
-        m_fs->read_block(block_pointer, buffer);
-        buffer += m_fs->block_size();
+        if (!is_contiguous) {
+            is_contiguous = true;
+            start_block = block_pointer;
+
+            contiguous_count = 1;
+            continue;
+        }
+
+        bool is_next_block_contiguous = static_cast<u32>(block_pointer) == (start_block + contiguous_count);
+        if (is_next_block_contiguous && contiguous_count < max_contiguous_blocks) {
+            contiguous_count++;
+            continue;
+        }
+
+        m_fs->read_blocks(start_block, contiguous_count, buffer);
+        buffer += m_fs->block_size() * contiguous_count;
+
+        is_contiguous = true;
+        start_block = block_pointer;
+
+        contiguous_count = 1;
     }
+
+    if (is_contiguous) {
+        m_fs->read_blocks(start_block, contiguous_count, buffer);
+    }
+
+    // for (size_t i = 0; i < count; i++) {
+    //     i32 block_pointer = this->get_block_pointer(block + i);
+    //     if (block_pointer == 0) {
+    //         continue;
+    //     }
+
+    //     m_fs->read_block(block_pointer, buffer);
+    //     buffer += m_fs->block_size();
+    // }
 }
 
 void InodeEntry::write_blocks(size_t block, size_t count, const u8* buffer) {

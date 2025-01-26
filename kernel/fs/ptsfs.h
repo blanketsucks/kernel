@@ -52,7 +52,7 @@ private:
 
 class PTSFS : public FileSystem {
 public:
-    u8 id() const override { return 0x03; }
+    fs::FileSystemID id() const override { return fs::FileSystemID::PtsFS; }
     StringView name() const override { return "ptsfs"; }
 
     void init();

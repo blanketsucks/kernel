@@ -2,19 +2,21 @@
 #include <kernel/io.h>
 #include <kernel/serial.h>
 
+#include <kernel/process/scheduler.h>
+
 namespace kernel::pit {
 
 u32 s_ticks = 0;
 
-INTERRUPT static void _irq0_handler(arch::InterruptFrame*) {
-    s_ticks++;
-    pic::eoi(0);
-}
+// INTERRUPT static void _irq0_handler(arch::InterruptFrame*) {
+//     s_ticks++;
+//     pic::eoi(0);
+// }
 
-void init() {
-    pic::set_irq_handler(0, reinterpret_cast<uintptr_t>(_irq0_handler));
-    set_frequency(DEFAULT_FREQUENCY);
-}
+// void init() {
+//     pic::set_irq_handler(0, reinterpret_cast<uintptr_t>(_irq0_handler));
+//     set_frequency(DEFAULT_FREQUENCY);
+// }
 
 void set_frequency(u32 frequency) {
     u32 divisor = INPUT_CLOCK / frequency;

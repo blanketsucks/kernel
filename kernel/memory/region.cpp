@@ -2,19 +2,78 @@
 #include <kernel/memory/manager.h>
 #include <kernel/fs/file.h>
 #include <kernel/panic.h>
-#include <kernel/vga.h>
-#include <kernel/serial.h>
 #include <kernel/posix/sys/mman.h>
 
 #include <std/format.h>
 
 namespace kernel::memory {
 
+Region* Region::clone() const {
+    auto* region = new Region(m_range);
+
+    region->m_used = m_used;
+    region->m_prot = m_prot;
+    region->m_file = m_file;
+
+    return region;
+}
+
 RegionAllocator::RegionAllocator(const Range& range, arch::PageDirectory* page_directory) : m_range(range), m_page_directory(page_directory) {
     m_head = new Region(range);
 }
 
-void RegionAllocator::insert_region_before(Region* region, Region* new_region) {
+RegionAllocator RegionAllocator::clone_with_page_directory(arch::PageDirectory* page_directory) const {
+    RegionAllocator allocator = {};
+
+    allocator.m_page_directory = page_directory;
+    allocator.m_head = nullptr;
+
+    Region* prev = nullptr;
+    this->for_each_region([&](Region* region) {
+        if (!region->used()) {
+            if (!prev) {
+                prev = allocator.m_head = region->clone();
+            } else {
+                prev = allocator.insert_region_before(prev, region->clone());
+            }
+
+            return;
+        }
+
+        this->map_into(page_directory, region);
+        if (!prev) {
+            prev = allocator.m_head = region->clone();
+        } else {
+            prev = allocator.insert_region_before(prev, region->clone());
+        }
+    });
+
+    return allocator;
+}
+
+void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* region) const {
+    size_t pages = region->size() / PAGE_SIZE;
+    for (size_t i = 0; i < pages; i++) {
+        VirtualAddress address = region->base() + i * PAGE_SIZE;
+        auto* entry = m_page_directory->get_page_table_entry(address);
+
+        if (!entry) {
+            continue;
+        }
+
+        PhysicalAddress dst = entry->get_physical_address();
+        if (!region->is_shared()) {
+            void* frame = MM->allocate_physical_frame();
+            MM->copy_physical_memory(frame, reinterpret_cast<void*>(dst), PAGE_SIZE);
+    
+            dst = reinterpret_cast<PhysicalAddress>(frame);
+        }
+
+        page_directory->map(address, dst, entry->flags());
+    }
+}
+
+Region* RegionAllocator::insert_region_before(Region* region, Region* new_region) {
     new_region->next = region;
     new_region->prev = region->prev;
 
@@ -25,9 +84,10 @@ void RegionAllocator::insert_region_before(Region* region, Region* new_region) {
     }
 
     region->prev = new_region;
+    return new_region;
 }
 
-void RegionAllocator::insert_region_after(Region* region, Region* new_region) {
+Region* RegionAllocator::insert_region_after(Region* region, Region* new_region) {
     new_region->prev = region;
     new_region->next = region->next;
 
@@ -36,6 +96,7 @@ void RegionAllocator::insert_region_after(Region* region, Region* new_region) {
     }
 
     region->next = new_region;
+    return new_region;
 }
 
 Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int prot) {

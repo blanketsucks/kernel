@@ -15,7 +15,8 @@ u32 generate_id();
 class Scheduler {
 public:
     static void init();
-    static void yield();
+
+    static void yield(bool if_idle = false);
 
     static void add_process(Process*);
     static void queue(Thread*);

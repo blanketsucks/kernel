@@ -37,7 +37,9 @@ public:
     static Thread* create(u32 id, String name, Process*, Entry, ProcessArguments&);
     static Thread* create(String name, Process*, Entry, ProcessArguments&);
 
-    u32 id() const { return m_id; }
+    pid_t id() const { return m_id; }
+    pid_t pid() const;
+
     State state() const { return m_state; }
     String const& name() const { return m_name; }
 
@@ -71,14 +73,16 @@ private:
     friend class Scheduler;
 
     Thread(String name, Process*, u32 id, Entry, ProcessArguments&);
+    Thread(Process*, arch::Registers&);
 
     void create_stack();
+    void push_initial_kernel_stack_values(u32 esp, Registers&);
     void setup_thread_arguments();
 
     void enqueue(Thread*);
     Thread* take_next();
 
-    u32 m_id;
+    pid_t m_id;
     State m_state;
 
     Entry m_entry;

@@ -28,6 +28,8 @@ pid_t gettid(void);
 int dup(int old_fd);
 int dup2(int old_fd, int new_fd);
 
+pid_t fork(void);
+
 char* getcwd(char* buffer, size_t size);
 int chdir(const char* path);
 

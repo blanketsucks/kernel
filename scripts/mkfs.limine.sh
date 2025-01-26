@@ -27,11 +27,11 @@ dev=$(losetup --find --partscan --show "$DISK_IMAGE")
 
 echo "Loopback device set to '$dev'"
 
-sudo parted -s "$dev" mklabel gpt mkpart ESP fat32 0 16M mkpart OS ext2 16M 100% set 1 esp on
+parted -s "${dev}" mklabel gpt mkpart ESP fat16 1MiB 32MiB mkpart OS ext2 32MiB 100% set 1 esp on
 echo "Partition table created."
 
-sudo mkfs.fat -F 32 -n "EFI System" "${dev}p1"
-sudo mkfs.ext2 -q -I 128 -L OS "${dev}p2"
+sudo mkfs.fat -F 16 -n "EFI System" ${dev}p1
+sudo mkfs.ext2 -q -I 128 -L OS ${dev}p2
 
 mkdir -p esp
 mkdir -p mnt
@@ -45,6 +45,7 @@ cp ./limine/BOOTX64.EFI esp/EFI/BOOT/BOOTX64.EFI
 cp ./limine/BOOTIA32.EFI esp/EFI/BOOT/BOOTIA32.EFI
 
 cp ./limine/limine-bios.sys esp/limine-bios.sys
+cp ./limine/limine-bios-cd.bin esp/limine-bios-cd.bin
 cp ./limine.cfg esp/limine.cfg
 cp ../build/kernel/kernel.bin esp/kernel
 

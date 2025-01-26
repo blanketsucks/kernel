@@ -4,14 +4,21 @@
 
 namespace kernel::arch {
 
-struct Registers {
+struct InterruptRegisters {
     u32 gs, fs, es, ds;
     u64 rdi, rsi, rbp, rsp0, rbx, rdx, rcx, rax;
     u32 intno, errno;
-    u64 rip;
-    u32 cs, eflags;
-    u64 rsp;
-    u32 ss;
+    u64 rip, cs, eflags, rsp, ss;
+} PACKED;
+
+struct InterruptFrame {
+    u64 rip, cs, eflags, rsp, ss;
+} PACKED;
+
+struct Registers {
+    u32 gs, fs, es, ds;
+    u64 rdi, rsi, rbp, rsp0, rbx, rdx, rcx, rax;
+    u64 rip, cs, eflags, rsp, ss;
 } PACKED;
 
 }

@@ -1,6 +1,6 @@
 #include <fcntl.h>
 #include <stdarg.h>
-#include <string.h>
+
 #include <sys/syscall.hpp>
 #include <sys/types.h>
 
@@ -13,7 +13,7 @@ int open(const char* pathname, int flags, ...) {
     mode_t mode = va_arg(ap, int);
     va_end(ap);
 
-    return syscall(SYS_OPEN, pathname, strlen(pathname), flags, mode);
+    return syscall(SYS_OPEN, pathname, flags, mode);
 }
 
 }

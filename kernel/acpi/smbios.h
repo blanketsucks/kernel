@@ -5,8 +5,8 @@
 
 namespace kernel::smbios {
 
-constexpr u32 BASE_ADDRESS = 0xF0000;
-constexpr u32 MAX_SIZE = 0x10000;
+constexpr PhysicalAddress BASE_ADDRESS = 0xF0000;
+constexpr size_t MAX_SIZE = 0x10000;
 
 struct EntryPoint32Bit {
     char signature[4];
@@ -117,9 +117,10 @@ private:
     EntryPoint32Bit* m_32_bit_entry_point;
     EntryPoint64Bit* m_64_bit_entry_point;
 
-    u32 m_table_address;
-    u32 m_table_length;
-    u32 m_table_count;
+    PhysicalAddress m_table_address;
+
+    size_t m_table_length;
+    size_t m_table_count;
 
     Vector<TableHeader*> m_table_headers;
 };

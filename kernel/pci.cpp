@@ -174,6 +174,8 @@ StringView get_class_name(DeviceClass device_class) {
         case DeviceClass::NonEssentialInstrumentation: return "Non-Essential Instrumentation";
         case DeviceClass::Coprocessor: return "Coprocessor";
     }
+
+    return {};
 }
 
 StringView get_subclass_name(DeviceClass device_class, DeviceSubclass device_subclass) {

@@ -140,8 +140,10 @@ _INTEGER_FORMATTER(u8, false)
 _INTEGER_FORMATTER(u16, false)
 _INTEGER_FORMATTER(u32, false)
 
-_INTEGER_FORMATTER(unsigned long, false)
-_INTEGER_FORMATTER(long, true)
+#ifdef __x86__
+    _INTEGER_FORMATTER(unsigned long, false)
+    _INTEGER_FORMATTER(long, true)
+#endif
 
 #undef _INTEGER_FORMATTER
 
@@ -264,6 +266,8 @@ void dbgln(const char* fmt, Args const&... args) {
     VariadicFormatParameters<Args...> params(args...);
     _dbg_impl(fmt, params, true);
 }
+
+void dbgln();
 
 }
 

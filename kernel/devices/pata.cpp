@@ -5,6 +5,8 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/memory/manager.h>
 
+#include <std/format.h>
+
 namespace kernel::devices {
 
 u16 operator+(ATARegister lhs, u16 rhs) { return to_underlying(lhs) + rhs; }
@@ -30,6 +32,7 @@ PATADevice::PATADevice(
 ) : DiskDevice(3, 0, SECTOR_SIZE),
     IRQHandler(drive == ATADrive::Master ? PRIMARY_IRQ : SECONDARY_IRQ), 
     m_channel(channel), m_drive(drive) {
+    this->disable_irq_handler();
 
     m_bus_master_port = address.bar4() & ~1;
     if (channel == ATAChannel::Primary) {
@@ -67,6 +70,21 @@ PATADevice::PATADevice(
     m_has_dma = buffer[49] & (1 << 8);
 
     m_has_48bit_pio = buffer[83] & (1 << 10);
+
+    if (m_has_dma) {
+        auto* mm = memory::MemoryManager::instance();
+
+        address.set_bus_master(true);
+        address.set_interrupt_line(true);
+
+        u8 status = io::read<u8>(m_bus_master_port + ATARegister::BMStatus);
+        io::write<u8>(m_bus_master_port + ATARegister::BMStatus, status | 0x04);
+
+        m_prdt = reinterpret_cast<PhysicalRegionDescriptor*>(mm->allocate_kernel_region(sizeof(PhysicalRegionDescriptor)));
+        m_dma_buffer = reinterpret_cast<u8*>(mm->allocate_kernel_region(DMA_BUFFER_SIZE));
+
+        m_prdt->base = mm->get_physical_address(m_dma_buffer);
+    }
     
     serial::printf("PATA Device Information (%d:%d):\n", to_underlying(m_channel), to_underlying(m_drive));
     serial::printf("  Cylinders: %u\n", m_cylinders);
@@ -78,17 +96,23 @@ PATADevice::PATADevice(
 
 void PATADevice::handle_interrupt(arch::InterruptRegisters*) {
     u16 port = m_bus_master_port;
-    u8 status = io::read<u8>(port + ATARegister::BusMasterStatus);
+    u8 status = io::read<u8>(port + ATARegister::BMStatus);
 
     if (!(status & 0x04)) {
         return;
     }
-
-    io::write<u8>(port + ATARegister::BusMasterStatus, status | 0x04);
+    
+    io::write<u8>(port + ATARegister::BMStatus, status | 0x04);
     m_irq_blocker.set_value(true);
+
+    Scheduler::yield(true);
 }
 
 size_t PATADevice::max_io_block_count() const {
+    if (m_has_dma) {
+        return DMA_BUFFER_SIZE / SECTOR_SIZE;
+    }
+
     return m_has_48bit_pio ? UINT16_MAX : UINT8_MAX;
 }
 
@@ -97,12 +121,9 @@ void PATADevice::wait_while_busy() const {
 }
 
 void PATADevice::wait_for_irq() {
-    this->enable_irq_handler();
-
 	Thread* thread = Scheduler::current_thread();
     thread->block(&m_irq_blocker);
 
-    m_irq_blocker.set_value(false);
     this->disable_irq_handler();
 }
 
@@ -113,7 +134,7 @@ void PATADevice::poll() const {
     }
 }
 
-void PATADevice::prepare_for(ATACommand command, u32 lba, u16 sectors) const {
+void PATADevice::prepare_for(ATACommand command, u32 lba, u16 sectors) {
     u16 port = m_data_port;
 
     this->wait_while_busy();
@@ -142,10 +163,13 @@ void PATADevice::prepare_for(ATACommand command, u32 lba, u16 sectors) const {
         io::write<u8>(port + ATARegister::LBA1, (lba >> 8) & 0xFF);
         io::write<u8>(port + ATARegister::LBA2, (lba >> 16) & 0xFF);
 
-        if (command == ATACommand::Read) {
-            command = ATACommand::ReadExt;
-        } else if (command == ATACommand::Write) {
-            command = ATACommand::WriteExt;
+        switch (command) {
+            case ATACommand::Read: command = ATACommand::ReadExt; break;
+            case ATACommand::Write: command = ATACommand::WriteExt; break;
+            case ATACommand::ReadDMA: command = ATACommand::ReadDMAExt; break;
+            case ATACommand::WriteDMA: command = ATACommand::WriteDMAExt; break;
+
+            default: break;
         }
     }
 
@@ -185,9 +209,33 @@ void PATADevice::write_sectors(u32 lba, u8 count, const u8* buffer) {
     }
 }
 
-void PATADevice::read_sectors_with_dma(u32, u8, u8*) {
-    // TODO: Implement DMA
-    return;
+void PATADevice::read_sectors_with_dma(u32 lba, u8 count, u8* buffer) {
+    m_irq_blocker.set_value(false);
+
+    m_prdt->size = count * SECTOR_SIZE;
+    m_prdt->flags = 0x8000;
+
+    io::write<u8>(m_data_port + ATARegister::Drive, 0x40 | (to_underlying(m_drive) << 4));
+    io::write<u8>(m_bus_master_port, 0);
+
+    io::write<u32>(m_bus_master_port + ATARegister::BMPRDT, MM->get_physical_address(m_prdt));
+    io::write<u8>(m_bus_master_port, (u8)ATARegister::BMRead);
+
+    u8 status = io::read<u8>(m_bus_master_port + ATARegister::BMStatus);
+    io::write<u8>(m_bus_master_port + ATARegister::BMStatus, status | 0x06);
+
+    this->prepare_for(ATACommand::ReadDMA, lba, count);
+    this->enable_irq_handler();
+
+    while (!(io::read<u8>(m_control_port) & to_underlying(ATAStatus::DataRequest)));
+
+    io::write<u8>(m_bus_master_port, 0x09);
+    this->wait_for_irq();
+
+    memcpy(buffer, m_dma_buffer, count * SECTOR_SIZE); 
+
+    status = io::read<u8>(m_bus_master_port + ATARegister::BMStatus);
+    io::write<u8>(m_bus_master_port + ATARegister::BMStatus, status | 0x06);
 }
 
 void PATADevice::write_sectors_with_dma(u32, u8, const u8*) {
@@ -200,7 +248,7 @@ bool PATADevice::read_blocks(void* buffer, size_t count, size_t block) {
         return false;
     }
 
-    this->read_sectors(block, count, reinterpret_cast<u8*>(buffer));
+    this->read_sectors_with_dma(block, count, reinterpret_cast<u8*>(buffer));
     return true;
 }
 

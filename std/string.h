@@ -87,6 +87,7 @@ public:
     String& operator=(const char* other);
 
     char operator[](size_t index) const { return m_data[index]; }
+    char& operator[](size_t index) { return m_data[index]; }
 
     void reserve(size_t capacity);
     void resize(size_t size);

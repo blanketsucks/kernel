@@ -15,10 +15,10 @@ enum class PageFlags : u32 {
 
 MAKE_ENUM_BITWISE_OPS(PageFlags)
 
-namespace memory {
-    class RegionAllocator;
 }
 
+namespace kernel::memory {
+    class RegionAllocator;
 }
 
 namespace kernel::arch {
@@ -66,7 +66,25 @@ union PageTableEntry {
     u32 value;
 
     bool is_present() const { return data.present; }
-    u32 get_physical_address() const { return data.physical_address << 12; }
+    bool is_writable() const { return data.writable; }
+    bool is_user() const { return data.user; }
+    bool is_cache_disabled() const { return data.cache_disabled; }
+
+    PageFlags flags() const {
+        PageFlags flags = PageFlags::None;
+
+        if (is_writable()) {
+            flags |= PageFlags::Write;
+        } if (is_user()) {
+            flags |= PageFlags::User;
+        } if (is_cache_disabled()) {
+            flags |= PageFlags::CacheDisable;
+        }
+
+        return flags;
+    }
+
+    PhysicalAddress get_physical_address() const { return data.physical_address << 12; }
 
     void set_present(bool present) { data.present = present; }
     void set_writable(bool writable) { data.writable = writable; }
@@ -91,7 +109,7 @@ public:
     PageTableEntry const& at(size_t index) const { return m_entries[index]; }
 
     PageTableEntry* entries() { return m_entries; }
-    u32 address() const { return reinterpret_cast<u32>(m_entries); }
+    VirtualAddress address() const { return reinterpret_cast<VirtualAddress>(m_entries); }
 
 private:
     friend class PageDirectory;
@@ -111,13 +129,18 @@ public:
     static PageDirectory* create_user_page_directory();
     static void create_kernel_page_directory(arch::BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
 
+    void clone_into(PageDirectory* other) const;
+    PageDirectory* clone() const;
+
     Type type() const { return m_type; }
     bool is_kernel() const { return m_type == Kernel; }
 
     void map(VirtualAddress virt, PhysicalAddress phys, PageFlags flags);
     void unmap(VirtualAddress virt);
 
+    PageTableEntry const* get_page_table_entry(VirtualAddress virt) const;
     PhysicalAddress get_physical_address(VirtualAddress virt) const;
+
     bool is_mapped(VirtualAddress virt) const;
 
     void clear();
@@ -127,7 +150,7 @@ public:
     PageTable* get_page_table(u32 pd);
     PageTable const* get_page_table(u32 pd) const;
 
-    u32 cr3() const;
+    PhysicalAddress cr3() const;
     void switch_to();
 
     static PageDirectory* kernel_page_directory();

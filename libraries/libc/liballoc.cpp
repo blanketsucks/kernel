@@ -122,47 +122,6 @@ static void* liballoc_memcpy(void* s1, const void* s2, size_t n) {
     
     return s1;
 }
- 
-
-#if defined DEBUG || defined INFO
-static void liballoc_dump()
-{
-#ifdef DEBUG
-	struct liballoc_major *maj = l_memRoot;
-	struct liballoc_minor *min = NULL;
-#endif
-
-	printf( "liballoc: ------ Memory data ---------------\n");
-	printf( "liballoc: System memory allocated: %i bytes\n", l_allocated );
-	printf( "liballoc: Memory in used (malloc'ed): %i bytes\n", l_inuse );
-	printf( "liballoc: Warning count: %i\n", l_warningCount );
-	printf( "liballoc: Error count: %i\n", l_errorCount );
-	printf( "liballoc: Possible overruns: %i\n", l_possibleOverruns );
-
-#ifdef DEBUG
-		while ( maj != NULL )
-		{
-			printf( "liballoc: %x: total = %i, used = %i\n",
-						maj, 
-						maj->size,
-						maj->usage );
-
-			min = maj->first;
-			while ( min != NULL )
-			{
-				printf( "liballoc:    %x: %i bytes\n",
-							min, 
-							min->size );
-				min = min->next;
-			}
-
-			maj = maj->next;
-		}
-#endif
-
-	FLUSH();
-}
-#endif
 
 void* liballoc_alloc(size_t pages) {
     return mmap(nullptr, pages * l_pageSize, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, 0, 0);

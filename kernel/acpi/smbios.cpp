@@ -41,7 +41,8 @@ void DMIParser::init() {
 }
 
 void DMIParser::find_entry_points() {
-    u8* region = reinterpret_cast<u8*>(MM->map_physical_region(BASE_ADDRESS, MAX_SIZE));
+    void* ptr = reinterpret_cast<void*>(BASE_ADDRESS);
+    u8* region = reinterpret_cast<u8*>(MM->map_physical_region(ptr, MAX_SIZE));
     if (!region) {
         return;
     }
@@ -58,7 +59,7 @@ void DMIParser::find_entry_points() {
 }
 
 void DMIParser::read_table_headers() {
-    u8* region = reinterpret_cast<u8*>(MM->map_physical_region(m_table_address, m_table_length));
+    u8* region = reinterpret_cast<u8*>(MM->map_physical_region(reinterpret_cast<void*>(m_table_address), m_table_length));
     if (!region) {
         return;
     }

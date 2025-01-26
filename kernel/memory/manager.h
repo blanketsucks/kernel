@@ -87,21 +87,23 @@ public:
     ErrorOr<void> free_physical_frame(void* frame);
     
     void* allocate(RegionAllocator&, size_t size, PageFlags flags);
-    void* allocate_at(RegionAllocator&, uintptr_t address, size_t size, PageFlags flags);
+    void* allocate_at(RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags);
     
     ErrorOr<void> free(RegionAllocator&, void* ptr, size_t size);
 
     [[nodiscard]] void* allocate_heap_region(size_t size);
-    ErrorOr<void> free_heap_region(void* start, size_t size);
+    ErrorOr<void> free_heap_region(void* ptr, size_t size);
 
     [[nodiscard]] void* allocate_kernel_region(size_t size);
-    ErrorOr<void> free_kernel_region(void* start, size_t size);
+    ErrorOr<void> free_kernel_region(void* ptr, size_t size);
 
     // Map an already existing physical region into the kernel's address space
-    void* map_physical_region(uintptr_t start, size_t size);
+    void* map_physical_region(void* ptr, size_t size);
     void unmap_physical_region(void* ptr);
 
     void* map_from_page_directory(arch::PageDirectory*, void* ptr, size_t size);
+
+    void copy_physical_memory(void* dst, void* src, size_t size);
 
     SpinLock& alloc_lock() { return m_alloc_lock; }
     
@@ -110,6 +112,19 @@ private:
     RegionAllocator m_kernel_region_allocator;
 
     SpinLock m_alloc_lock;
+};
+
+class TemporaryMapping {
+public:
+    TemporaryMapping(arch::PageDirectory&, void* ptr, size_t size);
+    ~TemporaryMapping();
+
+    u8* ptr() const { return m_ptr; }
+    size_t size() const { return m_size; }
+
+private:
+    u8* m_ptr;
+    size_t m_size;
 };
 
 }

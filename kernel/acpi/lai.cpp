@@ -1,3 +1,5 @@
+#if 0
+
 #include <lai/host.h>
 #include <lai/core.h>
 #include <lai/helpers/sci.h>
@@ -38,7 +40,7 @@ void laihost_free(void* ptr, size_t) {
 }
 
 void* laihost_map(size_t address, size_t size) {
-    return MM->map_physical_region(address, size);
+    return MM->map_physical_region(reinterpret_cast<void*>(address), size);
 }
 
 void laihost_unmap(void*, size_t) {
@@ -298,3 +300,5 @@ void for_each_resource(lai_variable_t* variable, const Function<void(lai_resourc
 }
 
 }
+
+#endif

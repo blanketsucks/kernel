@@ -21,9 +21,10 @@ void Rect::draw(RenderContext& context, u32 color, bool fill) const {
         return;
     }
 
+    auto& framebuffer = context.framebuffer();
     for (int y = top(); y < bottom(); y++) {
         for (int x = left(); x < right(); x++) {
-            context.framebuffer().set_pixel(x, y, color);
+            framebuffer.set_pixel(x, y, color);
         }
     }
 }

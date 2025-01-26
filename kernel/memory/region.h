@@ -40,6 +40,7 @@ private:
 class Region {
 public:
     Region(const Range& range) : m_range(range) {}
+    Region* clone() const;
 
     Range const& range() const { return m_range; }
 
@@ -90,7 +91,9 @@ private:
 class RegionAllocator {
 public:
     RegionAllocator() = default;
-    RegionAllocator(const Range& range, arch::PageDirectory* page_directory);
+    RegionAllocator(const Range& range, arch::PageDirectory*);
+
+    RegionAllocator clone_with_page_directory(arch::PageDirectory*) const;
 
     Range const& range() const { return m_range; }
     arch::PageDirectory* page_directory() const { return m_page_directory; }
@@ -114,9 +117,18 @@ public:
     
     Region* find_region(VirtualAddress address, bool contains = false) const;
 
+    template<typename T>
+    void for_each_region(T&& callback) const {
+        for (auto* region = m_head; region; region = region->next) {
+            callback(region);
+        }
+    }
+
 private:
-    void insert_region_before(Region* region, Region* new_region);
-    void insert_region_after(Region* region, Region* new_region);
+    Region* insert_region_before(Region* region, Region* new_region);
+    Region* insert_region_after(Region* region, Region* new_region);
+
+    void map_into(arch::PageDirectory*, Region* region) const;
 
     Region* find_free_region(size_t size);
 

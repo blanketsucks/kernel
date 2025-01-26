@@ -28,7 +28,9 @@ SDTHeader* Parser::map_acpi_table(u32 addr) {
     u32 base = page_base_of(addr);
     u32 offset = offset_in_page(addr);
 
-    u8* region = reinterpret_cast<u8*>(MM->map_physical_region(base, PAGE_SIZE));
+    void* ptr = reinterpret_cast<void*>(base);
+
+    u8* region = reinterpret_cast<u8*>(MM->map_physical_region(ptr, PAGE_SIZE));
     auto* header = reinterpret_cast<SDTHeader*>(region + offset);
 
     // Ensure the table is at least a page in size
@@ -38,14 +40,14 @@ SDTHeader* Parser::map_acpi_table(u32 addr) {
     }
 
     MM->unmap_physical_region(region);
-    region = reinterpret_cast<u8*>(MM->map_physical_region(base, length));
+    region = reinterpret_cast<u8*>(MM->map_physical_region(ptr, length));
 
     return reinterpret_cast<SDTHeader*>(region + offset);
 }
 
 bool Parser::find_rsdt() {
-    u32 start = RSDP_START;
-    u32 size = RSDP_END - RSDP_START;
+    void* start = reinterpret_cast<void*>(RSDP_START);
+    size_t size = RSDP_END - RSDP_START;
 
     u8* region = reinterpret_cast<u8*>(MM->map_physical_region(start, size));
     if (!region) {
@@ -92,8 +94,8 @@ void Parser::parse_acpi_tables() {
     FADT* fadt = this->find_table<FADT>("FACP");
     m_dsdt = this->map_acpi_table(fadt->dsdt);
 
-    lai_set_acpi_revision(m_rsdp->revision);
-    lai_create_namespace();
+    // lai_set_acpi_revision(m_rsdp->revision);
+    // lai_create_namespace();
 }
 
 SDTHeader* Parser::find_table(const char* signature) {

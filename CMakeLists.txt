@@ -8,7 +8,7 @@ set(CMAKE_INSTALL_MESSAGE LAZY)
 
 option(USE_CLANG "Use clang as the compiler" OFF)
 option(DEBUG "Enable debug mode" OFF)
-option(X86_64 "Build for x86_64" OFF)
+option(x86_64 "Build for x86_64" OFF)
 
 if (USE_CLANG)
     set(CMAKE_CXX_COMPILER clang++)
@@ -19,8 +19,20 @@ else()
     set(CMAKE_CXX_COMPILER i686-chair-g++)
     set(CMAKE_C_COMPILER i686-chair-gcc)
 
+    add_link_options(-z noexecstack)
     set(CMAKE_CXX_COMPILER_ID "GNU")
 endif()
+
+if (x86_64)
+    set(CMAKE_ASM_NASM_FLAGS "-g -felf64 -I${CMAKE_SOURCE_DIR}/")
+else()
+    set(CMAKE_ASM_NASM_FLAGS "-g -felf32 -I${CMAKE_SOURCE_DIR}/")
+endif()
+
+set(CMAKE_ASM_NASM_COMPILER nasm)
+set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> ${CMAKE_ASM_NASM_FLAGS} -o <OBJECT> <SOURCE>")
+
+enable_language(ASM_NASM)
 
 file(GLOB_RECURSE STD_CPP_SOURCES ${CMAKE_SOURCE_DIR}/std/*.cpp)
 
@@ -55,7 +67,7 @@ include_directories(${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libraries ${CMAKE_SO
 
 add_subdirectory(kernel)
 add_subdirectory(libraries)
-add_subdirectory(programs)
+add_subdirectory(userland)
 
 add_custom_target(
     grub-image
@@ -64,14 +76,14 @@ add_custom_target(
 )
 
 add_custom_target(
-    qemu-image
+    image
     COMMAND sudo ${SCRIPTS}/mkfs.qemu.sh
     USES_TERMINAL
 )
 
 add_custom_target(
-    run 
-    COMMAND ${SCRIPTS}/run.sh ${CMAKE_BINARY_DIR}/kernel/kernel.bin ${DISK_IMAGE}
+    run
+    COMMAND python3 ${SCRIPTS}/run.py
     DEPENDS kernel.bin
     USES_TERMINAL
 )

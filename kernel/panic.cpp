@@ -2,22 +2,40 @@
 #include <kernel/symbols.h>
 #include <kernel/serial.h>
 #include <kernel/vga.h>
+#include <std/format.h>
 
 namespace kernel {
 
 StackFrame* get_stack_frame() {
     StackFrame* frame = nullptr;
+#if __x86_64__
+    asm volatile("mov %%rbp, %0" : "=r"(frame));
+#else
     asm volatile("mov %%ebp, %0" : "=r"(frame));
+#endif
 
     return frame;
 }
 
 void print_stack_trace() {
-    StackFrame* frame = kernel::get_stack_frame();
-    serial::printf("Stack trace:\n");
+    if (!has_loaded_symbols()) {
+        return;
+    }
 
+    StackFrame* frame = kernel::get_stack_frame();
     while (frame) {
-        serial::printf(" - 0x%x\n", frame->eip);
+        if (!MM->is_mapped(reinterpret_cast<void*>(frame->eip))) {
+            dbgln(" - ??? at {:#x}", frame->eip);
+            break;
+        }
+
+        Symbol* symbol = resolve_symbol(frame->eip);
+        if (!symbol) {
+            dbgln(" - ??? at {:#x}", frame->eip);
+        } else {
+            dbgln(" - {} at {:#x}", StringView { symbol->name }, frame->eip);
+        }
+
         frame = frame->ebp;
     }
 }

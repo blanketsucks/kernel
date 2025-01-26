@@ -91,7 +91,7 @@ void BochsVGADevice::set_resolution(i32 width, i32 height, i32 bpp, bool map) {
 }
 
 bool BochsVGADevice::map() {
-    void* framebuffer = MM->map_physical_region(m_physical_address, this->size());
+    void* framebuffer = MM->map_physical_region(reinterpret_cast<void*>(m_physical_address), this->size());
     if (!framebuffer) {
         return false;
     }

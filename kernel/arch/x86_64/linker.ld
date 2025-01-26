@@ -1,5 +1,4 @@
 OUTPUT_FORMAT(elf64-x86-64)
-OUTPUT_ARCH(i386:x86-64)
  
 ENTRY(_early_main)
  
@@ -26,6 +25,14 @@ SECTIONS {
  
     .rodata : {
         *(.rodata .rodata.*)
+
+		_start_ctors = .;
+		*(.init_array) *(.ctors) /* .init_array is used by clang and .ctors by gcc */
+		_end_ctors = .;
+
+		_start_dtors = .;
+		*(.fini_array) *(.dtors) /* .fini_array is used by clang and .dtors by gcc */
+		_end_dtors = .;
     } : rodata
  
     /* Move to the next memory page for .data */

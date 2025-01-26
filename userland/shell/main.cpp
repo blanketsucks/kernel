@@ -47,11 +47,13 @@ int main() {
     gfx::FrameBuffer framebuffer(buffer, resolution);
     gfx::RenderContext context(framebuffer);
 
-    StringView path = "/res/fonts/u_vga16.sfn";
-    auto font = gfx::Font::create(context, path);
+    OwnPtr<gfx::FontContext> font_context = OwnPtr<gfx::FontContext>::make();
+    dbgln("Loading font...");
+    auto font = gfx::Font::create(*font_context, "/res/fonts/unifont.sfn");
+    dbgln("Font loaded...");
 
     if (!font) {
-        dbgln("Failed to load font from '{}'", path);
+        dbgln("Failed to load font");
         return 1;
     }
 
@@ -76,6 +78,7 @@ int main() {
         }
     };
 
+    term.render(16);
     while (true) {
         if (read(kb, &event, sizeof(KeyEvent)) <= 0) {
             continue;

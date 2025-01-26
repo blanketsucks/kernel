@@ -1,21 +1,27 @@
 #include <libgfx/font.h>
 #include <std/kmalloc.h>
+#include <std/format.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
 namespace gfx {
 
-Font::Font(RenderContext& context, const u8* data) {
+Font::Font(FontContext& ctx, const u8* data) : m_ctx(ctx) {
     if (!data) {
         return;
     }
 
-    ssfn_load(context.ssfn_ctx(), data, &m_font);
+    ssfn_load(ctx.ssfn_ctx(), data, &m_font);
+
+    const char* string_table = reinterpret_cast<const char*>(data + sizeof(ssfn_font_t));
+    
+    m_name = String(string_table);
+    m_family = String(string_table + m_name.size() + 1);
 }
 
-RefPtr<Font> Font::create(RenderContext& context, const u8* data) {
-    auto font = RefPtr<Font>(new Font(context, data));
+RefPtr<Font> Font::create(FontContext& ctx, const u8* data) {
+    auto font = RefPtr<Font>(new Font(ctx, data));
     if (!font->m_font) {
         return nullptr;
     }
@@ -23,7 +29,7 @@ RefPtr<Font> Font::create(RenderContext& context, const u8* data) {
     return font;
 }
 
-RefPtr<Font> Font::create(RenderContext& context, StringView path) {
+RefPtr<Font> Font::create(FontContext& ctx, StringView path) {
     int fd = open(path.data(), O_RDONLY);
     if (fd < 0) {
         return nullptr;
@@ -36,9 +42,8 @@ RefPtr<Font> Font::create(RenderContext& context, StringView path) {
     read(fd, data, st.st_size);
 
     close(fd);
-    auto font = Font::create(context, data);
+    auto font = Font::create(ctx, data);
 
-    delete[] data;
     if (!font) {
         return nullptr;
     }
@@ -46,12 +51,13 @@ RefPtr<Font> Font::create(RenderContext& context, StringView path) {
     return font;
 }
 
-int Font::select(RenderContext& context, int size) const {
+int Font::select(int size) const {
+    auto* ctx = m_ctx.ssfn_ctx();
     if (size > SSFN_SIZE_MAX) {
         return -1;
+    } else if (ctx->s == m_font && ctx->size == size) {
+        return SSFN_OK;
     }
-
-    auto* ctx = context.ssfn_ctx();
 
     ctx->s = m_font;
     ctx->family = SSFN_TYPE_FAMILY(m_font->type);
@@ -79,7 +85,7 @@ int Font::render(RenderContext& context, Point point, u32 color, StringView text
     buf.fg = color;
     buf.bg = 0;
 
-    int rc = this->select(context, size);
+    int rc = this->select(size);
     if (rc < 0) {
         return rc;
     }
@@ -87,7 +93,7 @@ int Font::render(RenderContext& context, Point point, u32 color, StringView text
     rc = 0;
     const char* str = text.data();
     while (text.size() > rc) {
-        int ret = ssfn_render(context.ssfn_ctx(), &buf, str + rc);
+        int ret = ssfn_render(m_ctx.ssfn_ctx(), &buf, str + rc);
         if (ret < 0) {
             return ret;
         }
@@ -99,15 +105,15 @@ int Font::render(RenderContext& context, Point point, u32 color, StringView text
     return rc;
 }
 
-BoundingBox Font::measure(RenderContext& context, StringView text, int size) const {
+BoundingBox Font::measure(StringView text, int size) const {
     BoundingBox box = { 0, 0, 0, 0 };
-    int rc = this->select(context, size);
+    int rc = this->select(size);
 
     if (rc < 0) {
         return box;
     }
 
-    ssfn_bbox(context.ssfn_ctx(), text.data(), &box.width, &box.height, &box.x, &box.y);
+    ssfn_bbox(m_ctx.ssfn_ctx(), text.data(), &box.width, &box.height, &box.x, &box.y);
     return box;
 }
 

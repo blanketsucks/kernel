@@ -55,6 +55,7 @@ public:
     i32 bpp() const { return m_bpp; }
 
     size_t size() const override { return m_width * m_height * (m_bpp / 8); }
+    size_t max_io_block_count() const override { return 1; }
 
     void write_register(u16 index, u16 value);
     u16 read_register(u16 index);
@@ -75,7 +76,7 @@ private:
     // Converts a value like 32 to the equivalent VBE BPP value which is 0x20 in this case.
     static i32 bpp_to_vbe_bpp(i32 bpp);
 
-    u32 m_physical_address;
+    PhysicalAddress m_physical_address;
     u32* m_framebuffer = nullptr;
 
     i32 m_height;

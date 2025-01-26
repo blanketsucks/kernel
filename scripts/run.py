@@ -10,14 +10,20 @@ ROOT = CWD.parent
 DEFAULT_DISK_IMAGE = CWD / 'disk.img'
 DEFAULT_KERNEL_LOCATION = ROOT  / 'build' / 'kernel' / 'kernel.bin'
 
-def build_disk_image_argument(disk_image: str) -> List[str]:
-    return ['-drive', f'file={disk_image},format=raw,if=ide,id=disk']
+DEFAULT_QEMU_ARGS: List[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int', '-no-reboot', '-no-shutdown']
 
-DEFAULT_QEMU_ARGS: List[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int', '-no-reboot']
+class DiskImage(NamedTuple):
+    file: str
+    format: str = 'raw'
+    interface: str = 'ide'
+    id: str = 'disk'
+
+    def build(self) -> str:
+        return f'file={self.file},format={self.format},if={self.interface},id={self.id}'
+
 class QemuArgs(NamedTuple):
-
-    disk_image: str
     kernel: str
+    disk_image: DiskImage
     
     memory: int
 
@@ -26,7 +32,7 @@ class QemuArgs(NamedTuple):
     monitor: bool = False
 
     def build_disk_image_argument(self) -> List[str]:
-        return ['-drive', f'file={self.disk_image},format=raw,if=ide,id=disk']
+        return ['-drive', self.disk_image.build()]
     
     def build_memory_argument(self) -> List[str]:
         return ['-m', str(self.memory)]
@@ -63,7 +69,7 @@ def main():
 
     args = parser.parse_args()
     qemu_args = QemuArgs(
-        disk_image=args.disk_image,
+        disk_image=DiskImage(args.disk_image),
         kernel=args.kernel,
         memory=args.memory,
         debug=args.debug,
@@ -71,7 +77,6 @@ def main():
     )
 
     command = [args.qemu, *qemu_args.build()]
-
     try:
         subprocess.run(command)
     except KeyboardInterrupt:

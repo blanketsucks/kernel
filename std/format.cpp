@@ -116,7 +116,11 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
     }
 #endif
 
-    _format_impl(buffer, fmt, params);
+    if (params.size == 0) {
+        buffer.append(fmt);
+    } else {
+        _format_impl(buffer, fmt, params);
+    }
 
     if (newline) {
         buffer.append('\n');
@@ -129,6 +133,11 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
 #else
     write(1, value.data(), value.size());
 #endif
+}
+
+void dbgln() {
+    FormatParameters params(0);
+    _dbg_impl("", params, true);
 }
 
 }

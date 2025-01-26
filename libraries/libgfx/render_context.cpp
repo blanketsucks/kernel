@@ -3,8 +3,6 @@
 
 namespace gfx {
 
-RenderContext::RenderContext(FrameBuffer framebuffer) : m_framebuffer(framebuffer) {
-    m_ssfn_ctx = new ssfn_t;
-}
+RenderContext::RenderContext(FrameBuffer framebuffer) : m_framebuffer(framebuffer) {}
 
 }

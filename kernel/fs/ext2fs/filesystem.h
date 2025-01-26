@@ -22,8 +22,14 @@ public:
     RefPtr<fs::Inode> inode(ino_t inode) override;
     ino_t root() const override { return ROOT_INODE; }
 
-    u8 id() const override { return 0x02; }
+    fs::FileSystemID id() const override { return fs::FileSystemID::Ext2FS; }
     StringView name() const override { return "ext2"; }
+
+    size_t max_io_block_count() const {
+        // Convert the disk->max_io_block_count() that is based on the disk block size to the filesystem block size
+        int ratio = block_size() / m_disk->block_size();
+        return m_disk->max_io_block_count() / ratio;
+    }
 
     Superblock* superblock() { return m_superblock; }
     Superblock const* superblock() const { return m_superblock; }

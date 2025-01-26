@@ -3,6 +3,7 @@
 #include <kernel/io.h>
 
 #include <std/string.h>
+#include <std/format.h>
 
 namespace kernel::devices {
 
@@ -63,7 +64,7 @@ void KeyboardDevice::handle_interrupt(arch::InterruptRegisters*) {
 
     if (s_shift) modifiers |= Shift;
     if (s_ctrl)  modifiers |= Ctrl;
-    if (s_alt) modifiers |= Alt;
+    if (s_alt)   modifiers |= Alt;
 
     char ascii = 0;
     if (s_shift) {

@@ -43,6 +43,8 @@ public:
     int ioctl(unsigned request, unsigned arg);
 
 private:
+    friend class Process;
+
     RefPtr<File> m_file;
 
     off_t m_offset = 0;

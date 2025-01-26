@@ -63,23 +63,6 @@ char** Command::argv() const {
 
 size_t Command::argc() const { return args.size() + 1; }
 
-void Cursor::move(gfx::RenderContext& context, int x, int y, int height) {
-    // FIXME: Weird things happen with certain fonts.
-    //        When clearing the previous cursor, it's location might overlap with a drawn character and it causes
-    //        part of that character to get cleared as well. 
-    //        Redrawing fixes this as it redraws the whole line with a new cursor position.
-    if (m_x || m_y) {
-        gfx::Rect prev = { m_x, m_y, 1, height };
-        prev.draw(context, 0x00000000);
-    }
-
-    m_x = x;
-    m_y = y;
-
-    gfx::Rect next = { x, y, 1, height };
-    next.draw(context, 0xFFFFFFFF);
-}
-
 Terminal::Terminal(gfx::RenderContext& context, RefPtr<gfx::Font> font) : on_line_flush(nullptr), m_render_context(context), m_font(font) {
     this->add_line({});
 }
@@ -101,20 +84,23 @@ void Terminal::add_line(String text) {
     m_lines.append({ move(line), true, false, prompt_length });
 }
 
+void Terminal::add_line_without_prompt(String text) {
+    m_lines.append({ move(text), true, false, 0 });
+}
+
 void Terminal::render(int size) {
-    auto box = m_font->measure(m_render_context, current_line().text, size);
+    auto box = m_font->measure(current_line().text, size);
 
     int y = box.y;
     int width = m_render_context.framebuffer().width();
 
-    int advance = 0;
     for (auto& line : m_lines) {
         if (line.text.empty()) {
             y += box.height;
             continue;
         }
 
-        auto bbox = m_font->measure(m_render_context, line.text, size);
+        auto bbox = m_font->measure(line.text, size);
         if (!bbox.height) {
             bbox.height = box.height;
         }
@@ -128,15 +114,13 @@ void Terminal::render(int size) {
                 line.did_backspace = false;
             }
 
-            m_font->render(m_render_context, { 0, y }, 0xFFFFFFFF, line.text, size, advance);
+            m_font->render(m_render_context, { 0, y }, 0xFFFFFFFF, line.text, size);
             line.dirty = false;
         }
 
         y += bbox.height;
         box = bbox;
     }
-
-    m_cursor.move(m_render_context, advance, y - box.y * 2, box.height - 2);
 }
 
 void Terminal::on_char(char c) {

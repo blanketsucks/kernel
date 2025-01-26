@@ -619,22 +619,22 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE(vsprintfcb)(STBSP_SPRINTFCB *callback,
       } break;
 
 #ifdef STB_SPRINTF_NOFLOAT
-      case 'A':              // float
-      case 'a':              // hex float
-      case 'G':              // float
-      case 'g':              // float
-      case 'E':              // float
-      case 'e':              // float
-      case 'f':              // float
-         va_arg(va, double); // eat it
-         s = (char *)"No float";
-         l = 8;
-         lead[0] = 0;
-         tail[0] = 0;
-         pr = 0;
-         cs = 0;
-         STBSP__NOTUSED(dp);
-         goto scopy;
+      // case 'A':              // float
+      // case 'a':              // hex float
+      // case 'G':              // float
+      // case 'g':              // float
+      // case 'E':              // float
+      // case 'e':              // float
+      // case 'f':              // float
+      //    va_arg(va, double); // eat it
+      //    s = (char *)"No float";
+      //    l = 8;
+      //    lead[0] = 0;
+      //    tail[0] = 0;
+      //    pr = 0;
+      //    cs = 0;
+      //    STBSP__NOTUSED(dp);
+      //    goto scopy;
 #else
       case 'A': // hex float
       case 'a': // hex float
