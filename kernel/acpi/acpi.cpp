@@ -54,7 +54,6 @@ bool Parser::find_rsdt() {
         return false;
     }
 
-
     for (u32 i = 0; i < size; i += 16) {
         if (memcmp(region + i, "RSD PTR ", 8) == 0) {
             m_rsdp = reinterpret_cast<RSDP*>(region + i);
@@ -75,21 +74,23 @@ void Parser::parse_acpi_tables() {
     u32 entries = (m_rsdt->header.length - sizeof(SDTHeader)) / 4;
 
     m_tables.reserve(entries);
-    serial::printf("ACPI Tables (%u entries): \n", entries);
+    dbgln("ACPI Tables ({} entries):", entries);
 
     for (u32 i = 0; i < entries; i++) {
         u32 table = m_rsdt->tables[i];
 
         SDTHeader* header = this->map_acpi_table(table);
-        serial::printf("  %.*s:\n", 4, header->signature);
+        dbgln("  {}{}{}{}:", header->signature[0], header->signature[1], header->signature[2], header->signature[3]);
 
-        serial::printf("    Length: %u\n", header->length);
-        serial::printf("    Revision: %u\n", header->revision);
-        serial::printf("    Checksum: %u\n", header->checksum);
-        serial::printf("    OEM ID: %.*s\n", 6, header->oem_id);
+        dbgln("    Length: {}", header->length);
+        dbgln("    Revision: {}", header->revision);
+        dbgln("    Checksum: {}", header->checksum);
+        dbgln("    OEM ID: {}{}{}{}{}{}", header->oem_id[0], header->oem_id[1], header->oem_id[2], header->oem_id[3], header->oem_id[4], header->oem_id[5]);
 
         m_tables.append(header);
     }
+
+    dbgln();
 
     FADT* fadt = this->find_table<FADT>("FACP");
     m_dsdt = this->map_acpi_table(fadt->dsdt);

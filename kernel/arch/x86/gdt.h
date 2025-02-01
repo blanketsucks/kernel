@@ -38,7 +38,7 @@ struct GDTEntry {
     u8 base_high;
 } PACKED;
 
-struct GDTPointer {
+struct GDTDescriptor {
     u16 limit;
     u32 base;
 } PACKED;

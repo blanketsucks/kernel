@@ -27,6 +27,10 @@ constexpr size_t INITIAL_KERNEL_HEAP_SIZE = 0x400000; // 1 MiB
 
 namespace kernel {
 
+constexpr size_t KB = 1024;
+constexpr size_t MB = 1024 * KB;
+constexpr size_t GB = 1024 * MB;
+
 constexpr VirtualAddress page_base_of(VirtualAddress address) {
     return address & ~(PAGE_SIZE - 1);
 }

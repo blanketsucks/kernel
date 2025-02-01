@@ -9,7 +9,7 @@ namespace kernel::arch {
 static GDTEntry s_gdt_entries[6];
 constexpr u32 LIMIT = 0xFFFFF;
 
-extern "C" void _flush_gdt(GDTPointer* gp);
+extern "C" void _flush_gdt(GDTDescriptor*);
 extern "C" void _flush_tss();
 
 void write_tss(u16 index, TSS& tss) {
@@ -64,7 +64,7 @@ void set_gdt_entry(
 }
 
 void init_gdt() {
-    GDTPointer gp {
+    GDTDescriptor gdtr {
         .limit = sizeof(s_gdt_entries) - 1,
         .base = reinterpret_cast<u32>(&s_gdt_entries)
     };
@@ -78,7 +78,7 @@ void init_gdt() {
     auto& tss = Scheduler::tss();
     write_tss(5, tss);
 
-    _flush_gdt(&gp);
+    _flush_gdt(&gdtr);
     _flush_tss();
 }
 

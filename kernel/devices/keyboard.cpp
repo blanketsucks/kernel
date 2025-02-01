@@ -83,6 +83,7 @@ void KeyboardDevice::handle_interrupt(arch::InterruptRegisters*) {
         m_key_buffer.remove(0);
     }
 
+    dbgln("Key event: scancode={:#x}, ascii={:#x}, modifiers={:#x}", scancode, ascii, modifiers);
     m_key_buffer.append(event);
 }
 

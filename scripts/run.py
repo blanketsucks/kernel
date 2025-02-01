@@ -31,6 +31,8 @@ class QemuArgs(NamedTuple):
     serial: bool = True
     monitor: bool = False
 
+    x86_64: bool = False
+
     def build_disk_image_argument(self) -> List[str]:
         return ['-drive', self.disk_image.build()]
     
@@ -47,23 +49,30 @@ class QemuArgs(NamedTuple):
         return ['-s', '-S'] if self.debug else []
     
     def build(self) -> List[str]:
-        return [
+        args = [
             *DEFAULT_QEMU_ARGS,
             *self.build_disk_image_argument(),
             *self.build_memory_argument(),
             *self.build_serial_argument(),
             *self.build_debug_argument(),
-            '-kernel', self.kernel
+            '-D', 'qemu.log',
+            '-no-reboot'
         ]
+
+        if not self.x86_64:
+            args += ['-kernel', self.kernel]
+
+        return args
 
 def main():
     parser = argparse.ArgumentParser(description='Run kernel in QEMU.')
 
     parser.add_argument('--kernel', type=str, default=DEFAULT_KERNEL_LOCATION, help='Path to kernel image.')
+    parser.add_argument('--x86_64', action='store_true', help='Run kernel in x86_64 mode.')
 
-    parser.add_argument('--qemu', type=str, default='qemu-system-i386', help='Path to QEMU executable.')
+    parser.add_argument('--qemu', type=str, default=None, help='Path to QEMU executable.')
     parser.add_argument('--disk-image', type=str, default=DEFAULT_DISK_IMAGE, help='Path to disk image.')
-    parser.add_argument('--memory', type=int, default=512, help='Amount of memory to allocate to QEMU (in MB).')
+    parser.add_argument('--memory', type=int, default=256, help='Amount of memory to allocate to QEMU (in MB).')
     parser.add_argument('--debug', action='store_true', help='Run QEMU in debug mode and listen to GDB connections.')
     parser.add_argument('--with-monitor', action='store_true', help='Run QEMU with a monitor (useful for debugging).')
 
@@ -73,8 +82,12 @@ def main():
         kernel=args.kernel,
         memory=args.memory,
         debug=args.debug,
-        monitor=args.with_monitor
+        monitor=args.with_monitor,
+        x86_64=args.x86_64
     )
+
+    if not args.qemu:
+        args.qemu = 'qemu-system-x86_64' if args.x86_64 else 'qemu-system-i386'
 
     command = [args.qemu, *qemu_args.build()]
     try:

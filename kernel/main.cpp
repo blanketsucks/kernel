@@ -53,195 +53,130 @@
 using namespace kernel;
 using namespace kernel::devices;
 
-struct Command {
-    String name;
-    Vector<String> args;
-
-    Command(String name, Vector<String> args) : name(move(name)), args(move(args)) {}
-
-    StringView get(size_t index) const {
-        if (index >= args.size()) { return StringView(); }
-        return args[index];
-    }
-
-    bool has(size_t index) const { return index < args.size(); }
-};
-
-void process_commands();
-void run_command(Command command);
-
-Command parse_shell_command(StringView line) {
-    Vector<String> args;
-    String name;
-
-    size_t index = line.find(' ');
-
-    if (index == StringView::npos) {
-        return { line, move(args) };
-    } else {
-        name = line.substr(0, index);
-        line = line.substr(index + 1);
-    }
-
-    while (!line.empty()) {
-        bool in_quotes = false;
-        if (line.startswith('"')) {
-            in_quotes = true;
-            line = line.substr(1);
-        }
-
-        if (in_quotes) {
-            index = line.find('"');
-        } else {
-            index = line.find(' ');
-        }
-
-        if (index == StringView::npos) {
-            args.append(line);
-            break;
-        }
-
-        args.append(line.substr(0, index));
-        line = line.substr(index + 1);
-    }
-
-    return { move(name), move(args) };
-}
-
-struct Vector2 {
-    i32 x;
-    i32 y;
-};
-
-void draw_rect(BochsVGADevice* framebuffer, Vector2 position, Vector2 size, u32 color) {
-    for (i32 y = position.y; y < position.y + size.y; y++) {
-        for (i32 x = position.x; x < position.x + size.x; x++) {
-            framebuffer->set_pixel(x, y, color);
-        }
-    }
-}
-
-void draw_line(BochsVGADevice* framebuffer, Vector2 start, Vector2 end, u32 color) {
-    i32 dx = end.x - start.x;
-    i32 dy = end.y - start.y;
-
-    if (!dx && !dy) {
-        framebuffer->set_pixel(start.x, start.y, color);
-        return;
-    }
-
-    if (std::abs(dx) > std::abs(dy)) {
-        if (start.x > end.x) {
-            std::swap(start, end);
-        }
-
-        for (i32 x = start.x; x <= end.x; x++) {
-            i32 y = start.y + dy * (x - start.x) / dx;
-            framebuffer->set_pixel(x, y, color);
-        }
-    } else {
-        if (start.y > end.y) {
-            std::swap(start, end);
-        }
-
-        for (i32 y = start.y; y <= end.y; y++) {
-            i32 x = start.x + dx * (y - start.y) / dy;
-            framebuffer->set_pixel(x, y, color);
-        }
-    }
-}
-
-void draw_triangle(BochsVGADevice* framebuffer, Vector2 a, Vector2 b, Vector2 c, u32 color) {
-    draw_line(framebuffer, a, b, color);
-    draw_line(framebuffer, b, c, color);
-    draw_line(framebuffer, c, a, color);
-}
-
-Vector2 barycentric(Vector2 a, Vector2 b, Vector2 c) {
-    return {
-        (a.x + b.x + c.x) / 3,
-        (a.y + b.y + c.y) / 3
-    };
-}
-
 static PATADevice* disk = nullptr;
 
 void stage2();
 
+String format_guid(Array<u8, 16> guid) {
+    String result;
+
+    for (size_t i = 4; i > 0; i--) {
+        result.append(std::format("{:02X}", guid[i - 1]));
+    }
+
+    result.append('-');
+    for (size_t i = 6; i > 4; i--) {
+        result.append(std::format("{:02X}", guid[i - 1]));
+    }
+
+    result.append('-');
+    for (size_t i = 8; i > 6; i--) {
+        result.append(std::format("{:02X}", guid[i - 1]));
+    }
+
+    result.append('-');
+    for (size_t i = 8; i < guid.size(); i++) {
+        if (i == 10) {
+            result.append('-');
+        }
+
+        result.append(std::format("{:02X}", guid[i]));
+    }
+
+    return result;
+}
+
+arch::BootInfo const* g_boot_info = nullptr;
 extern "C" void main(arch::BootInfo const& boot_info) {
+    g_boot_info = &boot_info;
+
     serial::init();
     kernel::run_global_constructors();
     arch::init();
 
-    dbgln("{:#p}", boot_info.kernel_virtual_base);
-    dbgln("{:#p}", boot_info.kernel_physical_base);
+    pic::init();
 
-    // pic::init();
+    memory::MemoryManager::init();
+
+    asm volatile("sti");
+
+    dbgln("PCI Bus:");
+    pci::enumerate([](pci::Device device) {
+        dbgln("  {}: {}", device.class_name(), device.subclass_name());
+    });
+
+    dbgln();
+
+    acpi::Parser parser;
+    parser.init();
+
+    KeyboardDevice::init();
+    // while (1) {
+    //     asm volatile("hlt");
+    // }
+
     // pit::init();
 
-    // setup_syscall_handler();
-
-    // KeyboardDevice::init();
     // MouseDevice::init();
-
-    // memory::MemoryManager::init(boot_info);
 
     // asm volatile("sti");
 
     // BochsVGADevice::create(800, 600);
 
-    // serial::printf("PCI Bus:\n");
-    // pci::enumerate([](pci::Device device) {
-    //     serial::printf("  Device: '%s: %s'\n", device.class_name().data(), device.subclass_name().data());
-    // });
-
-    // disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
-    // if (!disk) {
-    //     serial::printf("Failed to create ATA device\n");
-    //     return;
-    // }
+    disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
+    if (!disk) {
+        serial::printf("Failed to create ATA device\n");
+        return;
+    }
 
     // auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
     // Scheduler::add_process(process);
 
     // Scheduler::init();
 
-    // MasterBootRecord mbr = {};
-    // disk->read_sectors(0, 1, reinterpret_cast<u8*>(&mbr));
+    MasterBootRecord mbr = {};
+    disk->read_sectors(0, 1, reinterpret_cast<u8*>(&mbr));
 
-    // u32 offset = 0;
-    // // FIXME: This assumes that the OS partition is always the first
-    // if (!mbr.is_protective()) {
-    //     for (auto& partition : mbr.partitions) {
-    //         if (!partition.is_bootable()) {
-    //             continue;
-    //         }
+    u32 offset = 0;
+    // FIXME: This assumes that the OS partition is always the first
+    if (!mbr.is_protective()) {
+        for (auto& partition : mbr.partitions) {
+            if (!partition.is_bootable()) {
+                continue;
+            }
 
-    //         offset = partition.offset;
-    //         break;
-    //     }
-    // } else {
-    //     GPTHeader gpt = {};
-    //     disk->read_sectors(1, 1, reinterpret_cast<u8*>(&gpt));
+            offset = partition.offset;
+            break;
+        }
+    } else {
+        GPTHeader gpt = {};
+        disk->read_sectors(1, 1, reinterpret_cast<u8*>(&gpt));
 
-    //     if (memcmp(gpt.signature, "EFI PART", 8) != 0) {
-    //         serial::printf("Invalid GPT header signature\n");
-    //         return;
-    //     }
+        if (memcmp(gpt.signature, "EFI PART", 8) != 0) {
+            serial::printf("Invalid GPT header signature\n");
+            return;
+        }
 
-    //     Vector<GPTEntry> entries;
-    //     entries.resize(gpt.partition_count);
+        Vector<GPTEntry> entries;
+        entries.resize(gpt.partition_count);
 
-    //     disk->read_sectors(gpt.partition_table_lba, gpt.partition_count, reinterpret_cast<u8*>(entries.data()));
-    //     for (auto& entry : entries) {
-    //         if (!entry.is_valid()) {
-    //             continue;
-    //         }
+        disk->read_sectors(gpt.partition_table_lba, gpt.partition_count, reinterpret_cast<u8*>(entries.data()));
+        for (auto& entry : entries) {
+            if (!entry.is_valid()) {
+                continue;
+            }
 
-    //         offset = entry.first_lba;
-    //         break;
-    //     }
-    // }
+            dbgln("GPT Entry:");
+            dbgln("  Name: {}", entry.name());
+            dbgln("  First LBA: {}", entry.first_lba);
+            dbgln("  Last LBA: {}", entry.last_lba);
+            dbgln("  Attributes: {}", entry.attributes);
+            dbgln("  Type GUID: {}", format_guid(entry.partition_type_guid));
+            dbgln("  Is EFI system Partition: {}", entry.is_efi_system_partition());
+
+            offset = entry.first_lba;
+        }
+    }
 
     // BlockDevice* partition = nullptr;
     // if (offset != 0) {

@@ -70,12 +70,14 @@ class MemoryManager {
 public:
     MemoryManager();
 
-    static void init(arch::BootInfo const&);
+    static void init();
     static MemoryManager* instance();
 
     static void page_fault_handler(arch::InterruptRegisters*);
 
     static arch::PageDirectory* kernel_page_directory();
+
+    static size_t current_kernel_heap_offset();
 
     RegionAllocator& heap_region_allocator() { return m_heap_region_allocator; }
     RegionAllocator& kernel_region_allocator() { return m_kernel_region_allocator; }

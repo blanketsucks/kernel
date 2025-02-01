@@ -18,6 +18,7 @@ struct FormatStyle {
     bool right_pad = false;
 
     u16 width = 0;
+    u16 integer_padding = 0;
 };
 
 struct FormatBuffer {
@@ -86,6 +87,15 @@ void __format_integer(FormatBuffer& buffer, const T& value, const FormatStyle& s
         }
     }
 
+    if (style.integer_padding > 0) {
+        size_t length = strlen(temp);
+        size_t padding = style.integer_padding - length;
+
+        for (size_t i = 0; i < padding; i++) {
+            buffer.append('0');
+        }
+    }
+
     buffer.append(temp);
 }
 
@@ -120,6 +130,15 @@ void __format_64_integer(FormatBuffer& buffer, const T& value, const FormatStyle
             stbsp_sprintf(temp, "%lld", value);
         } else {
             stbsp_sprintf(temp, "%llu", value);
+        }
+    }
+
+    if (style.integer_padding > 0) {
+        size_t length = strlen(temp);
+        size_t padding = style.integer_padding - length;
+
+        for (size_t i = 0; i < padding; i++) {
+            buffer.append('0');
         }
     }
 

@@ -4,7 +4,7 @@
 
 namespace kernel::arch {
 
-struct GDTPointer {
+struct GDTDescriptor {
     u16 limit;
     u64 base;
 } PACKED;
@@ -37,15 +37,21 @@ struct GDTEntry {
             u8 granularity : 1;
         } PACKED;
 
-        u8 value;
+        u8 value : 4;
     } flags;
 
     u8 base_high;
 } PACKED;
 
+enum GDTEntrySize {
+    GDT_ENTRY_SIZE_16 = 0,
+    GDT_ENTRY_SIZE_32 = 1,
+    GDT_ENTRY_SIZE_64 = 2
+};
+
 void init_gdt();
 void set_gdt_entry(
-    u32 index, u32 base, u32 limit, bool is_data_segment,
+    u32 index, u32 limit, bool is_data_segment, GDTEntrySize size,
     bool rw, bool executable, u8 privilege,
     u8 type = 1, bool present = true, bool accessed = false
 );

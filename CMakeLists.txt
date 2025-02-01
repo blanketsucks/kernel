@@ -10,6 +10,9 @@ option(USE_CLANG "Use clang as the compiler" OFF)
 option(DEBUG "Enable debug mode" OFF)
 option(x86_64 "Build for x86_64" OFF)
 
+
+file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/usr/include ${CMAKE_INSTALL_PREFIX}/lib)
+
 if (USE_CLANG)
     set(CMAKE_CXX_COMPILER clang++)
     set(CMAKE_C_COMPILER clang)

@@ -2,8 +2,7 @@
 #include <kernel/memory/manager.h>
 #include <kernel/memory/region.h>
 
-#include <kernel/vga.h>
-#include <kernel/serial.h>
+#include <std/format.h>
 #include <std/string.h>
 
 namespace kernel::memory {
@@ -15,27 +14,33 @@ PhysicalMemoryManager* PhysicalMemoryManager::instance() {
 }
 
 void PhysicalMemoryManager::init(arch::BootInfo const& boot_info) {
-    serial::printf("Memory map:\n");
+    dbgln("Memory map:");
 
     for (u32 i = 0; i < boot_info.mmap.count; i++) {
         auto& entry = boot_info.mmap.entries[i];
 
         size_t size = std::align_down(entry.length, static_cast<u64>(PAGE_SIZE));
-        uintptr_t address = std::align_up(entry.base, static_cast<u64>(PAGE_SIZE));
+        PhysicalAddress address = std::align_up(entry.base, static_cast<u64>(PAGE_SIZE));
 
-        serial::printf("  Address: %#x, Size: %#x, Type: %d\n", address, size, static_cast<u32>(entry.type));
-        if (entry.type != arch::MemoryType::Available) {
+        PhysicalAddress end = entry.base + size;
+        dbgln("  {:#p} - {:#p}: {}", address, end, arch::memory_type_to_string(entry.type));
+        if (entry.type != arch::MemoryType::Available || size < PAGE_SIZE) {
             continue;
         }
 
-        for (u32 j = 0; j < size; j += PAGE_SIZE) {
-            s_instance.m_physical_frames.push(address + j);
+        for (size_t i = 0; i < size; i += PAGE_SIZE) {
+            s_instance.m_physical_frames.push(address + i);
         }
 
         s_instance.m_total_usable_memory += size;
     }
 
     s_instance.m_initialized = true;
+
+    size_t pages = s_instance.m_total_usable_memory / PAGE_SIZE;
+
+    dbgln("Total usable pages: {}", pages);
+    dbgln("Total usable memory: {} MB\n", s_instance.m_total_usable_memory / MB);
 }
 
 void* PhysicalMemoryManager::allocate() {

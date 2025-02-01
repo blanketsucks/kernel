@@ -1,7 +1,7 @@
 global _syscall_interrupt_handler
 extern _syscall_handler
 
-%include "kernel/arch/x86/asm/common.inc"
+%include "kernel/arch/x86/common.inc"
 
 _syscall_interrupt_handler:
     pusha

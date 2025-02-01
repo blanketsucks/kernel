@@ -4,6 +4,7 @@
 
 #include <std/utility.h>
 #include <std/array.h>
+#include <std/string_view.h>
 
 namespace kernel {
 
@@ -68,9 +69,22 @@ struct GPTEntry {
     u64 last_lba;
     u64 attributes;
     Array<u8, 72> partition_name;
+
+    StringView name() const {
+        return StringView(reinterpret_cast<const char*>(this->partition_name.data()), this->partition_name.size());
+    }
+
+    bool is_efi_system_partition() const {
+        static constexpr u8 EFI_SYSTEM_PARTITION_GUID[] = {
+            0x28, 0x73, 0x2a, 0xc1, 0x1f, 0xf8, 0xd2, 0x11, 
+            0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b,
+        };
+
+        return std::memcmp(this->partition_type_guid.data(), EFI_SYSTEM_PARTITION_GUID, 16) == 0;
+    }
     
     bool is_valid() const {
-        return std::all(this->partition_type_guid, [](u8 byte) { return byte == 0; });
+        return std::any(partition_type_guid, [](u8 byte) { return byte != 0; });
     }
 
 } PACKED;

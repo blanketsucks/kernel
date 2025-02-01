@@ -18,7 +18,7 @@ rm -f "$DISK_IMAGE"
 rm -rf ./mnt
 rm -rf ./esp
 
-qemu-img create "$DISK_IMAGE" 512M
+qemu-img create "$DISK_IMAGE" 256M
 chown "$SUDO_UID:$SUDO_GID" "$DISK_IMAGE"
 
 echo "Disk image created."

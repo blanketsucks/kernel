@@ -76,15 +76,9 @@ static int handle_syscall(Thread* thread, arch::Registers* regs) {
     return 0;
 }
 
-extern "C" void _syscall_interrupt_handler(arch::InterruptRegisters*);
-
 extern "C" void _syscall_handler(arch::Registers* regs) {
     auto* thread = Scheduler::current_thread();
     regs->eax = handle_syscall(thread, regs);
-}
-
-void setup_syscall_handler() {
-    arch::set_interrupt_handler(0x80, reinterpret_cast<uintptr_t>(_syscall_interrupt_handler), 0xEF);
 }
 
 }

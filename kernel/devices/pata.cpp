@@ -85,13 +85,16 @@ PATADevice::PATADevice(
 
         m_prdt->base = mm->get_physical_address(m_dma_buffer);
     }
+
+    size_t capacity = m_cylinders * m_heads * m_sectors_per_track * SECTOR_SIZE;
     
-    serial::printf("PATA Device Information (%d:%d):\n", to_underlying(m_channel), to_underlying(m_drive));
-    serial::printf("  Cylinders: %u\n", m_cylinders);
-    serial::printf("  Heads: %u\n", m_heads);
-    serial::printf("  Sectors per track: %u\n", m_sectors_per_track);
-    serial::printf("  DMA Supported: %s\n", m_has_dma ? "Yes" : "No");
-    serial::printf("  48 bit PIO: %s\n", m_has_48bit_pio ? "Yes" : "No");
+    dbgln("PATA Device Information ({}:{})", to_underlying(m_channel), to_underlying(m_drive));
+    dbgln("  Cylinders: {}", m_cylinders);
+    dbgln("  Heads: {}", m_heads);
+    dbgln("  Sectors per track: {}", m_sectors_per_track);
+    dbgln("  DMA Supported: {}", m_has_dma);
+    dbgln("  48 bit PIO: {}", m_has_48bit_pio);
+    dbgln("  Capacity: {} MB\n", capacity / MB);
 }
 
 void PATADevice::handle_interrupt(arch::InterruptRegisters*) {

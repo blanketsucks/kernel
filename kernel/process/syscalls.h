@@ -26,9 +26,3 @@
 #define SYS_FORK 15
 
 #define SYS_YIELD 16
-
-namespace kernel {
-
-void setup_syscall_handler();
-
-}

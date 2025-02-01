@@ -1,4 +1,4 @@
-%include "kernel/arch/x86/asm/common.inc"
+%include "kernel/arch/x86/common.inc"
 
 global _switch_context
 global _switch_context_no_state

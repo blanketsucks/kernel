@@ -42,7 +42,7 @@ PageDirectory* PageDirectory::create_user_page_directory() {
     memset(entries, 0, sizeof(PageDirectoryEntry) * 1024);
     
     // Share the top 1GB of kernel page tables (0xC0000000 - 0xFFFFFFFF)
-    for(auto i = 768; i < 1024; i++) {
+    for (auto i = 768; i < 1024; i++) {
         entries[i].value = s_kernel_page_directory_entries[i].value;
     }
 

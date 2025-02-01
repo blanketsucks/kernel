@@ -47,6 +47,17 @@ StyleResult parse_format_style(const char* fmt) {
         return { style, fmt };
     }
 
+    if (*fmt == '0') {
+        fmt++;
+        u16 integer_padding = 0;
+        while (isdigit(*fmt)) {
+            integer_padding = integer_padding * 10 + (*fmt - '0');
+            fmt++;
+        }
+
+        style.integer_padding = integer_padding;
+    }
+
 
     if (*fmt == '#') {
         style.prefix = true;
@@ -136,8 +147,11 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
 }
 
 void dbgln() {
-    FormatParameters params(0);
-    _dbg_impl("", params, true);
+#ifdef __KERNEL__
+    kernel::serial::putc('\n');
+#else
+    write(1, "\n", 1);
+#endif
 }
 
 }

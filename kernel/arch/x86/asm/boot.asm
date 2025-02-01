@@ -4,7 +4,7 @@ extern _early_main
 extern _kernel_start
 extern _kernel_end
 
-%include "kernel/arch/x86/asm/common.inc"
+%include "kernel/arch/x86/common.inc"
 
 MULTIBOOT_ALIGN      equ 1 << 0
 MULTIBOOT_MEMINFO    equ 1 << 1

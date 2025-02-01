@@ -1,25 +1,18 @@
 BITS 64
 
-%include "kernel/arch/common.inc"
+%include "kernel/arch/x86_64/common.inc"
 
 global _flush_gdt
 global _flush_tss
 
-__gdtr:
-    .limit dw 0
-    .base  dq 0
-
-; void _flush_tss(u8 selector);
+; void _flush_tss(u16 selector);
 _flush_tss:
-    mov ax, 0x28
-    ltr ax
-
+    ltr di
     ret
 
 ; void _flush_gdt(GDTPointer*);
 _flush_gdt:
-    mov rax, [rdi]
-    lgdt [rax]
+    lgdt [rdi]
 
     push KERNEL_CODE_SELECTOR
 

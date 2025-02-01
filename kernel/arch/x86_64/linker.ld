@@ -15,6 +15,8 @@ SECTIONS {
     /* Any address in this region will do, but often 0xffffffff80000000 is chosen as */
     /* that is the beginning of the region. */
     . = 0xffffffff80000000;
+
+	_kernel_start = .;
  
     .text : {
         *(.text .text.*)
@@ -61,4 +63,6 @@ SECTIONS {
         *(.eh_frame)
         *(.note .note.*)
     }
+
+    _kernel_end = .;
 }

@@ -1,3 +1,4 @@
+#include <kernel/arch/boot_info.h>
 #include <kernel/memory/manager.h>
 #include <kernel/memory/physical.h>
 #include <kernel/memory/liballoc.h>
@@ -5,8 +6,6 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
 #include <kernel/posix/sys/mman.h>
-#include <kernel/panic.h>
-#include <kernel/vga.h>
 
 #include <std/cstring.h>
 #include <std/utility.h>
@@ -19,16 +18,20 @@ static u32 s_kernel_heap_offset = 0;
 
 static MemoryManager s_memory_manager = MemoryManager();
 
+size_t MemoryManager::current_kernel_heap_offset() {
+    return s_kernel_heap_offset;
+}
+
 MemoryManager::MemoryManager() {
     auto* dir = arch::PageDirectory::kernel_page_directory();
 
     m_heap_region_allocator = RegionAllocator({ KERNEL_HEAP_ADDRESS, 0xFFFFFFFF - KERNEL_HEAP_ADDRESS }, dir);
-    m_kernel_region_allocator = RegionAllocator({ KERNEL_VIRTUAL_BASE, KERNEL_HEAP_ADDRESS - KERNEL_VIRTUAL_BASE }, dir);
+    m_kernel_region_allocator = RegionAllocator({ g_boot_info->kernel_virtual_base, g_boot_info->kernel_size + 1 * GB }, dir);
 }
 
-void MemoryManager::init(arch::BootInfo const& boot_info) {
-    PhysicalMemoryManager::init(boot_info);
-    arch::PageDirectory::create_kernel_page_directory(boot_info, s_memory_manager.m_kernel_region_allocator);
+void MemoryManager::init() {
+    PhysicalMemoryManager::init(*g_boot_info);
+    arch::PageDirectory::create_kernel_page_directory(*g_boot_info, s_memory_manager.m_kernel_region_allocator);
 }
 
 void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {

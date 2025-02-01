@@ -19,7 +19,7 @@ extern "C" void _early_main(multiboot_info_t* header) {
     u64 kernel_start = reinterpret_cast<u64>(&_kernel_start);
     u64 kernel_end = reinterpret_cast<u64>(&_kernel_end);
 
-    boot_info.kernel_size = kernel_end - kernel_start;
+    boot_info.kernel_size = std::align_up(kernel_end - kernel_start, PAGE_SIZE);
 
     Vector<arch::MemoryMapEntry> entries;
     entries.reserve(header->mmap_length / sizeof(multiboot_memory_map_t));
