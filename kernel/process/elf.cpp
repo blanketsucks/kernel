@@ -1,7 +1,7 @@
-#include <kernel/elf.h>
-#include <kernel/serial.h>
+#include <kernel/process/elf.h>
 #include <kernel/posix/unistd.h>
 #include <kernel/fs/vfs.h>
+
 #include <std/format.h>
 
 namespace kernel {

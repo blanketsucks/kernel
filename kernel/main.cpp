@@ -6,7 +6,6 @@
 #include <kernel/font.h>
 #include <kernel/pci.h>
 #include <kernel/mbr.h>
-#include <kernel/elf.h>
 #include <kernel/symbols.h>
 
 #include <std/result.h>
@@ -39,6 +38,7 @@
 #include <kernel/process/process.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/syscalls.h>
+#include <kernel/process/elf.h>
 
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/ptsfs.h>

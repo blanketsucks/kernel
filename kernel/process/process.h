@@ -3,10 +3,10 @@
 #include <kernel/common.h>
 #include <kernel/memory/region.h>
 #include <kernel/posix/sys/types.h>
+#include <kernel/process/elf.h>
 #include <kernel/arch/page_directory.h>
 #include <kernel/tty/tty.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/elf.h>
 
 #include <std/hash_map.h>
 #include <std/string.h>
