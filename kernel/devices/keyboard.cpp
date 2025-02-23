@@ -83,7 +83,6 @@ void KeyboardDevice::handle_interrupt(arch::InterruptRegisters*) {
         m_key_buffer.remove(0);
     }
 
-    dbgln("Key event: scancode={:#x}, ascii={:#x}, modifiers={:#x}", scancode, ascii, modifiers);
     m_key_buffer.append(event);
 }
 
@@ -104,7 +103,7 @@ ssize_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
 }
 
 ssize_t KeyboardDevice::write(const void*, size_t, size_t) {
-    return 0;
+    return -ENOTSUP;
 }
 
 void KeyboardDevice::init() {

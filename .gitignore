@@ -14,3 +14,6 @@ root
 
 disk.img
 kernel.map
+
+toolchain/binutils-gdb
+toolchain/gcc

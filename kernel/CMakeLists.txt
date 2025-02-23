@@ -4,8 +4,6 @@ if (x86_64)
     list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86/.*")
     file(GLOB_RECURSE ASM_SOURCES arch/x86_64/asm/*.asm)
 
-    set(CMAKE_CXX_COMPILER g++)
-
     add_compile_definitions(__x86_64__)
     add_compile_options(
         -fno-stack-protector -fno-stack-check
@@ -14,17 +12,18 @@ if (x86_64)
         -mcmodel=kernel
         -m64
         -march=x86-64
-        -mno-sse
         -mno-sse2
         -mno-mmx
+        -g
     )
 
     add_link_options(
         -zmax-page-size=0x1000
-        -znoexecstack
+        -z noexecstack
         -Wl,-m,elf_x86_64
         -Wl,--build-id=none
         -static
+        -g
     )
 
     set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/x86_64/linker.ld)

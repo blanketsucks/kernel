@@ -1,0 +1,140 @@
+diff --git a/bfd/config.bfd b/bfd/config.bfd
+index 0d790117..c7ca3647 100644
+--- a/bfd/config.bfd
++++ b/bfd/config.bfd
+@@ -347,8 +347,19 @@ case "${targ}" in
+     targ_selvecs=alpha_vms_lib_txt_vec
+     want64=true
+     ;;
++  x86_64-*-corn*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;
+ #endif /* BFD64 */
+ 
++  i[3-7]86-*-corn*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs=x86_64_elf64_vec
++    ;;
++
+   am33_2.0-*-linux*)
+     targ_defvec=am33_elf32_linux_vec
+     ;;
+diff --git a/config.sub b/config.sub
+index 4aaae46f..5ccbd873 100755
+--- a/config.sub
++++ b/config.sub
+@@ -2149,7 +2149,8 @@ case $os in
+ 	| xenix* \
+ 	| xray* \
+ 	| zephyr* \
+-	| zvmoe* )
++	| zvmoe* \
++	| corn* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff --git a/gas/configure.tgt b/gas/configure.tgt
+index 7c81bffa..7b7420a2 100644
+--- a/gas/configure.tgt
++++ b/gas/configure.tgt
+@@ -126,6 +126,7 @@ esac
+ generic_target=${cpu_type}-$vendor-$os
+ # Note: This table is alpha-sorted, please try to keep it that way.
+ case ${generic_target} in
++  i386-*-corn*)    fmt=elf em=linux ;;
+   aarch64*-*-elf*)			fmt=elf;;
+   aarch64*-*-fuchsia*)			fmt=elf;;
+   aarch64*-*-haiku*)			fmt=elf em=haiku ;;
+diff --git a/ld/Makefile.am b/ld/Makefile.am
+index ccff9289..dc0c5b70 100644
+--- a/ld/Makefile.am
++++ b/ld/Makefile.am
+@@ -370,11 +370,13 @@ ALL_EMULATION_SOURCES = \
+ 	exgateelf.c \
+ 	ez80.c \
+ 	ez8001.c \
+-	ez8002.c
++	ez8002.c \
++	eelf_i386_corn.c
+ 
+ ALL_EMULATIONS = $(ALL_EMULATION_SOURCES:.c=.@OBJEXT@)
+ 
+ ALL_64_EMULATION_SOURCES = \
++	eelf_x86_64_corn.c \
+ 	eaarch64cloudabi.c \
+ 	eaarch64cloudabib.c \
+ 	eaarch64elf.c \
+diff --git a/ld/Makefile.in b/ld/Makefile.in
+index 3e24bd4d..e5cf9172 100644
+--- a/ld/Makefile.in
++++ b/ld/Makefile.in
+@@ -881,10 +881,12 @@ ALL_EMULATION_SOURCES = \
+ 	exgateelf.c \
+ 	ez80.c \
+ 	ez8001.c \
+-	ez8002.c
++	ez8002.c \
++	eelf_i386_corn.c
+ 
+ ALL_EMULATIONS = $(ALL_EMULATION_SOURCES:.c=.@OBJEXT@)
+ ALL_64_EMULATION_SOURCES = \
++	eelf_x86_64_corn.c \
+ 	eaarch64cloudabi.c \
+ 	eaarch64cloudabib.c \
+ 	eaarch64elf.c \
+@@ -1477,6 +1479,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf64tilegx_be.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_be.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_corn.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_fbsd.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_haiku.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_ldso.Po@am__quote@
+@@ -1487,6 +1490,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_s390.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_cloudabi.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_corn.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_fbsd.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_haiku.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_x86_64_sol2.Po@am__quote@
+diff --git a/ld/configure.tgt b/ld/configure.tgt
+index ea01ccf9..559c0927 100644
+--- a/ld/configure.tgt
++++ b/ld/configure.tgt
+@@ -381,6 +381,15 @@ i[3-7]86-*-linux-*)	targ_emul=elf_i386
+ 			targ64_extra_emuls="elf_x86_64 elf32_x86_64"
+ 			targ64_extra_libpath="elf_x86_64 elf32_x86_64"
+ 			;;
++i[3-7]86-*-corn*)
++			targ_emul=elf_i386_corn
++			targ_extra_emuls=elf_i386
++			targ64_extra_emuls="elf_x86_64_corn elf_x86_64"
++			;;
++x86_64-*-corn*)
++			targ_emul=elf_x86_64_corn
++			targ_extra_emuls="elf_i386_corn elf_x86_64 elf_i386"
++			;;
+ i[3-7]86-*-redox*)	targ_emul=elf_i386
+ 			targ_extra_emuls=elf_x86_64
+ 			;;
+diff --git a/ld/emulparams/elf_i386_corn.sh b/ld/emulparams/elf_i386_corn.sh
+new file mode 100644
+index 00000000..08cd1ff0
+--- /dev/null
++++ b/ld/emulparams/elf_i386_corn.sh
+@@ -0,0 +1,2 @@
++source_sh ${srcdir}/emulparams/elf_i386.sh
++TEXT_START_ADDR=0x08000000
+\ No newline at end of file
+diff --git a/ld/emulparams/elf_x86_64_corn.sh b/ld/emulparams/elf_x86_64_corn.sh
+new file mode 100644
+index 00000000..1138d555
+--- /dev/null
++++ b/ld/emulparams/elf_x86_64_corn.sh
+@@ -0,0 +1 @@
++source_sh ${srcdir}/emulparams/elf_x86_64.sh
+\ No newline at end of file

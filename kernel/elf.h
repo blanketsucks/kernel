@@ -13,12 +13,20 @@ namespace kernel {
 
 constexpr u32 ELF_MAGIC = 0x464C457F;
 
+#ifdef __x86__
+    using ELFHeader = Elf32_Ehdr;
+    using ELFPHeader = Elf32_Phdr;
+#else
+    using ELFHeader = Elf64_Ehdr;
+    using ELFPHeader = Elf64_Phdr;
+#endif
+
 class ELF {
 public:
     ELF(RefPtr<fs::FileDescriptor> file) : m_file(file) {}
 
     fs::FileDescriptor& file() { return *m_file; }
-    Elf32_Ehdr const* header() const { return m_header; }
+    ELFHeader const* header() const { return m_header; }
 
     uintptr_t entry() const {
         return m_header ? m_header->e_entry : 0;
@@ -27,18 +35,18 @@ public:
     String const& interpreter() const { return m_interpreter; }
     bool has_interpreter() const { return !m_interpreter.empty(); }
 
-    Vector<Elf32_Phdr> const& program_headers() const { return m_program_headers; }
+    Vector<ELFPHeader> const& program_headers() const { return m_program_headers; }
 
     bool load();
 
     bool read_header();
     void read_program_headers();
 private:
-    Elf32_Ehdr* m_header = nullptr;
+    ELFHeader* m_header = nullptr;
     RefPtr<fs::FileDescriptor> m_file;
 
     String m_interpreter;
-    Vector<Elf32_Phdr> m_program_headers;    
+    Vector<ELFPHeader> m_program_headers;    
 };
 
 }

@@ -21,5 +21,6 @@ install(TARGETS crt0 DESTINATION lib)
 add_custom_command(TARGET libc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:libc-shared> ${CMAKE_INSTALL_PREFIX}/lib
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:libc-static> ${CMAKE_INSTALL_PREFIX}/lib
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:crt0> ${CMAKE_INSTALL_PREFIX}/lib
     COMMAND rsync -au --include '*/' --include='*.h' --exclude='*' ${CMAKE_SOURCE_DIR}/libraries/libc/* ${CMAKE_INSTALL_PREFIX}/usr/include
 )

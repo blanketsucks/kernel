@@ -16,6 +16,12 @@ class Scheduler {
 public:
     static void init();
 
+    static void invoke_async() {}
+
+    static void lock();
+    static void unlock();
+    static bool is_locked();
+
     static void yield(bool if_idle = false);
 
     static void add_process(Process*);
@@ -30,9 +36,12 @@ public:
     static Thread* set_next_thread(Thread*);
 
     static Thread* get_next_thread();
+};
 
-    static arch::TSS& tss();
-
+class ScopedSchedulerLock {
+public:
+    ScopedSchedulerLock() { Scheduler::lock(); }
+    ~ScopedSchedulerLock() { Scheduler::unlock(); }
 };
 
 }

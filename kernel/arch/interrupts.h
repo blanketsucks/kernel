@@ -34,4 +34,20 @@ constexpr u8 TRAP_GATE = 0x8F;
 
 void set_interrupt_handler(u32 interrupt, uintptr_t handler, u8 flags);
 
+
+class InterruptDisabler {
+public:
+    InterruptDisabler() {
+        asm volatile("cli");
+    }
+
+    ~InterruptDisabler() {
+        enable();
+    }
+
+    void enable() {
+        asm volatile("sti");
+    }
+};
+
 }

@@ -10,7 +10,7 @@ struct Cursor {
     u32 y;
 };
 
-constexpr u32 ADDRESS = VIRTUAL_VGA_ADDRESS;
+constexpr u32 ADDRESS = 0xB8000;
 
 constexpr u32 WIDTH = 80;
 constexpr u32 HEIGHT = 25;

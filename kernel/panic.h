@@ -2,6 +2,8 @@
 
 #include <kernel/common.h>
 
+#include <std/string_view.h>
+
 #define PANIC(message) kernel::panic(message, __FILE__, __LINE__)
 
 #define ASSERT(condition, message)                  \
@@ -12,14 +14,16 @@
 namespace kernel {
 
 struct StackFrame {
-    StackFrame* ebp;
-    u32 eip;
+    StackFrame* bp;
+    FlatPtr ip;
 };
 
-StackFrame* get_stack_frame();
+StackFrame* get_kernel_stack_frame();
+
+void print_stack_trace(StackFrame*);
 void print_stack_trace();
 
-[[noreturn]] void panic(const char* message, bool vga = false);
-[[noreturn]] void panic(const char* message, const char* file, u32 line, bool vga = false);
+[[noreturn]] void panic(std::StringView message);
+[[noreturn]] void panic(std::StringView message, const char* file, u32 line);
 
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <std/detail.h>
+#include <std/type_traits.h>
 
 #define MAKE_ENUM_BITWISE_OPS(Enum)                                                     \
     constexpr Enum operator|(Enum lhs, Enum rhs) {                                      \
@@ -37,10 +37,8 @@
 
 namespace std {
 
-template<typename T> inline constexpr bool is_enum = std::detail::is_enum<T>;
-
 template<typename T> requires(is_enum<T>)
-using underlying_type = std::detail::underlying_type<T>;
+using underlying_type = std::underlying_type<T>;
 
 template<typename T> requires(is_enum<T>)
 constexpr auto to_underlying(T value) {

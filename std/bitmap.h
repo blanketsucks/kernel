@@ -16,12 +16,17 @@ public:
     const u8* data() const { return m_data; }
 
     bool get(size_t index) const {
-        if (index >= m_size) return false;
+        if (index >= m_size) {
+            return false;
+        }
+
         return m_data[index / 8] & (1 << (index % 8));
     }
 
     void set(size_t index, bool value) {
-        if (index >= m_size) return;
+        if (index >= m_size) {
+            return;
+        }
         
         if (value) {
             m_data[index / 8] |= (1 << (index % 8));

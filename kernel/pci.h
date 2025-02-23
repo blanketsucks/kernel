@@ -272,7 +272,7 @@ struct Device {
     }
 
     bool is_audio_device() const {
-        return device_class == DeviceClass::MultimediaController && subclass == DeviceSubclass::AudioDevice;
+        return device_class == DeviceClass::MultimediaController && subclass == DeviceSubclass::MultimediaAudioController;
     }
 
     bool is_bochs_vga() const {

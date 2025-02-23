@@ -24,8 +24,8 @@ public:
 
     virtual size_t size() const = 0;
 
-    virtual ErrorOr<void*> mmap(Process& process, size_t size, int prot) { return Error(ENODEV); }
-    virtual ErrorOr<int> ioctl(unsigned request, unsigned arg) { return Error(ENOTTY); }
+    virtual ErrorOr<void*> mmap(Process&, size_t, int) { return Error(ENODEV); }
+    virtual ErrorOr<int> ioctl(unsigned, unsigned) { return Error(ENOTTY); }
 };
 
 class InodeFile : public File {

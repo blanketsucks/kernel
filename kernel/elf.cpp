@@ -2,6 +2,7 @@
 #include <kernel/serial.h>
 #include <kernel/posix/unistd.h>
 #include <kernel/fs/vfs.h>
+#include <std/format.h>
 
 namespace kernel {
 
@@ -10,10 +11,10 @@ bool ELF::read_header() {
         return true;
     }
 
-    auto* header = m_header = new Elf32_Ehdr;
+    auto* header = m_header = new ELFHeader;
 
     m_file->seek(0, SEEK_SET);
-    m_file->read(header, sizeof(Elf32_Ehdr));
+    m_file->read(header, sizeof(ELFHeader));
 
     u32 magic = *reinterpret_cast<u32*>(header);
     if (magic != ELF_MAGIC) {

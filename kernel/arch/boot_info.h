@@ -2,6 +2,7 @@
 
 #include <kernel/common.h>
 #include <std/string_view.h>
+#include <limine.h>
 
 namespace kernel::arch {
 
@@ -46,6 +47,8 @@ struct BootInfo {
 
     // Page aligned kernel size
     size_t kernel_size;
+
+    char* cmdline;
 
     u64 hhdm;
     

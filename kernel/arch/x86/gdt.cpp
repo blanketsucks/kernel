@@ -1,5 +1,6 @@
 #include <kernel/arch/x86/gdt.h>
 #include <kernel/arch/x86/tss.h>
+#include <kernel/arch/processor.h>
 #include <kernel/process/scheduler.h>
 
 #include <std/cstring.h>
@@ -75,7 +76,7 @@ void init_gdt() {
     set_gdt_entry(3, 0, LIMIT, true, true, 3);  // User code segment
     set_gdt_entry(4, 0, LIMIT, true, false, 3);  // User data segment
 
-    auto& tss = Scheduler::tss();
+    auto& tss = Processor::instance().tss();
     write_tss(5, tss);
 
     _flush_gdt(&gdtr);

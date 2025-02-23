@@ -2,14 +2,19 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
 
+#include <kernel/arch/cpu.h>
+#include <kernel/arch/processor.h>
+#include <kernel/arch/interrupts.h>
+
 #include <std/format.h>
 
 namespace kernel {
 
-extern "C" void _switch_context(Thread::Registers*, Thread::Registers*);
-extern "C" void _switch_context_no_state(Thread::Registers*);
+extern "C" void _switch_context(arch::ThreadRegisters*, arch::ThreadRegisters*);
+extern "C" void _switch_context_no_state(arch::ThreadRegisters*);
 
 static u32 s_next_id = 0;
+static bool s_initialized = false;
 
 static Vector<Process*> s_processes;
 
@@ -18,12 +23,13 @@ static Thread* s_current_thread = nullptr;
 
 static Process* s_kernel_process = nullptr;
 
-static arch::TSS s_tss;
+static u32 s_irq_disable_counter = 0;
 
 void _idle() {
     Scheduler::yield();
     while (true) {
         asm volatile("hlt");
+        Scheduler::yield();
     }
 }
 
@@ -31,54 +37,65 @@ u32 generate_id() {
     return s_next_id++;
 }
 
+void Scheduler::lock() {
+    s_irq_disable_counter++;
+    asm volatile("cli");
+}
+
+void Scheduler::unlock() {
+    s_irq_disable_counter--;
+    if (s_irq_disable_counter == 0) {
+        asm volatile("sti");
+    }
+}
+
+bool Scheduler::is_locked() {
+    return s_irq_disable_counter > 0;
+}
+
 void Scheduler::init() {
-    memset(&s_tss, 0, sizeof(arch::TSS));
-
-	// s_tss.ss0 = 0x10;
-	// s_tss.cs = 0x0b;
-	// s_tss.ss = 0x13;
-	// s_tss.ds = 0x13;
-	// s_tss.es = 0x13;
-	// s_tss.fs = 0x13;
-	// s_tss.gs = 0x13;
-
-    // s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);
-
-    // auto thread = s_kernel_process->get_main_thread();
-    // s_current_thread = thread;
-
-    // _switch_context_no_state(&thread->m_registers);
+    s_initialized = true;
+    s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);
+    
+    auto thread = s_kernel_process->get_main_thread();
+    s_current_thread = thread;
+    
+    auto& processor = Processor::instance();
+    processor.initialize_context_switching(thread);
 }
 
 void Scheduler::yield(bool if_idle) {
-    // for (auto& process : s_processes) {
-    //     for (auto& [_, thread] : process->threads()) {
-    //         if (thread->is_blocked() && thread->should_unblock()) {
-    //             thread->unblock();
-    //         }
-    //     }
-    // }
+    if (!s_initialized) {
+        return;
+    }
 
-    // Thread* next = Scheduler::get_next_thread();
-    // if (!next || next == s_current_thread) {
-    //     return;
-    // }
+    arch::InterruptDisabler disabler;
+    for (auto& process : s_processes) {
+        for (auto& [_, thread] : process->threads()) {
+            if (thread->is_blocked() && thread->should_unblock()) {
+                thread->unblock();
+            }
+        }
+    }
+
+    Thread* next = Scheduler::get_next_thread();
+    if (!next || next == s_current_thread) {
+        return;
+    }
     
-    // if (if_idle && s_current_thread->process() != s_kernel_process) {
-    //     return;
-    // }
+    if (if_idle && s_current_thread->process() != s_kernel_process) {
+        return;
+    }
 
-    // auto& kernel_stack = next->kernel_stack();
-    // s_tss.esp0 = kernel_stack.top();
+    Thread* old = s_current_thread;
+    s_current_thread = next;
 
-    // Thread* old = s_current_thread;
-    // s_current_thread = next;
+    if (old->is_running() && old->pid() != s_kernel_process->id()) {
+        Scheduler::queue(old);
+    }
 
-    // if (old->is_running() && old->pid() != s_kernel_process->id()) {
-    //     Scheduler::queue(old);
-    // }
-
-    // _switch_context(&old->m_registers, &next->m_registers);
+    auto& processor = Processor::instance();
+    processor.switch_context(old, next);
 }
 
 void Scheduler::add_process(Process* process) {
@@ -133,10 +150,6 @@ Process* Scheduler::current_process() {
 
 void Scheduler::set_current_thread(Thread* thread) {
     s_current_thread = thread;
-}
-
-arch::TSS& Scheduler::tss() {
-    return s_tss;
 }
 
 }

@@ -9,6 +9,14 @@ global _default_interrupt_handler
 extern _interrupt_exception_handler
 extern _irq_handler
 
+%macro switch_gs 0
+    cmp qword [rsp + 0x08], KERNEL_CODE_SELECTOR
+    je %%.in_kernel
+
+    swapgs
+%%.in_kernel:
+%endmacro
+
 %macro define_common_stub 2
     _%1_common_stub:
         pushaq
@@ -17,8 +25,8 @@ extern _irq_handler
         call %2
 
         popaq
-
         add rsp, 16
+        
         iretq
 %endmacro
 
@@ -31,23 +39,23 @@ _default_interrupt_handler:
 %macro define_isr 1
     global _isr_stub_%1
     _isr_stub_%1:
-        push 0
-        push %1
+        push qword 0 ; Push error code
+        push qword %1 ; Push ISR number
         jmp _isr_common_stub
 %endmacro
 
 %macro define_isr_err 1
     global _isr_stub_%1
     _isr_stub_%1:
-        push %1
+        push qword %1 ; Push ISR number
         jmp _isr_common_stub
 %endmacro
 
 %macro define_irq 1
     global _irq_stub_%1
     _irq_stub_%1:
-        push 0
-        push %1 + 32
+        push qword 0 ; Push error code
+        push qword %1 + 32 ; Push IRQ number
         jmp _irq_common_stub
 %endmacro
 

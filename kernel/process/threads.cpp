@@ -2,11 +2,12 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
 #include <kernel/process/blocker.h>
+#include <kernel/arch/arch.h>
 #include <std/format.h>
 
 namespace kernel {
 
-extern "C" void _first_yield() {}
+extern "C" void _thread_first_enter();
 
 Thread* Thread::create(u32 id, String name, Process* process, Entry entry, ProcessArguments& arguments) {
     return new Thread(move(name), process, id, entry, arguments);
@@ -17,23 +18,23 @@ Thread* Thread::create(String name, Process* process, Entry entry, ProcessArgume
 }
 
 Thread::Thread(
-    String name, Process* process, u32 id, Entry entry, ProcessArguments& arguments
+    String name, Process* process, pid_t id, Entry entry, ProcessArguments& arguments
 ) : m_id(id), m_state(Running), m_entry(entry), m_name(move(name)), m_process(process), m_arguments(arguments) {
     this->create_stack();
 }
 
 Thread::Thread(
     Process* process, arch::Registers& registers
-) : m_id(process->id()), m_state(Running), m_process(process), m_arguments(process->m_arguments) {
+) : m_id(process->id()), m_state(Running), m_name("main"), m_process(process), m_arguments(process->m_arguments) {
 
     void* kernel_stack = MM->allocate_kernel_region(KERNEL_STACK_SIZE);
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
-    memcpy(&m_registers, &registers, sizeof(Registers));
+    memcpy(&m_registers, &registers, sizeof(arch::Registers));
     m_registers.cr3 = page_directory()->cr3();
 
-    m_registers.eax = 0;
-    this->push_initial_kernel_stack_values(m_registers.esp, m_registers);
+    m_registers.set_syscall_return(0);
+    this->set_initial_stack_state(m_registers.sp(), m_registers);
 }
 
 pid_t Thread::pid() const {
@@ -52,73 +53,44 @@ void Thread::create_stack() {
     void* kernel_stack = MM->allocate_kernel_region(KERNEL_STACK_SIZE);
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
-    u8 cs = 0x08; // Data segment selector
-    u8 ss = 0x10;  // Code segment selector
-
-    if (!this->is_kernel()) {
+    bool is_kernel_process = this->is_kernel();
+    if (!is_kernel_process) {
         void* user_stack = m_process->allocate(USER_STACK_SIZE, PageFlags::Write);
         m_user_stack = Stack(user_stack, USER_STACK_SIZE);
 
-        this->setup_thread_arguments();
+        // this->setup_thread_arguments();
 
-        cs = 0x1B;
-        ss = 0x23;
+        m_registers.cs = arch::USER_CODE_SELECTOR | 3;
+        m_registers.ss = arch::USER_DATA_SELECTOR | 3;
     } else {
         m_user_stack = m_kernel_stack;
+
+        m_registers.cs = arch::KERNEL_CODE_SELECTOR;
+        m_registers.ss = arch::KERNEL_DATA_SELECTOR;
     }
+
+    FlatPtr kernel_stack_top = m_kernel_stack.top();
+    FlatPtr user_stack_top = m_user_stack.top();
 
     // Only enable interrupts
-    u32 eflags = 0x202;
+    FlatPtr flags = 0x202;
+    m_registers.set_flags(flags);
 
-    // Setup registers for the `iret` inside of `_first_yield`
-    m_registers.eflags = eflags;
-    m_registers.cs = cs;
-    m_registers.eip = reinterpret_cast<uintptr_t>(m_entry);
-
-    m_registers.cr3 = this->page_directory()->cr3();
-    m_registers.ebp = m_user_stack.value();
-
-    m_registers.ds = ss;
-    m_registers.es = ss;
-    m_registers.fs = ss;
-    m_registers.gs = ss;
-
-    this->push_initial_kernel_stack_values(m_user_stack.value(), m_registers);
-}
-
-void Thread::push_initial_kernel_stack_values(u32 esp, Registers& registers) {
-    // If we are returning to a different privilege level, we need to push `ss` and `esp` onto the stack for `iret`
-    if (!this->is_kernel()) {
-        m_kernel_stack.push<u32>(0x23);
-        m_kernel_stack.push<u32>(esp);
+    m_registers.cr3 = page_directory()->cr3();
+    if (is_kernel_process) {
+        m_registers.set_bp(kernel_stack_top);
+    } else {
+        m_registers.set_bp(user_stack_top);
     }
 
-    m_kernel_stack.push<u32>(registers.eflags);
-    m_kernel_stack.push<u32>(registers.cs);
-    m_kernel_stack.push<u32>(registers.eip);
+    m_registers.set_ip(reinterpret_cast<FlatPtr>(m_entry));
 
-    m_kernel_stack.push<u32>(registers.eax);
-    m_kernel_stack.push<u32>(registers.ecx);
-    m_kernel_stack.push<u32>(registers.edx);
-    m_kernel_stack.push<u32>(registers.ebx);
-    m_kernel_stack.push<u32>(0); // `popad` increments ESP by 4 here so we push a dummy value
-    m_kernel_stack.push<u32>(registers.ebp);
-    m_kernel_stack.push<u32>(registers.esi);
-    m_kernel_stack.push<u32>(registers.edi);
+    this->set_initial_stack_state(m_user_stack.value(), m_registers);
+}
 
-    m_kernel_stack.push<u32>(registers.ds);
-    m_kernel_stack.push<u32>(registers.es);
-    m_kernel_stack.push<u32>(registers.fs);
-    m_kernel_stack.push<u32>(registers.fs);
-
-    m_kernel_stack.push<u32>(reinterpret_cast<uintptr_t>(_first_yield));
-    m_kernel_stack.push<u32>(registers.ebx); 
-    m_kernel_stack.push<u32>(registers.esi);
-    m_kernel_stack.push<u32>(registers.edi);
-    m_kernel_stack.push<u32>(0); // ebp
-
-    registers.esp0 = m_kernel_stack.value();
-    registers.esp = esp;
+void Thread::set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters& registers) {
+    m_registers.set_user_sp(sp);
+    registers.set_initial_stack_state(this);
 }
 
 void Thread::setup_thread_arguments() {
@@ -146,21 +118,21 @@ void Thread::setup_thread_arguments() {
     prepare_argument_vector(m_arguments.envp, envp);
 
     for (size_t i = argv.size(); i > 0; i--) {
-        m_user_stack.push<u32>(argv[i - 1]);
+        m_user_stack.push<FlatPtr>(argv[i - 1]);
     }
 
     VirtualAddress argv_address = m_user_stack.value();
     for (size_t i = envp.size(); i > 0; i--) {
-        m_user_stack.push<u32>(envp[i - 1]);
+        m_user_stack.push<FlatPtr>(envp[i - 1]);
     }
 
     VirtualAddress envp_address = m_user_stack.value();
     size_t argc = m_arguments.argv.size();
 
-    m_user_stack.push<u32>(envp_address);
-    m_user_stack.push<u32>(argv_address);
-    m_user_stack.push<u32>(argc);
-    m_user_stack.push<u32>(0xdeadbeef); // _start return address
+    m_user_stack.push<FlatPtr>(envp_address);
+    m_user_stack.push<FlatPtr>(argv_address);
+    m_user_stack.push<FlatPtr>(argc);
+    m_user_stack.push<FlatPtr>(0xdeadbeef); // _start return address
 
     arch::PageDirectory::kernel_page_directory()->switch_to();
 }
@@ -191,6 +163,8 @@ bool Thread::should_unblock() const {
 }
 
 void Thread::block(Blocker* blocker) {
+    ScopedSchedulerLock lock;
+
     m_blocker = blocker;
     m_state = Blocked;
 
@@ -200,7 +174,7 @@ void Thread::block(Blocker* blocker) {
 void Thread::unblock() {
     m_blocker = nullptr;
     m_state = Running;
-
+    
     Scheduler::queue(this);
 }
 

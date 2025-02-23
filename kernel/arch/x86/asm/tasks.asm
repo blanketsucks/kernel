@@ -4,11 +4,7 @@ global _switch_context
 global _switch_context_no_state
 global _first_yield
 
-struc Registers
-    .gs resd 1
-    .fs resd 1
-    .es resd 1
-    .ds resd 1
+struc ThreadRegisters
     .edi resd 1
     .esi resd 1
     .ebp resd 1
@@ -25,34 +21,37 @@ struc Registers
     .cr3 resd 1
 endstruc
 
-; void _switch_context_no_state(Registers*); 
+; void _switch_context_no_state(ThreadRegisters*); 
 ;   Switch to a task without saving the current state. Used for the first task switch.
 _switch_context_no_state:
     mov eax, [esp + 4]
-    mov esp, [eax + Registers.esp0]
+    mov esp, [eax + ThreadRegisters.esp0]
 
     pop ebp
     pop edi
     pop esi
     pop ebx
+    popfd
 
     ret
     
-; void _switch_context(Registers* old, Registers* new);
+; void _switch_context(ThreadRegisters* old, ThreadRegisters* new);
 _switch_context:
+    ; Push callee-saved registers
+    pushfd
     push ebx
     push esi
     push edi
     push ebp
 
-    mov edi, [esp + 20]
-    mov [edi + Registers.esp0], esp ; Save current stack pointer to `old`
+    mov edi, [esp + 24]
+    mov [edi + ThreadRegisters.esp0], esp ; Save current stack pointer to `old`
 
     ; Load esp and cr3 from `new`
-    mov esi, [esp + 24]
+    mov esi, [esp + 28]
     
-    mov esp, [esi + Registers.esp0]
-    mov eax, [esi + Registers.cr3]
+    mov esp, [esi + ThreadRegisters.esp0]
+    mov eax, [esi + ThreadRegisters.cr3]
 
     mov ecx, cr3
 
@@ -66,6 +65,7 @@ _switch_context:
     pop edi
     pop esi
     pop ebx
+    popfd
 
     ret
 

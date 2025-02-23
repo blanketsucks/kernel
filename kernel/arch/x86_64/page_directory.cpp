@@ -18,7 +18,7 @@ PageDirectory* PageDirectory::create_user_page_directory() {
     dir->set_type(User);
 
     dir->m_pml4 = {
-        reinterpret_cast<PML4Entry*>((u8*)MM->allocate_physical_frame() + g_boot_info->hhdm)
+        reinterpret_cast<PML4Entry*>((u8*)MM->allocate_page_frame() + g_boot_info->hhdm)
     };
 
     // FIXME: Right now the HHDM Mapping is 1GB which is conveniently a single PML4 entry but this should be more dynamic.
@@ -46,7 +46,7 @@ template<typename T> PageTableEntry* PageDirectory::walk_page_table(T table, Vir
             return nullptr;
         }
 
-        auto* frame = MM->allocate_physical_frame();
+        auto* frame = MM->allocate_page_frame();
         if (!frame) {
             return nullptr;
         }
@@ -76,7 +76,7 @@ template<> PageTableEntry* PageDirectory::walk_page_table(
             return nullptr;
         }
 
-        auto* frame = MM->allocate_physical_frame();
+        auto* frame = MM->allocate_page_frame();
         if (!frame) {
             return nullptr;
         }
@@ -98,6 +98,8 @@ template<> PageTableEntry* PageDirectory::walk_page_table(
 void PageDirectory::map(VirtualAddress virt, PhysicalAddress phys, PageFlags flags) {
     bool writable = std::has_flag(flags, PageFlags::Write);
     bool user = std::has_flag(flags, PageFlags::User);
+    bool cache_disable = std::has_flag(flags, PageFlags::CacheDisable);
+    bool no_execute = std::has_flag(flags, PageFlags::NoExecute);
 
     auto* entry = this->walk_page_table(virt, true, user);
     if (!entry) {
@@ -106,8 +108,11 @@ void PageDirectory::map(VirtualAddress virt, PhysicalAddress phys, PageFlags fla
 
     entry->set_value(0);
     entry->set_present(true);
+
     entry->set_writable(writable);
     entry->set_user(user);
+    entry->set_cache_disable(cache_disable);
+    entry->set_no_execute(no_execute);
     
     entry->set_physical_address(phys);
 }
@@ -162,7 +167,7 @@ void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info
     dir.set_type(Kernel);
 
     dir.m_pml4 = {
-        reinterpret_cast<PML4Entry*>((u8*)MM->allocate_physical_frame() + boot_info.hhdm)
+        reinterpret_cast<PML4Entry*>((u8*)MM->allocate_page_frame() + boot_info.hhdm)
     };
 
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += PAGE_SIZE) {
@@ -179,6 +184,8 @@ void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info
     }
 
     kernel_region_allocator.reserve(boot_info.kernel_virtual_base, boot_info.kernel_size, PROT_READ | PROT_WRITE);
+    kernel_region_allocator.reserve(boot_info.hhdm, GB, PROT_READ | PROT_WRITE);
+
     dir.switch_to();
 }
 

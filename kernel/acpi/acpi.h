@@ -173,7 +173,6 @@ private:
     RSDT* m_rsdt = nullptr;
 
     SDTHeader* m_dsdt = nullptr;
-    
 
     Vector<SDTHeader*> m_tables;
 };

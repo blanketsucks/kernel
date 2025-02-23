@@ -9,6 +9,8 @@ public:
     virtual ~Blocker() = default;
 
     virtual bool should_unblock() = 0;
+
+    void wait();
 };
 
 class BooleanBlocker : public Blocker {

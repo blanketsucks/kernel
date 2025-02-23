@@ -63,7 +63,7 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
 
         PhysicalAddress dst = entry->get_physical_address();
         if (!region->is_shared()) {
-            void* frame = MM->allocate_physical_frame();
+            void* frame = MM->allocate_page_frame();
             MM->copy_physical_memory(frame, reinterpret_cast<void*>(dst), PAGE_SIZE);
     
             dst = reinterpret_cast<PhysicalAddress>(frame);

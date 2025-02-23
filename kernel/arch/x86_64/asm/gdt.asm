@@ -3,12 +3,6 @@ BITS 64
 %include "kernel/arch/x86_64/common.inc"
 
 global _flush_gdt
-global _flush_tss
-
-; void _flush_tss(u16 selector);
-_flush_tss:
-    ltr di
-    ret
 
 ; void _flush_gdt(GDTPointer*);
 _flush_gdt:

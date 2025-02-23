@@ -25,8 +25,11 @@ size_t MemoryManager::current_kernel_heap_offset() {
 MemoryManager::MemoryManager() {
     auto* dir = arch::PageDirectory::kernel_page_directory();
 
-    m_heap_region_allocator = RegionAllocator({ KERNEL_HEAP_ADDRESS, 0xFFFFFFFF - KERNEL_HEAP_ADDRESS }, dir);
-    m_kernel_region_allocator = RegionAllocator({ g_boot_info->kernel_virtual_base, g_boot_info->kernel_size + 1 * GB }, dir);
+    VirtualAddress heap_base = g_boot_info->kernel_heap_base;
+    VirtualAddress virtual_base = g_boot_info->kernel_virtual_base;
+
+    m_heap_region_allocator = RegionAllocator({ heap_base, MAX_VIRTUAL_ADDRESS - heap_base }, dir);
+    m_kernel_region_allocator = RegionAllocator({ virtual_base, heap_base - virtual_base }, dir);
 }
 
 void MemoryManager::init() {
@@ -42,7 +45,7 @@ void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
     if (!thread || thread->is_kernel()) {
         PageFault fault = regs->errno;
 
-        dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->rip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
 
         kernel::print_stack_trace();
@@ -64,12 +67,12 @@ arch::PageDirectory* MemoryManager::kernel_page_directory() {
     return arch::PageDirectory::kernel_page_directory();
 }
 
-void* MemoryManager::allocate_physical_frame() {
+void* MemoryManager::allocate_page_frame() {
     auto* pmm = PhysicalMemoryManager::instance();
     return pmm->allocate();
 }
 
-ErrorOr<void> MemoryManager::free_physical_frame(void* frame) {
+ErrorOr<void> MemoryManager::free_page_frame(void* frame) {
     auto* pmm = PhysicalMemoryManager::instance();
     return pmm->free(frame);
 }
@@ -83,7 +86,7 @@ void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags
 
     auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        void* frame = this->allocate_physical_frame();
+        void* frame = this->allocate_page_frame();
         if (!frame) {
             return nullptr;
         }
@@ -103,7 +106,7 @@ void* MemoryManager::allocate_at(RegionAllocator& allocator, uintptr_t address, 
 
     auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        void* frame = this->allocate_physical_frame();
+        void* frame = this->allocate_page_frame();
         if (!frame) {
             return nullptr;
         }
@@ -131,7 +134,7 @@ ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t 
         PhysicalAddress physical = page_directory->get_physical_address(region->base() + i);
         page_directory->unmap(region->base() + i);
 
-        TRY(this->free_physical_frame(reinterpret_cast<void*>(physical)));
+        TRY(this->free_page_frame(reinterpret_cast<void*>(physical)));
     }
 
     allocator.free(region);
@@ -151,6 +154,14 @@ void* MemoryManager::allocate_kernel_region(size_t size) {
 }
 
 ErrorOr<void> MemoryManager::free_kernel_region(void* ptr, size_t size) {
+    return this->free(m_kernel_region_allocator, ptr, size);
+}
+
+void* MemoryManager::allocate_dma_region(size_t size) {
+    return this->allocate(m_kernel_region_allocator, size, PageFlags::Write | PageFlags::CacheDisable);
+}
+
+ErrorOr<void> MemoryManager::free_dma_region(void* ptr, size_t size) {
     return this->free(m_kernel_region_allocator, ptr, size);
 }
 
@@ -217,7 +228,7 @@ bool MemoryManager::is_mapped(void* addr) {
     return dir->is_mapped(reinterpret_cast<VirtualAddress>(addr));
 }
 
-u32 MemoryManager::get_physical_address(void* addr) {
+PhysicalAddress MemoryManager::get_physical_address(void* addr) {
     auto dir = arch::PageDirectory::kernel_page_directory();
     return dir->get_physical_address(reinterpret_cast<VirtualAddress>(addr));
 }
@@ -244,8 +255,8 @@ int liballoc_unlock() {
 void* liballoc_alloc(size_t pages) {
     using namespace kernel::memory;
 
-    size_t size = pages * PAGE_SIZE;
-    if (s_kernel_heap_offset + size < INITIAL_KERNEL_HEAP_SIZE) {
+    size_t size = pages * kernel::PAGE_SIZE;
+    if (s_kernel_heap_offset + size < kernel::INITIAL_KERNEL_HEAP_SIZE) {
         void* ptr = &s_kernel_heap[s_kernel_heap_offset];
         s_kernel_heap_offset += size;
 
@@ -259,11 +270,11 @@ int liballoc_free(void* addr, size_t pages) {
     using namespace kernel::memory;
 
     // No need to do anything if the address is in the initial kernel heap
-    if (addr >= &s_kernel_heap && addr < &s_kernel_heap[INITIAL_KERNEL_HEAP_SIZE]) {
+    if (addr >= &s_kernel_heap && addr < &s_kernel_heap[kernel::INITIAL_KERNEL_HEAP_SIZE]) {
         return 0;
     }
 
-    auto result = MM->free_heap_region(addr, pages * PAGE_SIZE);
+    auto result = MM->free_heap_region(addr, pages * kernel::PAGE_SIZE);
     return result.is_err();
 }
 

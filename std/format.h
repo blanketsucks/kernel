@@ -49,9 +49,7 @@ private:
 };
 
 template<typename T>
-struct Formatter {
-    static void format(FormatBuffer&, const T& value, const FormatStyle&);
-};
+struct Formatter {};
 
 template<typename T, bool is_signed> 
 void __format_integer(FormatBuffer& buffer, const T& value, const FormatStyle& style) {
@@ -231,6 +229,22 @@ template<typename T> struct Formatter<T*> {
     }
 };
 
+struct has_fromatter_impl {
+    template<typename T>
+    static std::true_type test(int, decltype(&Formatter<T>::format));
+
+    template<typename T>
+    static std::false_type test(...);
+};
+
+template<typename T>
+struct has_formatter {
+    static constexpr bool value = decltype(has_fromatter_impl::test<T>(0, nullptr))::value;
+};
+
+template<typename T>
+inline constexpr bool has_formatter_v = has_formatter<T>::value;
+
 struct FormatParameter {
     void const* value;
     void (*format)(FormatBuffer&, const void*, const FormatStyle&);
@@ -265,7 +279,7 @@ private:
 void _format_impl(FormatBuffer&, const char* fmt, FormatParameters&);
 void _dbg_impl(const char* fmt, FormatParameters&, bool newline);
 
-template<typename... Args>
+template<typename... Args> requires(std::conjunction<has_formatter<Args>...>::value)
 String format(const char* fmt, Args const&... args) {
     FormatBuffer buffer;
     VariadicFormatParameters<Args...> params(args...);
@@ -280,7 +294,7 @@ void dbg(const char* fmt, Args const&... args) {
     _dbg_impl(fmt, params, false);
 }
 
-template<typename... Args>
+template<typename... Args> requires(std::conjunction<has_formatter<Args>...>::value)
 void dbgln(const char* fmt, Args const&... args) {
     VariadicFormatParameters<Args...> params(args...);
     _dbg_impl(fmt, params, true);

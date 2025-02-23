@@ -7,5 +7,4 @@ __BEGIN_DECLS
 
 int ioctl(int fd, unsigned request, ...);
 
-
 __END_DECLS

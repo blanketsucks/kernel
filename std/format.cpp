@@ -123,7 +123,7 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
         auto* process = thread->process();
         auto& name = process->name();
 
-        buffer.appendf("[%.*s (PID %u)]: ", name.size(), name.data(), process->id());
+        buffer.appendf("[%.*s (PID %u)]: ", (int)name.size(), name.data(), process->id());
     }
 #endif
 

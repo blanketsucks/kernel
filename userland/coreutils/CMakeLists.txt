@@ -1,4 +1,4 @@
-set(PROGRAMS true false test)
+set(PROGRAMS true false test audio_test)
 
 # FIXME: Remove `-static` when we have proper dynamic linking support
 add_link_options(-nostdlib++ -static)

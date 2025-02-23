@@ -20,7 +20,8 @@
     void set_present(bool present) { set_bit(m_value, Present, present); }                                          \
     void set_writable(bool writable) { set_bit(m_value,Writable, writable); }                                       \
     void set_user(bool user) { set_bit(m_value,User, user); }                                                       \
-    void set_cache_disable(bool cache_disable) { set_bit(m_value, CacheDisable, cache_disable); }  
+    void set_cache_disable(bool cache_disable) { set_bit(m_value, CacheDisable, cache_disable); }                   \
+    void set_no_execute(bool no_execute) { set_bit(m_value, NoExecute, no_execute); }                               \
 
 namespace kernel {
 
@@ -28,7 +29,8 @@ enum class PageFlags : u32 {
     None = 0,
     Write = 1 << 1,
     User = 1 << 2,
-    CacheDisable = 1 << 3
+    CacheDisable = 1 << 3,
+    NoExecute = 1 << 4
 };
 
 MAKE_ENUM_BITWISE_OPS(PageFlags)
@@ -42,22 +44,6 @@ namespace kernel::memory {
 namespace kernel::arch {
 
 constexpr u64 PHYSICAL_ADDRESS_MASK = 0xFFFFFFFFFFFFF000ull;
-
-constexpr u32 get_pml4_index(VirtualAddress address) {
-    return (address >> 39) & 0x1FF;
-}
-
-constexpr u32 get_page_directory_table_index(VirtualAddress address) {
-    return (address >> 30) & 0x1FF;
-}
-
-constexpr u32 get_page_directory_index(VirtualAddress address) {
-    return (address >> 21) & 0x1FF;
-}
-
-constexpr u32 get_page_table_index(VirtualAddress address) {
-    return (address >> 12) & 0x1FF;
-}
 
 constexpr void set_bit(u64& value, u64 bit, bool set) {
     if (set) {
@@ -170,9 +156,8 @@ private:
 };
 
 struct PageTable {
-    static u32 index(VirtualAddress address) { return (address >> 12) & 0x1FF; }
-    
     PageTableEntry* entries;
+    static u32 index(VirtualAddress address) { return (address >> 12) & 0x1FF; }
 };
 
 struct PageDirectoryTable {

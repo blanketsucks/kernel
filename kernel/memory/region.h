@@ -98,7 +98,6 @@ public:
     Range const& range() const { return m_range; }
     arch::PageDirectory* page_directory() const { return m_page_directory; }
 
-    bool is_kernel() const { return m_range.base() >= KERNEL_VIRTUAL_BASE; }
     size_t usage() const { return m_usage; }
 
     Region* allocate(size_t size, int prot);

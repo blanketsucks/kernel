@@ -1,22 +1,27 @@
 #include <kernel/time/pit.h>
 #include <kernel/io.h>
 #include <kernel/serial.h>
-
+#include <kernel/arch/cpu.h>
 #include <kernel/process/scheduler.h>
+
+#include <std/format.h>
 
 namespace kernel::pit {
 
 u32 s_ticks = 0;
+PIT* s_pit = nullptr;
 
-// INTERRUPT static void _irq0_handler(arch::InterruptFrame*) {
-//     s_ticks++;
-//     pic::eoi(0);
-// }
+void PIT::handle_interrupt(arch::InterruptRegisters*) {
+    pic::eoi(0);
+    s_ticks++;
 
-// void init() {
-//     pic::set_irq_handler(0, reinterpret_cast<uintptr_t>(_irq0_handler));
-//     set_frequency(DEFAULT_FREQUENCY);
-// }
+    Scheduler::invoke_async();
+}
+
+void init() {
+    set_frequency(DEFAULT_FREQUENCY);
+    // s_pit = new PIT();
+}
 
 void set_frequency(u32 frequency) {
     u32 divisor = INPUT_CLOCK / frequency;

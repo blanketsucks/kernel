@@ -1,10 +1,11 @@
-#include "kernel/memory/manager.h"
 #include <kernel/process/process.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/scheduler.h>
-
+#include <kernel/process/syscalls.h>
+#include <kernel/arch/cpu.h>
 #include <kernel/posix/unistd.h>
 #include <kernel/posix/sys/mman.h>
+#include <kernel/serial.h>
 
 #include <std/format.h>
 
@@ -26,7 +27,7 @@ Process::Process(
 ) : m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_cwd(cwd), m_arguments(move(arguments)) {
     if (!kernel) {
         m_page_directory = arch::PageDirectory::create_user_page_directory();
-        m_allocator = memory::RegionAllocator({ PAGE_SIZE, KERNEL_VIRTUAL_BASE - PAGE_SIZE }, m_page_directory);
+        m_allocator = memory::RegionAllocator({ PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) }, m_page_directory);
     } else {
         m_page_directory = arch::PageDirectory::kernel_page_directory();
         
@@ -164,8 +165,8 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
     memory::PageFault fault = regs->errno;
 
     auto* region = m_allocator.find_region(address, true);
-    if (!region || !region->is_file_backed()) {
-        dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->rip, fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+    if (!region || !region->is_file_backed() || !region->used()) {
+        dbgln("\033[1;31mPage fault (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
 
         dbgln("Process memory regions:");
@@ -185,10 +186,26 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
 
     auto* file = region->file();
 
-    void* frame = MM->allocate_physical_frame();
+    void* frame = MM->allocate_page_frame();
     m_page_directory->map(region->base() + index, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
 
     file->read(reinterpret_cast<void*>(region->base() + index), PAGE_SIZE, index);
+}
+
+void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
+    u8 cpl = regs->ss & 0b11;
+    dbgln("\033[1;31mGeneral protection fault at IP={:#p}:\033[0m", regs->ip());
+    
+    arch::Flags flags = regs->flags();
+    if (cpl > flags.iopl) {
+        dbgln("  \033[1;31mProcess tried to execute a privileged instruction.\033[0m");
+    }
+    
+    dbgln("  \033[1;31mError code: {:#x}\033[0m", regs->errno);
+    asm volatile("cli");
+    asm volatile("hlt");
+
+    this->kill();
 }
 
 memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
@@ -453,6 +470,72 @@ int Process::sys$fork(arch::Registers& registers) {
 }
 
 int Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {
+    return 0;
+}
+
+FlatPtr Process::handle_syscall(arch::Registers* registers) {
+    Thread* thread = Scheduler::current_thread();
+    FlatPtr syscall, arg1, arg2, arg3, arg4;
+
+    registers->capture_syscall_arguments(syscall, arg1, arg2, arg3, arg4);
+    switch (syscall) {
+        case SYS_EXIT: {
+            this->sys$exit(arg1);
+        }
+        case SYS_OPEN: {
+            return this->sys$open(reinterpret_cast<const char*>(arg1), arg2, arg3);
+        }
+        case SYS_CLOSE: {
+            return this->sys$close(arg1);
+        }
+        case SYS_READ: {
+            return this->sys$read(arg1, reinterpret_cast<void*>(arg2), arg3);
+        }
+        case SYS_WRITE: {
+            return this->sys$write(arg1, reinterpret_cast<const void*>(arg2), arg3);
+        }
+        case SYS_FSTAT: {
+            return this->sys$fstat(arg1, reinterpret_cast<stat*>(arg2));
+        }
+        case SYS_MMAP: {
+            auto* args = reinterpret_cast<mmap_args*>(arg1);
+            return reinterpret_cast<FlatPtr>(this->sys$mmap(args->addr, args->size, args->prot, args->flags, args->fd, args->offset));
+        }
+        case SYS_GETPID: {
+            return this->id();
+        }
+        case SYS_GETPPID: {
+            return this->parent_id();
+        }
+        case SYS_GETTID: {
+            return thread->id();
+        }
+        case SYS_DUP: {
+            return this->sys$dup(arg1);
+        }
+        case SYS_DUP2: {
+            return this->sys$dup2(arg1, arg2);
+        }
+        case SYS_GETCWD: {
+            return this->sys$getcwd(reinterpret_cast<char*>(arg1), arg2);
+        }
+        case SYS_CHDIR: {
+            return this->sys$chdir(reinterpret_cast<const char*>(arg1));
+        }
+        case SYS_IOCTL: {
+            return this->sys$ioctl(arg1, arg2, arg3);
+        }
+        case SYS_FORK: {
+            return this->sys$fork(*registers);
+        }
+        case SYS_YIELD: {
+            Scheduler::yield();
+            return 0;
+        }
+        default:
+            dbgln("Unknown syscall: {}", syscall);
+    }
+
     return 0;
 }
 

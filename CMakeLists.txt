@@ -10,7 +10,6 @@ option(USE_CLANG "Use clang as the compiler" OFF)
 option(DEBUG "Enable debug mode" OFF)
 option(x86_64 "Build for x86_64" OFF)
 
-
 file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/usr/include ${CMAKE_INSTALL_PREFIX}/lib)
 
 if (USE_CLANG)
@@ -19,8 +18,13 @@ if (USE_CLANG)
 
     set(CMAKE_CXX_COMPILER_ID "Clang")
 else()
-    set(CMAKE_CXX_COMPILER i686-chair-g++)
-    set(CMAKE_C_COMPILER i686-chair-gcc)
+    if (x86_64)
+        set(CMAKE_CXX_COMPILER x86_64-corn-g++)
+        set(CMAKE_C_COMPILER x86_64-corn-gcc)
+    else()
+        set(CMAKE_CXX_COMPILER i686-chair-g++)
+        set(CMAKE_C_COMPILER i686-chair-gcc)
+    endif()
 
     add_link_options(-z noexecstack)
     set(CMAKE_CXX_COMPILER_ID "GNU")

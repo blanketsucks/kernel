@@ -80,21 +80,21 @@ PATADevice::PATADevice(
         u8 status = io::read<u8>(m_bus_master_port + ATARegister::BMStatus);
         io::write<u8>(m_bus_master_port + ATARegister::BMStatus, status | 0x04);
 
-        m_prdt = reinterpret_cast<PhysicalRegionDescriptor*>(mm->allocate_kernel_region(sizeof(PhysicalRegionDescriptor)));
-        m_dma_buffer = reinterpret_cast<u8*>(mm->allocate_kernel_region(DMA_BUFFER_SIZE));
+        m_prdt = reinterpret_cast<PhysicalRegionDescriptor*>(mm->allocate_dma_region(sizeof(PhysicalRegionDescriptor)));
+        m_dma_buffer = reinterpret_cast<u8*>(mm->allocate_dma_region(DMA_BUFFER_SIZE));
 
         m_prdt->base = mm->get_physical_address(m_dma_buffer);
     }
 
     size_t capacity = m_cylinders * m_heads * m_sectors_per_track * SECTOR_SIZE;
     
-    dbgln("PATA Device Information ({}:{})", to_underlying(m_channel), to_underlying(m_drive));
-    dbgln("  Cylinders: {}", m_cylinders);
-    dbgln("  Heads: {}", m_heads);
-    dbgln("  Sectors per track: {}", m_sectors_per_track);
-    dbgln("  DMA Supported: {}", m_has_dma);
-    dbgln("  48 bit PIO: {}", m_has_48bit_pio);
-    dbgln("  Capacity: {} MB\n", capacity / MB);
+    dbgln("PATA Device Information ({}:{}):", to_underlying(m_channel), to_underlying(m_drive));
+    dbgln("├ Cylinders: {}", m_cylinders);
+    dbgln("├ Heads: {}", m_heads);
+    dbgln("├ Sectors per track: {}", m_sectors_per_track);
+    dbgln("├ DMA Supported: {}", m_has_dma);
+    dbgln("├ 48 bit PIO: {}", m_has_48bit_pio);
+    dbgln("└ Capacity: {} MB\n", capacity / MB);
 }
 
 void PATADevice::handle_interrupt(arch::InterruptRegisters*) {
@@ -228,6 +228,7 @@ void PATADevice::read_sectors_with_dma(u32 lba, u8 count, u8* buffer) {
     io::write<u8>(m_bus_master_port + ATARegister::BMStatus, status | 0x06);
 
     this->prepare_for(ATACommand::ReadDMA, lba, count);
+
     this->enable_irq_handler();
 
     while (!(io::read<u8>(m_control_port) & to_underlying(ATAStatus::DataRequest)));

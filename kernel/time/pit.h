@@ -11,6 +11,13 @@ static constexpr u32 COMMAND = 0x43;
 
 static constexpr u32 DEFAULT_FREQUENCY = 100;
 
+class PIT : public IRQHandler {
+public:
+    PIT() : IRQHandler(0) {}
+
+    void handle_interrupt(arch::InterruptRegisters*);
+};
+
 void init();
 void set_frequency(u32 frequency);
 

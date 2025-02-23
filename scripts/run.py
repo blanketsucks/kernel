@@ -3,6 +3,7 @@ from typing import List, NamedTuple
 import argparse
 import pathlib
 import subprocess
+import sys
 
 CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
@@ -27,11 +28,16 @@ class QemuArgs(NamedTuple):
     
     memory: int
 
-    debug: bool = False
-    serial: bool = True
-    monitor: bool = False
+    debug: bool
+    serial: bool
+    monitor: bool
+    x86_64: bool
+    uefi: bool
+    usb: bool
 
-    x86_64: bool = False
+    ovmf: str
+
+    devices: List[str] = ['ac97']
 
     def build_disk_image_argument(self) -> List[str]:
         return ['-drive', self.disk_image.build()]
@@ -56,11 +62,20 @@ class QemuArgs(NamedTuple):
             *self.build_serial_argument(),
             *self.build_debug_argument(),
             '-D', 'qemu.log',
-            '-no-reboot'
+            '-no-reboot',
         ]
 
+        for device in self.devices:
+            args.extend(['-device', device])
+
         if not self.x86_64:
-            args += ['-kernel', self.kernel]
+            args.extend(['-kernel', self.kernel])
+
+        if self.uefi:
+            args.extend(['-bios', self.ovmf])
+
+        if self.usb:
+            args.append('-usb')
 
         return args
 
@@ -75,21 +90,38 @@ def main():
     parser.add_argument('--memory', type=int, default=256, help='Amount of memory to allocate to QEMU (in MB).')
     parser.add_argument('--debug', action='store_true', help='Run QEMU in debug mode and listen to GDB connections.')
     parser.add_argument('--with-monitor', action='store_true', help='Run QEMU with a monitor (useful for debugging).')
+    parser.add_argument('--usb', action='store_true', help='Enable USB support.')
+    
+    parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
+    action = parser.add_argument('--ovmf', type=str, default=None, help='Path to OVMF firmware')
 
+    if sys.platform == 'linux':
+        action.default = '/usr/share/ovmf/OVMF.fd'
+    elif sys.platform == 'darwin':
+        action.default = '/usr/local/share/qemu/OVMF.fd'
+    elif sys.platform == 'win32':
+        action.default = 'C:/Program Files/qemu/OVMF.fd'
+    
     args = parser.parse_args()
     qemu_args = QemuArgs(
         disk_image=DiskImage(args.disk_image),
-        kernel=args.kernel,
+        kernel=str(args.kernel),
         memory=args.memory,
         debug=args.debug,
         monitor=args.with_monitor,
-        x86_64=args.x86_64
+        x86_64=args.x86_64,
+        uefi=args.uefi,
+        ovmf=args.ovmf,
+        serial=True,
+        usb=args.usb
     )
 
     if not args.qemu:
         args.qemu = 'qemu-system-x86_64' if args.x86_64 else 'qemu-system-i386'
 
     command = [args.qemu, *qemu_args.build()]
+    print(' '.join(command), end='\n\n')
+
     try:
         subprocess.run(command)
     except KeyboardInterrupt:

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/multiboot.h>
 #include <kernel/memory/region.h>
 #include <kernel/sync/spinlock.h>
 
@@ -83,10 +82,10 @@ public:
     RegionAllocator& kernel_region_allocator() { return m_kernel_region_allocator; }
 
     bool is_mapped(void* addr);
-    u32 get_physical_address(void* addr);
+    PhysicalAddress get_physical_address(void* addr);
 
-    [[nodiscard]] void* allocate_physical_frame();
-    ErrorOr<void> free_physical_frame(void* frame);
+    [[nodiscard]] void* allocate_page_frame();
+    ErrorOr<void> free_page_frame(void* frame);
     
     void* allocate(RegionAllocator&, size_t size, PageFlags flags);
     void* allocate_at(RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags);
@@ -98,6 +97,9 @@ public:
 
     [[nodiscard]] void* allocate_kernel_region(size_t size);
     ErrorOr<void> free_kernel_region(void* ptr, size_t size);
+
+    [[nodiscard]] void* allocate_dma_region(size_t size);
+    ErrorOr<void> free_dma_region(void* ptr, size_t size);
 
     // Map an already existing physical region into the kernel's address space
     void* map_physical_region(void* ptr, size_t size);

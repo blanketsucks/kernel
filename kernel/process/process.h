@@ -66,7 +66,11 @@ public:
     Process* fork(arch::Registers&);
 
     void kill();
+
     void handle_page_fault(arch::InterruptRegisters*, VirtualAddress);
+    void handle_general_protection_fault(arch::InterruptRegisters*);
+
+    FlatPtr handle_syscall(arch::Registers*);
 
     void* allocate(size_t size, PageFlags flags);
     void* allocate_at(VirtualAddress address, size_t size, PageFlags flags);

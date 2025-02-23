@@ -1,4 +1,8 @@
 #include <kernel/arch/x86_64/gdt.h>
+#include <kernel/arch/x86_64/tss.h>
+#include <kernel/arch/processor.h>
+
+#include <kernel/process/scheduler.h>
 
 #include <std/cstring.h>
 #include <std/format.h>
@@ -7,8 +11,13 @@ namespace kernel::arch {
 
 extern "C" void _flush_gdt(GDTDescriptor*);
 
+static void set_tss_selector(u16 selector) {
+    asm volatile("ltr %0" :: "r"(selector));
+}
+
+
 // Limine requires us to have at least 7 GDT entries and we use the rest for user segments
-static GDTEntry s_gdt_entries[9];
+static GDTEntry s_gdt_entries[11];
 
 void set_gdt_entry(
     u32 index,
@@ -52,10 +61,38 @@ void set_gdt_entry(
     entry.access.accessed = accessed;
 }
 
+void write_tss(u16 index, TSS& tss) {
+    u64 base = reinterpret_cast<u64>(&tss);
+    u32 limit = sizeof(TSS) - 1;
+
+    GDTEntry entry;
+
+    entry.set_base(base & 0xFFFFFFFF);
+    entry.set_limit(limit);
+
+    entry.flags.size = 1;
+
+    entry.access.executable = true;
+    entry.access.present = true;
+    entry.access.accessed = true;
+
+    s_gdt_entries[index] = entry;
+
+    entry.high = 0;
+    entry.low = base >> 32;
+
+    s_gdt_entries[index + 1] = entry;
+}
+
 void dump_entry(size_t index) {
     GDTEntry& entry = s_gdt_entries[index];
 
+    u32 base = entry.base_low | (entry.base_middle << 16) | (entry.base_high << 24);
+    u32 limit = entry.limit_low | (entry.flags.limit_high << 16);
+
     dbgln("GDT Entry {}:", index);
+    dbgln("  Base: {:#x}", base);
+    dbgln("  Limit: {:#x}", limit);
     dbgln("  Access: {:#x}", entry.access.value);
     dbgln("  Flags: {:#x}", entry.flags.value);
 }
@@ -81,11 +118,15 @@ void init_gdt() {
     set_gdt_entry(5, 0, false, GDT_ENTRY_SIZE_64, true, true, 0);
     set_gdt_entry(6, 0, true, GDT_ENTRY_SIZE_64, true, false, 0);
 
-    // User segments
+    // User 64 bit segments
     set_gdt_entry(7, 0, false, GDT_ENTRY_SIZE_64, true, true, 3);
     set_gdt_entry(8, 0, true, GDT_ENTRY_SIZE_64, true, false, 3);
 
+    auto& tss = Processor::instance().tss();
+    write_tss(9, tss);
+
     _flush_gdt(&gdtr);
+    set_tss_selector(0x48);
 }
 
 }

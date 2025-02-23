@@ -1,4 +1,3 @@
-#include "kernel/common.h"
 #include <kernel/arch/apic.h>
 #include <kernel/memory/manager.h>
 #include <kernel/serial.h>

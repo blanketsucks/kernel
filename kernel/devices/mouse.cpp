@@ -4,6 +4,7 @@
 
 #include <std/string.h>
 #include <std/utility.h>
+#include <std/format.h>
 
 namespace kernel::devices {
 
@@ -50,10 +51,7 @@ void MouseDevice::handle_interrupt(arch::InterruptRegisters*) {
         m_bytes[m_cycle] = packet;
 
         switch (m_cycle) {
-            case 0:
-                m_cycle++;
-                break;
-            case 1:
+            case 0: case 1:
                 m_cycle++;
                 break;
             case 2:

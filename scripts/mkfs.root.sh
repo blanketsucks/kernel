@@ -11,6 +11,7 @@ mknod ./mnt/dev/null c 1 3
 mknod ./mnt/dev/ptmx c 5 2
 
 mknod ./mnt/dev/fb0 b 29 0
+mknod ./mnt/dev/snd0 c 4 0
 
 mkdir -p ./mnt/boot
 cp ./kernel.map ./mnt/boot

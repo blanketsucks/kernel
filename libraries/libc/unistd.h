@@ -30,6 +30,10 @@ int dup2(int old_fd, int new_fd);
 
 pid_t fork(void);
 
+int execv(const char* pathname, char* const argv[]);
+int execve(const char* pathname, char* const argv[], char* const envp[]);
+int execvp(const char* file, char* const argv[]);
+
 char* getcwd(char* buffer, size_t size);
 int chdir(const char* path);
 

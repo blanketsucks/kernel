@@ -20,4 +20,10 @@ void free(void* ptr);
 void* calloc(size_t nmemb, size_t size);
 void* realloc(void* ptr, size_t size);
 
+char* getenv(const char* name);
+
+int atoi(const char* nptr);
+
+int abs(int j);
+
 __END_DECLS

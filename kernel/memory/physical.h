@@ -17,7 +17,7 @@ public:
     size_t total_usable_memory() const { return m_total_usable_memory; }
     size_t used_memory() const { return m_allocations * PAGE_SIZE; }
 
-    Stack<uintptr_t> const& physical_frames() const { return m_physical_frames; }
+    std::Stack<uintptr_t> const& physical_frames() const { return m_physical_frames; }
 
     size_t allocations() const { return m_allocations; }
     bool is_initialized() const { return m_initialized; }
@@ -32,7 +32,7 @@ private:
 
     size_t m_total_usable_memory = 0;
 
-    Stack<uintptr_t> m_physical_frames;
+    std::Stack<uintptr_t> m_physical_frames;
 };
 
 }

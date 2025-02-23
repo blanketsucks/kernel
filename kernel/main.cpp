@@ -1,5 +1,4 @@
 #include <kernel/common.h>
-#include <kernel/multiboot.h>
 #include <kernel/vga.h>
 #include <kernel/io.h>
 #include <kernel/serial.h>
@@ -33,6 +32,7 @@
 #include <kernel/devices/pcspeaker.h>
 #include <kernel/devices/bochs_vga.h>
 #include <kernel/devices/pata.h>
+#include <kernel/devices/ac97.h>
 #include <kernel/devices/partition.h>
 
 #include <kernel/process/scheduler.h>
@@ -46,93 +46,65 @@
 #include <kernel/fs/ext2fs/filesystem.h>
 
 #include <kernel/arch/arch.h>
+#include <kernel/arch/cpu.h>
 #include <kernel/arch/boot_info.h>
+#include <kernel/arch/processor.h>
 
 #include <kernel/tty/virtual.h>
 
 using namespace kernel;
 using namespace kernel::devices;
 
-static PATADevice* disk = nullptr;
+static BlockDevice* s_disk = nullptr;
 
 void stage2();
 
-String format_guid(Array<u8, 16> guid) {
-    String result;
-
-    for (size_t i = 4; i > 0; i--) {
-        result.append(std::format("{:02X}", guid[i - 1]));
+void test_usb(pci::Device device) {
+    u8 interface = device.address.prog_if();
+    if (interface != 0x00) {
+        return;
     }
 
-    result.append('-');
-    for (size_t i = 6; i > 4; i--) {
-        result.append(std::format("{:02X}", guid[i - 1]));
-    }
-
-    result.append('-');
-    for (size_t i = 8; i > 6; i--) {
-        result.append(std::format("{:02X}", guid[i - 1]));
-    }
-
-    result.append('-');
-    for (size_t i = 8; i < guid.size(); i++) {
-        if (i == 10) {
-            result.append('-');
-        }
-
-        result.append(std::format("{:02X}", guid[i]));
-    }
-
-    return result;
+    device.address.bar4();
 }
+
+struct Foo {};
 
 arch::BootInfo const* g_boot_info = nullptr;
 extern "C" void main(arch::BootInfo const& boot_info) {
     g_boot_info = &boot_info;
+    kernel::run_global_constructors();
 
     serial::init();
-    kernel::run_global_constructors();
-    arch::init();
+    Processor::init();
 
     pic::init();
+    pit::init();
 
+    KeyboardDevice::init();
+    MouseDevice::init();
+    
     memory::MemoryManager::init();
-
+    
     asm volatile("sti");
-
+    
     dbgln("PCI Bus:");
     pci::enumerate([](pci::Device device) {
         dbgln("  {}: {}", device.class_name(), device.subclass_name());
+        
+        if (device.is_usb_controller()) {
+            test_usb(device);
+        }
     });
-
+    
     dbgln();
+    
+    AC97Device::create();
 
-    acpi::Parser parser;
-    parser.init();
-
-    KeyboardDevice::init();
-    // while (1) {
-    //     asm volatile("hlt");
-    // }
-
-    // pit::init();
-
-    // MouseDevice::init();
-
-    // asm volatile("sti");
-
-    // BochsVGADevice::create(800, 600);
-
-    disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
+    PATADevice* disk = PATADevice::create(ATAChannel::Primary, ATADrive::Master);
     if (!disk) {
-        serial::printf("Failed to create ATA device\n");
         return;
     }
-
-    // auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
-    // Scheduler::add_process(process);
-
-    // Scheduler::init();
 
     MasterBootRecord mbr = {};
     disk->read_sectors(0, 1, reinterpret_cast<u8*>(&mbr));
@@ -153,7 +125,7 @@ extern "C" void main(arch::BootInfo const& boot_info) {
         disk->read_sectors(1, 1, reinterpret_cast<u8*>(&gpt));
 
         if (memcmp(gpt.signature, "EFI PART", 8) != 0) {
-            serial::printf("Invalid GPT header signature\n");
+            dbgln("Invalid GPT header signature\n");
             return;
         }
 
@@ -161,6 +133,8 @@ extern "C" void main(arch::BootInfo const& boot_info) {
         entries.resize(gpt.partition_count);
 
         disk->read_sectors(gpt.partition_table_lba, gpt.partition_count, reinterpret_cast<u8*>(entries.data()));
+
+        offset = entries[1].first_lba; // FIXME: This assumes that the OS partition is always the second
         for (auto& entry : entries) {
             if (!entry.is_valid()) {
                 continue;
@@ -171,97 +145,22 @@ extern "C" void main(arch::BootInfo const& boot_info) {
             dbgln("  First LBA: {}", entry.first_lba);
             dbgln("  Last LBA: {}", entry.last_lba);
             dbgln("  Attributes: {}", entry.attributes);
-            dbgln("  Type GUID: {}", format_guid(entry.partition_type_guid));
             dbgln("  Is EFI system Partition: {}", entry.is_efi_system_partition());
 
-            offset = entry.first_lba;
+            // offset = entry.first_lba;
         }
     }
 
-    // BlockDevice* partition = nullptr;
-    // if (offset != 0) {
-    //     partition = PartitionDevice::create(3, 1, disk, offset);
-    // } else {
-    //     partition = disk;
-    // }
-
-    // auto* fs = ext2fs::FileSystem::create(partition);
-    // if (!fs) {
-    //     serial::printf("Could not create main ext2 filesystem.\n");
-    //     return;
-    // }
-
-    // auto* vfs = fs::vfs();
-    // vfs->mount_root(fs);
-
-    // Vector2 a = { 100, 25 };
-    // Vector2 b = { 200, 50 };
-    // Vector2 c = { 150, 200 };
-
-    // draw_triangle(device, a, b, c, 0x34EBB7);
-
-    // Vector2 center = barycentric(a, b, c);
-    // device->set_pixel(center.x, center.y, 0xFF0000);
-
-    // parse_symbols_from_fs();
-
-    // auto* parser = acpi::Parser::instance();
-    // parser->init();
-
-    // auto* ptsfs = new fs::PTSFS();
-    // ptsfs->init();
-
-    // vfs->mount(ptsfs, vfs->resolve("/dev/pts").unwrap());
-
-    // auto* tty0 = new VirtualTTY(0);
-
-    // auto fd = vfs->open("/bin/shell", O_RDONLY, 0).unwrap();
-    // ELF elf(fd);
-
-    // auto cwd = vfs->resolve("/").unwrap();
-
-    // ProcessArguments arguments;
-    // arguments.argv = { "/bin/shell" };
-
-    // auto* process = Process::create_user_process("/bin/shell", elf, cwd, move(arguments), tty0);
-
-    // auto* kprocess = Process::create_kernel_process("kernel");
-
-    // Scheduler::add_process(process);
-    // Scheduler::init();
-
-#if 0
-    ELF elf(inode->file());
-    elf.read_program_headers();
-
-    auto& file = elf.file();
-    auto& interpreter = elf.interpreter();
-
-    serial::printf("Interpreter: %*s\n", interpreter.size(), interpreter.data());
-    serial::printf("Entry point: %u\n", elf.header()->e_entry);
-
-    auto mm = memory::MemoryManager::instance();
-    
-    // Calculate the total number of pages needed to load the ELF file
-    size_t total_pages = 0;
-    for (auto& ph : elf.program_headers()) {
-        if (ph.p_type != PT_LOAD) continue;
-        total_pages += (ph.p_memsz + PAGE_SIZE - 1) / PAGE_SIZE;
+    if (offset != 0) {
+        s_disk = PartitionDevice::create(3, 1, disk, offset);
+    } else {
+        s_disk = disk;
     }
 
-    serial::printf("Total pages: %u\n", total_pages);
-    u8* region = static_cast<u8*>(mm->allocate_heap_region(total_pages).value());
+    auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
+    Scheduler::add_process(process);
 
-    for (auto& ph : elf.program_headers()) {
-        if (ph.p_type != PT_LOAD) continue;
-
-        file.seek(ph.p_offset);
-        file.read(region + ph.p_vaddr, ph.p_filesz);
-    }
-
-    auto entry = reinterpret_cast<int(*)()>(region + elf.header()->e_entry);
-    serial::printf("Result: %d\n", entry());
-#endif
+    Scheduler::init();
 
     for (;;) {
         asm volatile("hlt");
@@ -271,9 +170,9 @@ extern "C" void main(arch::BootInfo const& boot_info) {
 void stage2() {
     auto* process = Scheduler::current_process();
 
-    auto* fs = ext2fs::FileSystem::create(disk);
+    auto* fs = ext2fs::FileSystem::create(s_disk);
     if (!fs) {
-        serial::printf("Could not create main ext2 filesystem.\n");
+        dbgln("Could not create main ext2 filesystem.\n");
     }
 
     auto* vfs = fs::vfs();
@@ -296,9 +195,7 @@ void stage2() {
     arguments.argv = { "/bin/test" };
 
     auto* shell = Process::create_user_process("/bin/test", elf, cwd, move(arguments), tty0);
-    dbgln("Kernel Stage 2 finished");
     Scheduler::add_process(shell);
-
 
     process->sys$exit(0);
 }

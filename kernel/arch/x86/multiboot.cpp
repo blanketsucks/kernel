@@ -1,9 +1,14 @@
-#include <kernel/arch/boot_info.h>
-#include <kernel/multiboot.h>
+#include <multiboot.h>
 
+#include <kernel/arch/boot_info.h>
 #include <std/vector.h>
 
 using namespace kernel;
+
+constexpr VirtualAddress KERNEL_VIRTUAL_BASE = 0xC0000000;
+constexpr VirtualAddress KERNEL_PHYSICAL_BASE = 0x100000;
+
+constexpr VirtualAddress KERNEL_HEAP_BASE = 0xE0000000;
 
 extern "C" u64 _kernel_start;
 extern "C" u64 _kernel_end;
@@ -13,8 +18,9 @@ extern "C" void main(arch::BootInfo const&);
 extern "C" void _early_main(multiboot_info_t* header) {
     arch::BootInfo boot_info;
 
-    boot_info.kernel_virtual_base = 0xC0100000;
-    boot_info.kernel_physical_base = 0x100000;
+    boot_info.kernel_virtual_base = KERNEL_VIRTUAL_BASE + 0x100000;
+    boot_info.kernel_physical_base = KERNEL_PHYSICAL_BASE;
+    boot_info.kernel_heap_base = KERNEL_HEAP_BASE;
     
     u64 kernel_start = reinterpret_cast<u64>(&_kernel_start);
     u64 kernel_end = reinterpret_cast<u64>(&_kernel_end);

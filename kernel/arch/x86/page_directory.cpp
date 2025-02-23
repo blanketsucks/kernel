@@ -68,7 +68,7 @@ void PageDirectory::clone_into(PageDirectory* other) const {
             auto& cloned_entry = cloned->at(j);
             cloned_entry.value = entry.value;
             
-            cloned_entry.set_physical_address((PhysicalAddress)MM->allocate_physical_frame());
+            cloned_entry.set_physical_address((PhysicalAddress)MM->allocate_page_frame());
         }
 
         // It's safe to modify `entry` since we don't take it by reference
@@ -221,7 +221,7 @@ void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info
 
     // Map the upper 1GB of the kernel page tables (0xC0000000 - 0xFFFFFFFF)
     for (u32 i = 0; i < 256; i++) {
-        dir->m_entries[i + 0x300].value = ((size_t)&s_kernel_page_table_entries[i] - KERNEL_VIRTUAL_BASE) | 0x3;
+        dir->m_entries[i + 0x300].value = ((size_t)&s_kernel_page_table_entries[i] - 0xC0000000) | 0x3;
     }
 
     size_t size = std::align_up(boot_info.kernel_size, PAGE_SIZE);
@@ -234,8 +234,6 @@ void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info
 
     // Reserve space in the MemoryManager's kernel region so we don't end up getting some forbidden address when trying to allocate from it.
     kernel_region_allocator.reserve(static_cast<u32>(boot_info.kernel_virtual_base), size, PROT_READ | PROT_WRITE);
-
-    dir->map(VIRTUAL_VGA_ADDRESS, PHYSICAL_VGA_ADDRESS, PageFlags::Write);
     dir->switch_to();
 }
 

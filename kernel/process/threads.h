@@ -3,6 +3,7 @@
 #include <kernel/posix/sys/types.h>
 #include <kernel/process/stack.h>
 
+#include <std/format.h>
 #include <std/string.h>
 
 namespace kernel {
@@ -14,8 +15,8 @@ class Blocker;
 
 class Thread {
 public:
-    static constexpr u32 KERNEL_STACK_SIZE = 0x80000; // 512 KiB
-    static constexpr u32 USER_STACK_SIZE = 0x100000;  // 1 MiB
+    static constexpr u32 KERNEL_STACK_SIZE = 512 * KB;
+    static constexpr u32 USER_STACK_SIZE = 1 * MB;
 
     enum State : u8 {
         Running,
@@ -26,13 +27,6 @@ public:
     };
 
     using Entry = void (*)();
-
-    struct Registers {
-        u32 gs, fs, es, ds;
-        u32 edi, esi, ebp, esp0, ebx, edx, ecx, eax;
-        u32 eip, cs, eflags, esp, ss;
-        u32 cr3;
-    } PACKED;
 
     static Thread* create(u32 id, String name, Process*, Entry, ProcessArguments&);
     static Thread* create(String name, Process*, Entry, ProcessArguments&);
@@ -52,16 +46,20 @@ public:
     arch::PageDirectory* page_directory() const;
 
     Process* process() { return m_process; }
-    Registers& registers() { return m_registers; }
+    arch::ThreadRegisters& registers() { return m_registers; }
 
     Stack& kernel_stack() { return m_kernel_stack; }
+    Stack& user_stack() { return m_user_stack; }
 
     void* exit_value() const { return m_exit_value; }
 
     Blocker* blocker() const { return m_blocker; }
 
+    bool should_unblock_next() const { return m_should_unblock_next; }
     bool should_unblock() const;
     
+    void set_blocker(Blocker* blocker) { m_blocker = blocker; }
+
     void block(Blocker*);
     void unblock();
 
@@ -72,11 +70,12 @@ private:
     friend class Process;
     friend class Scheduler;
 
-    Thread(String name, Process*, u32 id, Entry, ProcessArguments&);
+    Thread(String name, Process*, pid_t id, Entry, ProcessArguments&);
     Thread(Process*, arch::Registers&);
 
     void create_stack();
-    void push_initial_kernel_stack_values(u32 esp, Registers&);
+    void set_initial_stack_state(uintptr_t esp, arch::ThreadRegisters&);
+    
     void setup_thread_arguments();
 
     void enqueue(Thread*);
@@ -85,13 +84,15 @@ private:
     pid_t m_id;
     State m_state;
 
+    bool m_should_unblock_next = false;
+
     Entry m_entry;
     String m_name;
 
     Stack m_kernel_stack;
     Stack m_user_stack;
 
-    Registers m_registers;
+    arch::ThreadRegisters m_registers;
 
     Process* m_process;
     ProcessArguments& m_arguments;
