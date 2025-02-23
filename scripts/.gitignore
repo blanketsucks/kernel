@@ -1,0 +1,9 @@
+limine
+mnt
+esp
+
+disk.img.lock
+disk.img
+
+kernel.map
+qemu.log

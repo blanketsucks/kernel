@@ -1,19 +1,5 @@
-build/
-mnt/
 .vscode/
-
 .clangd
 
-scripts/limine
-scripts/disk.img.lock
-scripts/qemu.log
-scripts/test
-test
-
+build
 root
-
-disk.img
-kernel.map
-
-toolchain/binutils-gdb
-toolchain/gcc
