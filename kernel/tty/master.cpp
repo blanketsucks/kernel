@@ -4,7 +4,7 @@
 
 namespace kernel {
 
-PTYMaster::PTYMaster(u32 pts) : devices::CharacterDevice(168, pts), m_pts(pts) {
+PTYMaster::PTYMaster(u32 pts) : CharacterDevice(DeviceMajor::MasterPTY, pts), m_pts(pts) {
     m_slave = new PTYSlave(pts, this);
 }
 

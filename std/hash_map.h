@@ -29,6 +29,7 @@
 #include <std/hash_table.h>
 #include <std/traits.h>
 #include <std/optional.h>
+#include <std/initializer_list.h>
 
 namespace std {
 
@@ -60,6 +61,8 @@ public:
     using ConstIterator = typename TableType::ConstIterator;
 
     HashMap() = default;
+
+    HashMap(std::initializer_list<HashMapEntry<K, V>> list) : m_table(list) {}
 
     bool empty() const { return m_table.empty(); }
     size_t size() const { return m_table.size(); }

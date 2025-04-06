@@ -42,7 +42,6 @@ void remap();
 void init();
 
 void set_irq_handler(u8 irq, IRQHandler* handler);
-void set_irq_handler(u8 irq, uintptr_t handler);
 
 void eoi(u8 irq);
 

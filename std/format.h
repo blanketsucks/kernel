@@ -288,7 +288,7 @@ String format(const char* fmt, Args const&... args) {
     return buffer.value();
 }
 
-template<typename... Args>
+template<typename... Args> requires(std::conjunction<has_formatter<Args>...>::value)
 void dbg(const char* fmt, Args const&... args) {
     VariadicFormatParameters<Args...> params(args...);
     _dbg_impl(fmt, params, false);

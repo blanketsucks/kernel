@@ -198,6 +198,7 @@ struct DirEntry {
     u16 size;
     u8 name_length;
     u8 type_indicator;
+    char name[];
 } PACKED;
 
 }

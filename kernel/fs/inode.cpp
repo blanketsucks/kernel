@@ -18,8 +18,8 @@ String ResolvedInode::fullpath() const {
     for (size_t i = parts.size(); i > 0; i--) {
         StringView path = parts[i - 1];
 
-        bool has_leading_slash = path.startswith("/");
-        bool has_trailing_slash = path.endswith("/");
+        bool has_leading_slash = path.startswith('/');
+        bool has_trailing_slash = path.endswith('/');
 
         if (has_leading_slash && path != "/") {
             path = path.substr(1);

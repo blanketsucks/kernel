@@ -8,12 +8,14 @@
 #include <kernel/arch/boot_info.h>
 #include <kernel/arch/registers.h>
 
+
 #include <std/result.h>
 
 #define MM kernel::memory::MemoryManager::instance()
 
 namespace kernel::memory {
 
+class PhysicalMemoryManager;
 class PageDirectory;
 
 union PageFault {
@@ -85,6 +87,8 @@ public:
     PhysicalAddress get_physical_address(void* addr);
 
     [[nodiscard]] void* allocate_page_frame();
+    [[nodiscard]] void* allocate_contiguous_frames(size_t count);
+
     ErrorOr<void> free_page_frame(void* frame);
     
     void* allocate(RegionAllocator&, size_t size, PageFlags flags);
@@ -112,6 +116,10 @@ public:
     SpinLock& alloc_lock() { return m_alloc_lock; }
     
 private:
+    bool try_allocate_contiguous(RegionAllocator&, Region*, size_t count, PageFlags flags);
+
+    PhysicalMemoryManager* m_pmm;
+
     RegionAllocator m_heap_region_allocator;
     RegionAllocator m_kernel_region_allocator;
 

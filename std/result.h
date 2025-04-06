@@ -15,15 +15,6 @@
         result.release_value();         \
     })
 
-#define IGNORE(expr)                    \
-    ({                                  \
-        auto result = (expr);           \
-        if (result.is_err()) {          \
-            return result.error();      \
-        }                               \
-        result.value();                 \
-    })
-
 namespace std {
 
 template<typename T, typename E>

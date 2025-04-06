@@ -5,7 +5,7 @@
 
 namespace kernel {
 
-PTYSlave::PTYSlave(u32 pts, PTYMaster* master) : TTY(169, pts), m_pts(pts), m_master(master) {
+PTYSlave::PTYSlave(u32 pts, PTYMaster* master) : TTY(DeviceMajor::SlavePTY, pts), m_pts(pts), m_master(master) {
     fs::PTSFS::register_pty(pts);
 }
 

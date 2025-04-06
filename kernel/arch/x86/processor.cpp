@@ -17,7 +17,7 @@ extern "C" void _syscall_handler(arch::Registers* regs) {
 
 void Processor::init() {
     auto& processor = instance();
-    processor.m_features = arch::cpu_features();
+    processor.preinit();
 
     // TODO: Enable features like SSE and more
 

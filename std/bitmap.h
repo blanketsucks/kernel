@@ -2,6 +2,8 @@
 
 #include <kernel/common.h>
 
+#include <std/string.h>
+
 namespace std {
 
 class Bitmap {
@@ -9,8 +11,13 @@ public:
     Bitmap() = default;
 
     Bitmap(u8* data, size_t size) : m_data(data), m_size(size) {}
+    
+    static Bitmap create(size_t size) {
+        return Bitmap(new u8[(size + 7) / 8](), size);
+    }
 
     size_t size() const { return m_size; }
+    size_t byte_size() const { return (m_size + 7) / 8; }
 
     u8* data() { return m_data; }
     const u8* data() const { return m_data; }
@@ -35,6 +42,14 @@ public:
         }
     }
 
+    void clear() {
+        memset(m_data, 0, (m_size + 7) / 8);
+    }
+
+    void fill() {
+        memset(m_data, 0xFF, (m_size + 7) / 8);
+    }
+    
     size_t find_first_set() const {
         for (size_t i = 0; i < m_size; ++i) {
             if (this->get(i)) {

@@ -5,7 +5,7 @@ add_compile_options(-fno-exceptions -fno-rtti -g)
 
 include_directories(${CMAKE_SOURCE_DIR}/userland)
 
-add_executable(shell ${CPP_SOURCES})
+add_executable(shell ${CPP_SOURCES} ${STD_CPP_SOURCES})
 add_dependencies(shell libc libgfx)
 
 target_link_libraries(shell gfx)

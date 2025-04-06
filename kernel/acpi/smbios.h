@@ -114,8 +114,8 @@ private:
 
     bool m_initialized = false;
 
-    EntryPoint32Bit* m_32_bit_entry_point;
-    EntryPoint64Bit* m_64_bit_entry_point;
+    EntryPoint32Bit* m_32_bit_entry_point = nullptr;
+    EntryPoint64Bit* m_64_bit_entry_point = nullptr;
 
     PhysicalAddress m_table_address;
 

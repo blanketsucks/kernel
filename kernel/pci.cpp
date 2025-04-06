@@ -58,6 +58,37 @@ u32 Address::bar3() const { return read<u32>(*this, BAR3); }
 u32 Address::bar4() const { return read<u32>(*this, BAR4); }
 u32 Address::bar5() const { return read<u32>(*this, BAR5); }
 
+u32 Address::bar(u8 index) const {
+    return read<u32>(*this, BAR0 + index * 4);
+}
+
+BARType Address::bar_type(u8 index) const {
+    u32 bar = read<u32>(*this, BAR0 + index * 4);
+    if (bar & 1) {
+        return BARType::IO;
+    }
+
+    switch ((bar >> 1) & 3) {
+        case 0:
+            return BARType::Memory32;
+        case 2:
+            return BARType::Memory64;
+        default:
+            return BARType::Memory16;
+    }
+}
+
+size_t Address::bar_size(u8 index) const {
+    u32 bar = read<u32>(*this, BAR0 + index * 4);
+    write<u32>(*this, BAR0 + index * 4, 0xFFFFFFFF);
+
+    u32 size = read<u32>(*this, BAR0 + index * 4);
+    write<u32>(*this, BAR0 + index * 4, bar);
+
+    size &= 0xFFFFFFF0;
+    return ~size + 1;
+}
+
 u8 Address::prog_if() const { return read<u8>(*this, PROG_IF); }
 
 u8 Address::interrupt_line() const { return read<u8>(*this, INTERRUPT_LINE); }

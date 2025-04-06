@@ -16,15 +16,29 @@ struct DeviceID {
     u32 minor;
 };
 
+enum class DeviceMajor : u32 {
+    Generic = 1,
+    Storage = 3,
+    StoragePartition = 4,
+    Input = 5,
+    Audio = 6,
+    Video = 7,
+
+    PTYMultiplexer = 99,
+    MasterPTY = 100,
+    SlavePTY = 101,
+    VirtualTTY = 102,
+};  
+
 class Device : public fs::File {
 public:
     virtual ~Device() = default;
-    Device(u32 major, u32 minor);
+    Device(DeviceMajor major, u32 minor);
 
-    u32 major() const { return m_major; }
+    DeviceMajor major() const { return m_major; }
     u32 minor() const { return m_minor; }
 
-    DeviceID id() const { return { m_major, m_minor }; }
+    DeviceID id() const { return { to_underlying(m_major), m_minor }; }
 
     static constexpr u32 encode(u32 major, u32 minor) { 
         return (minor & 0xFF) | (major << 8) | ((minor & ~0xFF) << 12);
@@ -45,8 +59,9 @@ public:
 
     virtual bool is_character_device() const { return false; }
     virtual bool is_block_device() const { return false; }
+
 private:
-    u32 m_major = 0;
+    DeviceMajor m_major = DeviceMajor::Generic;
     u32 m_minor = 0;
 };
 

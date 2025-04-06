@@ -1,6 +1,6 @@
 #include <kernel/arch/boot_info.h>
 #include <kernel/memory/manager.h>
-#include <kernel/memory/physical.h>
+#include <kernel/memory/pmm.h>
 #include <kernel/memory/liballoc.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/process/threads.h>
@@ -16,7 +16,7 @@ namespace kernel::memory {
 static u8 s_kernel_heap[INITIAL_KERNEL_HEAP_SIZE];
 static u32 s_kernel_heap_offset = 0;
 
-static MemoryManager s_memory_manager = MemoryManager();
+static MemoryManager s_mm = MemoryManager();
 
 size_t MemoryManager::current_kernel_heap_offset() {
     return s_kernel_heap_offset;
@@ -33,19 +33,28 @@ MemoryManager::MemoryManager() {
 }
 
 void MemoryManager::init() {
-    PhysicalMemoryManager::init(*g_boot_info);
-    arch::PageDirectory::create_kernel_page_directory(*g_boot_info, s_memory_manager.m_kernel_region_allocator);
+    s_mm.m_pmm = PhysicalMemoryManager::create(*g_boot_info);
+    arch::PageDirectory::create_kernel_page_directory(*g_boot_info, s_mm.m_kernel_region_allocator);
 }
 
 void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
     VirtualAddress address = 0;
     asm volatile("mov %%cr2, %0" : "=r"(address));
 
+    // Assume that the address is a null pointer dereference if it's less than a page size.
+    // No user process can ever allocate in the first page of memory so this is a safe assumption
+    bool is_null_pointer_dereference = address < PAGE_SIZE;
+
     auto* thread = Scheduler::current_thread();
     if (!thread || thread->is_kernel()) {
         PageFault fault = regs->errno;
 
-        dbgln("\033[1;31mPage fault (address={:#p}) at EIP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        if (is_null_pointer_dereference) {
+            dbgln("\033[1;31mNull pointer dereference (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        } else {
+            dbgln("\033[1;31mPage fault (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        }
+
         dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
 
         kernel::print_stack_trace();
@@ -60,7 +69,7 @@ void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
 }
 
 MemoryManager* MemoryManager::instance() {
-    return &s_memory_manager;
+    return &s_mm;
 }
 
 arch::PageDirectory* MemoryManager::kernel_page_directory() {
@@ -68,13 +77,26 @@ arch::PageDirectory* MemoryManager::kernel_page_directory() {
 }
 
 void* MemoryManager::allocate_page_frame() {
-    auto* pmm = PhysicalMemoryManager::instance();
-    return pmm->allocate();
+    auto result = m_pmm->allocate();
+    if (result.is_err()) {
+        return nullptr;
+    }
+
+    return result.value();
+}
+
+void* MemoryManager::allocate_contiguous_frames(size_t count) {
+    auto result = m_pmm->allocate_contiguous(count);
+
+    if (result.is_err()) {
+        return nullptr;
+    }
+
+    return result.value();
 }
 
 ErrorOr<void> MemoryManager::free_page_frame(void* frame) {
-    auto* pmm = PhysicalMemoryManager::instance();
-    return pmm->free(frame);
+    return m_pmm->free(frame, 1);
 }
 
 void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags) {
@@ -82,6 +104,10 @@ void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags
     auto* region = allocator.allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
         return nullptr;
+    }
+
+    if (this->try_allocate_contiguous(allocator, region, size, flags)) {
+        return reinterpret_cast<void*>(region->base());
     }
 
     auto* page_directory = allocator.page_directory();
@@ -97,7 +123,21 @@ void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags
     return reinterpret_cast<void*>(region->base());
 }
 
-void* MemoryManager::allocate_at(RegionAllocator& allocator, uintptr_t address, size_t size, PageFlags flags) {
+bool MemoryManager::try_allocate_contiguous(RegionAllocator& allocator, Region* region, size_t size, PageFlags flags) {
+    auto* page_directory = allocator.page_directory();
+    void* frame = this->allocate_contiguous_frames(size / PAGE_SIZE);
+    if (!frame) {
+        return false;
+    }
+    
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+        page_directory->map(region->base() + i, reinterpret_cast<PhysicalAddress>(frame) + i, flags);
+    }
+
+    return true;
+}
+
+void* MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress address, size_t size, PageFlags flags) {
     size = std::align_up(size, PAGE_SIZE);
     auto region = allocator.allocate_at(address, size, PROT_READ | PROT_WRITE);
     if (!region) {
@@ -234,11 +274,11 @@ PhysicalAddress MemoryManager::get_physical_address(void* addr) {
 }
 
 TemporaryMapping::TemporaryMapping(arch::PageDirectory& page_directory, void* ptr, size_t size) : m_size(size) {
-    m_ptr = (u8*)s_memory_manager.map_from_page_directory(&page_directory, ptr, size);
+    m_ptr = (u8*)s_mm.map_from_page_directory(&page_directory, ptr, size);
 }
 
 TemporaryMapping::~TemporaryMapping() {
-    s_memory_manager.unmap_physical_region(m_ptr);
+    s_mm.unmap_physical_region(m_ptr);
 }
 
 }

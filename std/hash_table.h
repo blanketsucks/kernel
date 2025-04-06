@@ -29,6 +29,7 @@
 #include <std/linked_list.h>
 #include <std/traits.h>
 #include <std/utility.h>
+#include <std/initializer_list.h>
 
 namespace std {
 
@@ -111,6 +112,13 @@ public:
     using Iterator = HashTableIterator<HashTable, T, typename Bucket::Iterator>;
 
     HashTable() = default;
+
+    HashTable(std::initializer_list<T> list) {
+        this->reserve(list.size());
+        for (auto& value : list) {
+            this->set(value);
+        }
+    }
 
     HashTable(const HashTable& other) {
         this->reserve(other.size());

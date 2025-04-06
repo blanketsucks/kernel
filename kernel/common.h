@@ -35,7 +35,7 @@ constexpr VirtualAddress page_base_of(VirtualAddress address) {
     return address & ~(PAGE_SIZE - 1);
 }
 
-constexpr VirtualAddress offset_in_page(VirtualAddress address) {
+constexpr size_t offset_in_page(VirtualAddress address) {
     return address & 0xFFF;
 }
 

@@ -20,23 +20,26 @@ struct stat PTSInode::stat() const {
     return {};
 }
 
-Vector<DirectoryEntry> PTSInode::readdir() const {
+void PTSInode::readdir(std::Function<IterationAction(const DirectoryEntry&)> callback) const {
     if (!this->is_directory()) {
-        return {};
+        return;
     }
 
     Vector<DirectoryEntry> entries;
 
-    entries.append({ 1, DirectoryEntry::Directory, "." });
+    callback({ 1, DirectoryEntry::Directory, "." });
 
     // FIXME: Point `..` to `/dev`
-    entries.append({ 1, DirectoryEntry::Directory, ".." });
+    callback({ 1, DirectoryEntry::Directory, ".." });
 
     for (auto& pty : s_ptys) {
-        entries.append({ pty + 2, DirectoryEntry::CharacterDevice, std::format("{}", pty) });
+        auto action = callback({ pty + 2, DirectoryEntry::CharacterDevice, std::format("{}", pty) });
+        if (action == IterationAction::Break) {
+            break;
+        }
     }
 
-    return entries;
+    return;
 }
 
 RefPtr<Inode> PTSInode::lookup(StringView name) const {

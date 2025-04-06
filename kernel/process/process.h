@@ -52,13 +52,13 @@ public:
 
     int exit_status() const { return m_exit_status; }
 
-    HashMap<u32, Thread*>& threads() { return m_threads; }
-    HashMap<u32, Thread*> const& threads() const { return m_threads; }
+    HashMap<pid_t, Thread*>& threads() { return m_threads; }
+    HashMap<pid_t, Thread*> const& threads() const { return m_threads; }
 
     void add_thread(Thread*);
     void remove_thread(Thread*);
 
-    Thread* get_thread(u32 id) const;
+    Thread* get_thread(pid_t id) const;
     Thread* get_main_thread() const;
 
     Thread* spawn(String name, void (*entry)());
@@ -80,28 +80,24 @@ public:
     void validate_read(const void* ptr, size_t size);
     void validate_write(const void* ptr, size_t size);
 
-    void sys$exit(int status);
+    int exec(StringView path, ProcessArguments);
 
+    void sys$exit(int status);
     int sys$open(const char* path, int flags, mode_t mode);
     int sys$close(int fd);
     ssize_t sys$read(int fd, void* buffer, size_t size);
     ssize_t sys$write(int fd, const void* buffer, size_t size);
-
+    off_t sys$lseek(int fd, off_t offset, int whence);
+    ssize_t sys$readdir(int fd, void* buffer, size_t size);
     int sys$fstat(int fd, stat* buffer);
-
     int sys$dup(int old_fd);
     int sys$dup2(int old_fd, int new_fd);
-
     void* sys$mmap(void* address, size_t size, int prot, int flags, int fd, off_t offset);
-
     int sys$getcwd(char* buffer, size_t size);
     int sys$chdir(const char* path);
-
     int sys$ioctl(int fd, unsigned request, unsigned arg);
-
     int sys$fork(arch::Registers&);
-
-    int sys$execve(const char* path, char* const argv[], char* const envp[]);
+    int sys$execve(const char* pathname, char* const argv[], char* const envp[]);
     
 private:
     friend class Scheduler;
@@ -124,7 +120,7 @@ private:
     memory::Region* validate_pointer_access(const void* ptr, bool write);
     void validate_pointer_access(const void* ptr, size_t size, bool write);
 
-    size_t validate_string(const char* ptr);
+    StringView validate_string(const char* ptr);
 
     RefPtr<fs::FileDescriptor> get_file_descriptor(int fd);
 
@@ -142,8 +138,8 @@ private:
 
     TTY* m_tty = nullptr;
     
-    HashMap<u32, Thread*> m_threads;
-    HashMap<u32, void*> m_exit_values;
+    HashMap<pid_t, Thread*> m_threads;
+    HashMap<pid_t, void*> m_exit_values;
 
     int m_exit_status = 0;
 

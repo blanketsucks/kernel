@@ -14,7 +14,6 @@ if (x86_64)
         -march=x86-64
         -mno-sse2
         -mno-mmx
-        -g
     )
 
     add_link_options(
@@ -23,7 +22,6 @@ if (x86_64)
         -Wl,-m,elf_x86_64
         -Wl,--build-id=none
         -static
-        -g
     )
 
     set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/x86_64/linker.ld)
@@ -50,7 +48,7 @@ target_compile_definitions(kernel.bin PRIVATE __KERNEL__)
 target_compile_options(
     kernel.bin
     PRIVATE
-    -g -nostdlib -nostdinc++ -ffreestanding -fno-exceptions -fno-rtti
+    -nostdlib -nostdinc++ -ffreestanding -fno-exceptions -fno-rtti -g
 )
 
 target_link_options(

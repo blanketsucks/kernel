@@ -100,7 +100,7 @@ void Process::remove_thread(Thread* thread) {
     m_threads.remove(thread->id());
 }
 
-Thread* Process::get_thread(u32 id) const {
+Thread* Process::get_thread(pid_t id) const {
     auto iterator = m_threads.find(id);
     if (iterator != m_threads.end()) {
         return iterator->value;
@@ -163,10 +163,16 @@ void Process::notify_exit(Thread* thread) {
 void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress address) {
     // TODO: Send proper signal once that is implemented
     memory::PageFault fault = regs->errno;
+    bool is_null_pointer_dereference = address < PAGE_SIZE;
 
     auto* region = m_allocator.find_region(address, true);
     if (!region || !region->is_file_backed() || !region->used()) {
-        dbgln("\033[1;31mPage fault (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        if (is_null_pointer_dereference) {
+            dbgln("\033[1;31mNull pointer dereference (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        } else {
+            dbgln("\033[1;31mPage fault (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+        }
+        
         dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
 
         dbgln("Process memory regions:");
@@ -189,21 +195,13 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
     void* frame = MM->allocate_page_frame();
     m_page_directory->map(region->base() + index, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
 
-    file->read(reinterpret_cast<void*>(region->base() + index), PAGE_SIZE, index);
+    size_t size = std::min(file->size() - index, PAGE_SIZE);
+    file->read(reinterpret_cast<void*>(region->base() + index), size, index);
 }
 
 void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
-    u8 cpl = regs->ss & 0b11;
     dbgln("\033[1;31mGeneral protection fault at IP={:#p}:\033[0m", regs->ip());
-    
-    arch::Flags flags = regs->flags();
-    if (cpl > flags.iopl) {
-        dbgln("  \033[1;31mProcess tried to execute a privileged instruction.\033[0m");
-    }
-    
     dbgln("  \033[1;31mError code: {:#x}\033[0m", regs->errno);
-    asm volatile("cli");
-    asm volatile("hlt");
 
     this->kill();
 }
@@ -216,7 +214,7 @@ memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
     } else if (write && !region->is_writable()) {
         dbgln("Invalid memory access at {:#}. Killing.", ptr);
         this->kill();
-    } 
+    }
     
     return region;
 }
@@ -247,7 +245,7 @@ void Process::validate_write(const void* ptr, size_t size) {
     this->validate_pointer_access(ptr, size, true);
 }
 
-size_t Process::validate_string(const char* ptr) {
+StringView Process::validate_string(const char* ptr) {
     memory::Region* region = this->validate_pointer_access(ptr, false);
     size_t offset = reinterpret_cast<VirtualAddress>(ptr) - region->base();
 
@@ -265,7 +263,7 @@ size_t Process::validate_string(const char* ptr) {
         length++;
     }
 
-    return length;
+    return { ptr - length, length };
 }
 
 RefPtr<fs::FileDescriptor> Process::get_file_descriptor(int fd) {
@@ -292,11 +290,11 @@ void Process::sys$exit(int status) {
     this->kill();
 }
 
-int Process::sys$open(const char* path, int flags, mode_t mode) {
-    size_t path_length = this->validate_string(path);
+int Process::sys$open(const char* pathname, int flags, mode_t mode) {
+    StringView path = this->validate_string(pathname);
     auto vfs = fs::vfs();
 
-    auto result = vfs->open({ path, path_length }, flags, mode, m_cwd);
+    auto result = vfs->open(path, flags, mode, m_cwd);
     if (result.is_err()) {
         return -result.error().errno();
     }
@@ -343,6 +341,16 @@ int Process::sys$fstat(int fd, stat* buffer) {
     *buffer = file->stat();
 
     return 0;
+}
+
+off_t Process::sys$lseek(int fd, off_t offset, int whence) {
+    auto file = this->get_file_descriptor(fd);
+    if (!file) {
+        return -EBADF;
+    }
+
+    file->seek(offset, whence);
+    return file->offset();
 }
 
 int Process::sys$dup(int old_fd) {
@@ -440,17 +448,27 @@ int Process::sys$getcwd(char* buffer, size_t size) {
     return 0;
 }
 
-int Process::sys$chdir(const char* path) {
-    size_t path_length = this->validate_string(path);
+int Process::sys$chdir(const char* pathname) {
+    StringView path = this->validate_string(pathname);
 
     auto vfs = fs::vfs();
-    auto result = vfs->resolve({ path, path_length }, m_cwd);
+    auto result = vfs->resolve(path, m_cwd);
+
     if (result.is_err()) {
         return -result.error().errno();
     }
 
     m_cwd = result.value();
     return 0;
+}
+
+ssize_t Process::sys$readdir(int fd, void* buffer, size_t size) {
+    auto file = this->get_file_descriptor(fd);
+    if (!file) {
+        return -EBADF;
+    }
+
+    return file->file()->readdir(buffer, size);
 }
 
 int Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
@@ -469,8 +487,41 @@ int Process::sys$fork(arch::Registers& registers) {
     return process->id();
 }
 
+int Process::exec(StringView path, ProcessArguments arguments) {
+    auto vfs = fs::vfs();
+    auto result = vfs->open(path, O_RDONLY, 0, m_cwd);
+
+    if (result.is_err()) {
+        return -result.error().errno();
+    }
+
+    auto file = result.value();
+    auto elf = ELF(file);
+
+    auto* process = new Process(m_id, path, false, nullptr, m_cwd, move(arguments), m_tty);
+    process->create_user_entry(elf);
+
+    process->m_parent_id = m_parent_id;
+
+    Scheduler::add_process(process);
+    this->kill();
+
+    return -1;
+}
+
 int Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {
-    return 0;
+    ProcessArguments args;
+    StringView path = this->validate_string(pathname);
+
+    if (!argv) {
+        args.argv = { path, nullptr };
+    }
+
+    if (!envp) {
+        args.envp = { nullptr };
+    }
+
+    return this->exec(path, args);
 }
 
 FlatPtr Process::handle_syscall(arch::Registers* registers) {
@@ -527,6 +578,15 @@ FlatPtr Process::handle_syscall(arch::Registers* registers) {
         }
         case SYS_FORK: {
             return this->sys$fork(*registers);
+        }
+        case SYS_EXECVE: {
+            return this->sys$execve(reinterpret_cast<const char*>(arg1), reinterpret_cast<char* const*>(arg2), reinterpret_cast<char* const*>(arg3));
+        }
+        case SYS_READDIR: {
+            return this->sys$readdir(arg1, reinterpret_cast<void*>(arg2), arg3);
+        }
+        case SYS_LSEEK: {
+            return this->sys$lseek(arg1, arg2, arg3);
         }
         case SYS_YIELD: {
             Scheduler::yield();

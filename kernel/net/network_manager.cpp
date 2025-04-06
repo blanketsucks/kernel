@@ -1,0 +1,149 @@
+#include <kernel/net/network_manager.h>
+#include <kernel/net/e1000.h>
+
+#include <kernel/process/process.h>
+#include <kernel/process/scheduler.h>
+
+namespace kernel {
+
+void handle_packet(net::NetworkAdapter& adapter, u8* data, size_t size);
+
+void handle_arp_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size);
+void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size);
+void handle_ipv6_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size);
+
+using NetworkAdapterInitializer = RefPtr<net::NetworkAdapter> (*)(pci::Device);
+
+static constexpr NetworkAdapterInitializer s_network_initializers[] = {
+    net::E1000NetworkAdapter::create,
+};
+
+static NetworkManager s_instance = {};
+
+NetworkManager* NetworkManager::instance() {
+    return &s_instance;
+}
+
+RefPtr<net::NetworkAdapter> NetworkManager::create_network_adapter(pci::Device device) {
+    for (auto& initializer : s_network_initializers) {
+        auto adapter = initializer(device);
+        if (adapter) {
+            return adapter;
+        }
+    }
+
+    return nullptr;
+}
+
+void NetworkManager::enumerate() {
+    pci::enumerate([&](pci::Device device) {
+        if (device.device_class != pci::DeviceClass::NetworkController) {
+            return;
+        }
+
+        auto adapter = this->create_network_adapter(device);
+        if (!adapter) {
+            return;
+        }
+
+        m_adapters.append(move(adapter));
+    });
+}
+
+void NetworkManager::spawn() {
+    auto* process = Process::create_kernel_process("Network Task", task);
+    m_thread = process->get_main_thread();
+
+    Scheduler::add_process(process);
+}
+
+void NetworkManager::initialize() {
+    s_instance.enumerate();
+    s_instance.spawn();
+}
+
+void NetworkManager::wakeup() {
+    s_instance.m_blocker.set_value(true);
+}
+
+void NetworkManager::add_adapter(RefPtr<net::NetworkAdapter> adapter) {
+    m_adapters.append(move(adapter));
+}
+
+void NetworkManager::task() {
+    s_instance.main();
+}
+
+void NetworkManager::main() {
+    while (true) {
+        m_blocker.set_value(false);
+        m_blocker.wait();
+
+        for (auto& adapter : m_adapters) {
+            net::Packet packet = adapter->dequeue();
+            while (packet.data) {
+                handle_packet(*adapter, packet.data, packet.size);
+                packet = adapter->dequeue();
+            }
+        }
+    }
+}
+void handle_packet(net::NetworkAdapter& adapter, u8* data, size_t size) {
+    auto* frame = reinterpret_cast<net::EthernetFrame*>(data);
+    
+    dbgln("Ethernet packet (size={}):", size);
+    dbgln(" - Source: {}", frame->source);
+    dbgln(" - Destination: {}", frame->destination);
+    dbgln(" - Type: {}", frame->type);
+
+    switch (frame->type) {
+        case net::EtherType::ARP:
+            handle_arp_packet(adapter, frame, size); break;
+        case net::EtherType::IPv4:
+            handle_ipv4_packet(adapter, frame, size); break;
+        case net::EtherType::IPv6:
+            handle_ipv6_packet(adapter, frame, size); break;
+        default:
+            dbgln("Unknown Ethernet type: {}", frame->type);
+            break;
+    }
+}
+
+void handle_arp_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t) {
+    auto* arp = reinterpret_cast<net::ARPPacket*>(frame->payload);
+
+    if (arp->operation == net::ARPOperation::Request) {
+        net::ARPPacket response;
+
+        response.sender_hardware_address = adapter.mac_address();
+        response.sender_protocol_address = arp->target_protocol_address;
+
+        response.target_hardware_address = arp->sender_hardware_address;
+        response.target_protocol_address = arp->sender_protocol_address;
+
+        response.operation = net::ARPOperation::Response;
+        adapter.send(arp->sender_hardware_address, response);
+    }
+}
+
+void handle_ipv4_packet(net::NetworkAdapter&, net::EthernetFrame* frame, size_t size) {
+    auto* ipv4 = reinterpret_cast<net::IPv4Packet*>(frame->payload);
+
+    dbgln("IPv4 packet (size={}):", size);
+    dbgln(" - Version: {}", ipv4->version);
+    dbgln(" - IHL: {}", ipv4->ihl);
+    dbgln(" - DSCP: {}", ipv4->dscp);
+    dbgln(" - ECN: {}", ipv4->ecn);
+    dbgln(" - Length: {}", ipv4->length);
+    dbgln(" - Identification: {}", ipv4->identification);
+    dbgln(" - Flags: {}", ipv4->flags_and_fragment_offset);
+    dbgln(" - TTL: {}", ipv4->ttl);
+    dbgln(" - Protocol: {}", ipv4->protocol);
+    dbgln(" - Checksum: {}", ipv4->checksum);
+    dbgln(" - Source: {}", ipv4->source);
+    dbgln(" - Destination: {}", ipv4->destination);
+}
+
+void handle_ipv6_packet(net::NetworkAdapter&, net::EthernetFrame*, size_t) {}
+
+}

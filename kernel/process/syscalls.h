@@ -1,29 +1,34 @@
 #pragma once
 
-#define SYS_EXIT 0
+enum {
+    SYS_EXIT,
 
-#define SYS_OPEN 1
-#define SYS_CLOSE 2
-#define SYS_READ 3
-#define SYS_WRITE 4
+    SYS_OPEN,
+    SYS_CLOSE,
+    SYS_READ,
+    SYS_WRITE,
+    SYS_LSEEK,
 
-#define SYS_FSTAT 5
+    SYS_READDIR,
 
-#define SYS_MMAP 6
+    SYS_FSTAT,
 
-#define SYS_GETPID 7
-#define SYS_GETPPID 8
-#define SYS_GETTID 9
+    SYS_MMAP,
 
-#define SYS_DUP 10
-#define SYS_DUP2 11
+    SYS_GETPID,
+    SYS_GETPPID,
+    SYS_GETTID,
 
-#define SYS_GETCWD 12
-#define SYS_CHDIR 13
+    SYS_DUP,
+    SYS_DUP2,
 
-#define SYS_IOCTL 14
+    SYS_GETCWD,
+    SYS_CHDIR,
 
-#define SYS_FORK 15
+    SYS_IOCTL,
 
-#define SYS_YIELD 16
+    SYS_FORK,
+    SYS_EXECVE,
 
+    SYS_YIELD,
+};

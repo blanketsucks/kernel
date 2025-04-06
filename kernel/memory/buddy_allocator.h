@@ -3,6 +3,7 @@
 #include <kernel/common.h>
 
 #include <std/bitmap.h>
+#include <std/result.h>
 
 namespace kernel::memory {
 
@@ -14,6 +15,9 @@ public:
 
     PhysicalAddress base_address() const { return m_base_address; }
     size_t total_pages() const { return m_total_pages; }
+
+    ErrorOr<PhysicalAddress> allocate(size_t pages);
+    void free(PhysicalAddress address, size_t pages);
 
 private:
     struct BuddyBucket {
@@ -31,6 +35,7 @@ private:
 
         size_t order = 0;
         std::Bitmap bitmap;
+        
         i16 freelist = -1;
     };
 

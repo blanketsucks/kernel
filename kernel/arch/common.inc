@@ -1,4 +1,4 @@
-PAGE_SIZE            equ 0x1000
+PAGE_SIZE equ 0x1000
 
 %macro pushsg 0
     push ds

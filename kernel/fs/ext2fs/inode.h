@@ -55,7 +55,7 @@ public:
 
     struct stat stat() const override;
 
-    Vector<fs::DirectoryEntry> readdir() const override { return m_entries; }
+    void readdir(std::Function<IterationAction(const fs::DirectoryEntry&)>) const override;
     RefPtr<fs::Inode> lookup(StringView name) const override;
 
     size_t block_count() const;

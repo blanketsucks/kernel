@@ -2,6 +2,7 @@ BITS 64
 
 %include "kernel/arch/x86_64/common.inc"
 
+; TODO: Automatically generate this, maybe move this syscall handler to inline assembly.
 USER_STACK_OFFSET   equ 0x00
 KERNEL_STACK_OFFSET equ 0x0C
 
@@ -30,7 +31,8 @@ _syscall_interrupt_handler:
     pop rcx
     add rsp, 8
     pop r11
-    pop rsp
 
     cli ; The sysret will enable interrupts again
+    
+    pop rsp
     o64 sysret

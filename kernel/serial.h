@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/io.h>
 
 namespace kernel::serial {
 
@@ -31,21 +32,18 @@ public:
 
     COMPort(u16 port) : m_port(port) {}
 
-    u16 port() const { return m_port; }
+    io::Port port() const { return m_port; }
 
     bool init();
 
     void write(char c);
     char read();
 
-    void write_reg(Register, u8 value);
-    u8 read_reg(Register);
-
     bool is_transmit_empty();
     bool is_data_ready();
 
 private:
-    u16 m_port;
+    io::Port m_port;
 };
 
 bool init();

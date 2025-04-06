@@ -2,7 +2,7 @@
 
 namespace kernel {
 
-TTY::TTY(u32 major, u32 minor) : devices::CharacterDevice(major, minor) {}
+TTY::TTY(DeviceMajor major, u32 minor) : CharacterDevice(major, minor) {}
 
 ssize_t TTY::read(void* buff, size_t size, size_t) {
     u8* buffer = reinterpret_cast<u8*>(buff);

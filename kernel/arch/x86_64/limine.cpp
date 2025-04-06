@@ -32,10 +32,9 @@ static volatile limine_kernel_file_request kernel_file_request = {
     .revision = 0
 };
 
-[[gnu::unused]] static volatile limine_stack_size_request stack_size_request = {
-    .id = LIMINE_STACK_SIZE_REQUEST,
-    .revision = 0,
-    .stack_size = 0x100000 / 2
+static volatile limine_rsdp_request rsdp_request = {
+    .id = LIMINE_RSDP_REQUEST,
+    .revision = 0
 };
 
 extern "C" void main(arch::BootInfo const&);
@@ -59,6 +58,9 @@ extern "C" void _early_main() {
 
     auto* hhdm = hhdm_request.response;
     boot_info.hhdm = hhdm->offset;
+
+    auto* rsdp = rsdp_request.response;
+    boot_info.rsdp = rsdp->address;
 
     Vector<arch::MemoryMapEntry> entries;
     entries.reserve(mmap_request.response->entry_count);

@@ -51,6 +51,8 @@ struct BootInfo {
     char* cmdline;
 
     u64 hhdm;
+
+    void* rsdp = nullptr;
     
     MemoryMap mmap;
     FramebufferInfo framebuffer;

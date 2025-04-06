@@ -125,59 +125,6 @@ static void* liballoc_memcpy(void* s1, const void* s2, size_t n) {
     
     return s1;
 }
- 
-
-#if defined DEBUG || defined INFO
-static void liballoc_dump()
-{
-#ifdef DEBUG
-	struct liballoc_major *maj = l_memRoot;
-	struct liballoc_minor *min = NULL;
-#endif
-
-	printf( "liballoc: ------ Memory data ---------------\n");
-	printf( "liballoc: System memory allocated: %i bytes\n", l_allocated );
-	printf( "liballoc: Memory in used (malloc'ed): %i bytes\n", l_inuse );
-	printf( "liballoc: Warning count: %i\n", l_warningCount );
-	printf( "liballoc: Error count: %i\n", l_errorCount );
-	printf( "liballoc: Possible overruns: %i\n", l_possibleOverruns );
-
-#ifdef DEBUG
-		while ( maj != NULL )
-		{
-			printf( "liballoc: %x: total = %i, used = %i\n",
-						maj, 
-						maj->size,
-						maj->usage );
-
-			min = maj->first;
-			while ( min != NULL )
-			{
-				printf( "liballoc:    %x: %i bytes\n",
-							min, 
-							min->size );
-				min = min->next;
-			}
-
-			maj = maj->next;
-		}
-#endif
-
-	FLUSH();
-}
-#endif
-
-
-liballoc_stats liballoc_get_stats() {
-    return {
-        .allocated = l_allocated,
-        .inuse = l_inuse,
-        .warnings = l_warningCount,
-        .errors = l_errorCount,
-        .possible_overruns = l_possibleOverruns
-    };
-}
-
 
 // ***************************************************************
 

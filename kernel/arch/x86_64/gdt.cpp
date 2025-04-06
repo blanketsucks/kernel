@@ -119,8 +119,8 @@ void init_gdt() {
     set_gdt_entry(6, 0, true, GDT_ENTRY_SIZE_64, true, false, 0);
 
     // User 64 bit segments
-    set_gdt_entry(7, 0, false, GDT_ENTRY_SIZE_64, true, true, 3);
-    set_gdt_entry(8, 0, true, GDT_ENTRY_SIZE_64, true, false, 3);
+    set_gdt_entry(7, 0, true, GDT_ENTRY_SIZE_64, true, false, 3);
+    set_gdt_entry(8, 0, false, GDT_ENTRY_SIZE_64, true, true, 3);
 
     auto& tss = Processor::instance().tss();
     write_tss(9, tss);

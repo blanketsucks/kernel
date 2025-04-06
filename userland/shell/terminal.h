@@ -30,7 +30,7 @@ struct Line {
 
 class Terminal {
 public:
-    Terminal(gfx::RenderContext&, RefPtr<gfx::Font>);
+    Terminal(u32 width, u32 height, gfx::RenderContext&, RefPtr<gfx::Font>);
 
     static String cwd();
 
@@ -38,15 +38,23 @@ public:
     Line const& current_line() const;
 
     void on_char(char);
+    void clear();
     
     void add_line(String text);
     void add_line_without_prompt(String text);
+
+    void advance_line() {
+        m_current_line++;
+    }
 
     void render(int size = 16);
 
     Function<void(String)> on_line_flush;
 
 private:
+    u32 m_width;
+    u32 m_height;
+
     gfx::RenderContext& m_render_context;
     RefPtr<gfx::Font> m_font;
 

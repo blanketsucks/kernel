@@ -9,6 +9,8 @@ struct Array {
     using Iterator = T*;
     using ConstIterator = const T*;
 
+    constexpr Array() = default;
+
     constexpr Iterator begin() { return m_data; }
     constexpr ConstIterator begin() const { return m_data; }
 

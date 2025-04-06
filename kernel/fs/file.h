@@ -26,6 +26,8 @@ public:
 
     virtual ErrorOr<void*> mmap(Process&, size_t, int) { return Error(ENODEV); }
     virtual ErrorOr<int> ioctl(unsigned, unsigned) { return Error(ENOTTY); }
+
+    virtual ssize_t readdir(void* buffer, size_t size) { return -ENOTDIR; }
 };
 
 class InodeFile : public File {
@@ -43,6 +45,7 @@ public:
     size_t size() const override;
 
     ErrorOr<void*> mmap(Process& process, size_t size, int prot) override;
+    ssize_t readdir(void* buffer, size_t size) override;
 
 private:
     RefPtr<Inode> m_inode;

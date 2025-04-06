@@ -35,7 +35,7 @@ public:
 
     struct stat stat() const override;
 
-    Vector<DirectoryEntry> readdir() const override;
+    void readdir(std::Function<IterationAction(const DirectoryEntry&)>) const override;
     RefPtr<Inode> lookup(StringView name) const override;
 
     ErrorOr<void> add_entry(String, RefPtr<Inode>) override { return Error(EROFS); }

@@ -8,7 +8,7 @@ namespace kernel {
 
 class PTYSlave;
 
-class PTYMaster : public devices::CharacterDevice {
+class PTYMaster : public CharacterDevice {
 public:
     PTYMaster(u32 pts);
     ~PTYMaster();

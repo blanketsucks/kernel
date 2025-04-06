@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <dirent.h>
 
 #include <std/format.h>
 #include <std/types.h>
@@ -15,6 +16,8 @@
 #include <libgfx/render_context.h>
 #include <libgfx/framebuffer.h>
 #include <libgfx/font.h>
+
+#include <kernel/arch/cpu.h>
 
 struct KeyEvent {
     char ascii;
@@ -35,6 +38,32 @@ static int term_cd(int argc, char** argv) {
     return 0;
 }
 
+static int term_ls(shell::Terminal& terminal, int argc, char** argv) {
+    auto* dir = opendir(argc > 1 ? argv[1] : ".");
+    if (!dir) {
+        return 1;
+    }
+
+    for (;;) {
+        struct dirent* entry = readdir(dir);
+        if (!entry) {
+            break;
+        }
+
+        String line;
+
+        line.append(entry->d_name);
+        line.append(' ');
+
+        terminal.add_line_without_prompt(move(line));
+        terminal.advance_line();
+    };
+
+    closedir(dir);
+    return 0;
+}
+
+
 int main() {
     int fd = open("/dev/fb0", O_RDONLY);
 
@@ -48,9 +77,7 @@ int main() {
     gfx::RenderContext context(framebuffer);
 
     OwnPtr<gfx::FontContext> font_context = OwnPtr<gfx::FontContext>::make();
-    dbgln("Loading font...");
     auto font = gfx::Font::create(*font_context, "/res/fonts/unifont.sfn");
-    dbgln("Font loaded...");
 
     if (!font) {
         dbgln("Failed to load font");
@@ -60,8 +87,8 @@ int main() {
     int kb = open("/dev/input/keyboard", O_RDONLY);
     KeyEvent event;
 
-    shell::Terminal term(context, font);
-    term.on_line_flush = [](String text) {
+    shell::Terminal term(resolution.width, resolution.height, context, font);
+    term.on_line_flush = [&term](String text) {
         dbgln("Received line '{}'", text);
 
         auto cmd = shell::parse_shell_command(text);
@@ -71,6 +98,10 @@ int main() {
 
         if (cmd.name == "cd") {
             term_cd(argc, argv);
+        } else if (cmd.name == "ls") {
+            term_ls(term, argc, argv);
+        } else if (cmd.name == "clear") {
+            term.clear();
         }
 
         for (size_t i = 1; i < argc - 1; i++) {

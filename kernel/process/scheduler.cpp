@@ -145,6 +145,10 @@ Thread* Scheduler::current_thread() {
 }
 
 Process* Scheduler::current_process() {
+    if (!s_current_thread) {
+        return nullptr;
+    }
+
     return s_current_thread->process();
 }
 

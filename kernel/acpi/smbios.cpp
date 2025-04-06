@@ -1,6 +1,7 @@
 #include <kernel/acpi/smbios.h>
 #include <kernel/memory/manager.h>
 
+#include <std/format.h>
 #include <std/cstring.h>
 
 namespace kernel::smbios {

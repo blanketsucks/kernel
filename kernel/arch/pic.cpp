@@ -1,8 +1,5 @@
 #include <kernel/arch/pic.h>
 #include <kernel/arch/interrupts.h>
-
-#include <kernel/serial.h>
-
 #include <kernel/io.h>
 #include <kernel/vga.h>
 
@@ -39,7 +36,7 @@ extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
     if (!handler) {
         return eoi(irq);
     }
-    
+
     handler->handle_interrupt(regs);
     if (handler->did_eoi()) {
         return;

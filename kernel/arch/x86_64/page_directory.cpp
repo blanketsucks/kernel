@@ -6,6 +6,7 @@
 namespace kernel::arch {
 
 static constexpr size_t HHDM_MAPPING_SIZE = 1 * GB;
+static constexpr size_t HHDM_PML4_ENTRY_COUNT = HHDM_MAPPING_SIZE / GB;
 
 static PageDirectory s_kernel_page_directory;
 
@@ -21,9 +22,10 @@ PageDirectory* PageDirectory::create_user_page_directory() {
         reinterpret_cast<PML4Entry*>((u8*)MM->allocate_page_frame() + g_boot_info->hhdm)
     };
 
-    // FIXME: Right now the HHDM Mapping is 1GB which is conveniently a single PML4 entry but this should be more dynamic.
     size_t hhdm_pml4e = PML4::index(g_boot_info->hhdm);
-    dir->m_pml4.entries[hhdm_pml4e] = s_kernel_page_directory.m_pml4.entries[hhdm_pml4e];
+    for (size_t i = 0; i < HHDM_PML4_ENTRY_COUNT; i++) {
+        dir->m_pml4.entries[hhdm_pml4e + i] = s_kernel_page_directory.m_pml4.entries[hhdm_pml4e + i];
+    }
 
     size_t kernel_pml4e = PML4::index(g_boot_info->kernel_virtual_base);
     dir->m_pml4.entries[kernel_pml4e] = s_kernel_page_directory.m_pml4.entries[kernel_pml4e];

@@ -7,7 +7,7 @@ namespace kernel {
 static constexpr u32 MAX_PTY_PAIRS = 10;
 static PTYMultiplexer* s_instance = nullptr;
 
-PTYMultiplexer::PTYMultiplexer() : devices::CharacterDevice(5, 2) {
+PTYMultiplexer::PTYMultiplexer() : CharacterDevice(DeviceMajor::PTYMultiplexer, 0) {
     s_instance = this;
     for (u32 i = 0; i < MAX_PTY_PAIRS; i++) {
         m_free_master_pts.append(i);

@@ -6,6 +6,7 @@
 #include <kernel/serial.h>
 
 #include <std/format.h>
+#include <std/function.h>
 
 #define VERIFY_BLOCK(block)                         \
     if (!block) {                                   \
@@ -59,32 +60,31 @@ ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
     size_t block = offset / block_size;
     size_t block_offset = offset % block_size;
 
-    // size_t total_blocks = size / block_size;
-    // size_t remaining_bytes = size % block_size;
+    size_t total_blocks = size / block_size;
+    size_t remaining_bytes = size % block_size;
 
-    // FIXME: There is something wrong with the following codeblock and I don't know what it is.
-    // if (total_blocks > 1) {
-    //     u8* buf = reinterpret_cast<u8*>(buffer);
-    //     u8 block_buffer[block_size];
+    if (total_blocks > 1) {
+        u8* buf = reinterpret_cast<u8*>(buffer);
+        u8 block_buffer[block_size];
     
-    //     if (block_offset) {
-    //         this->read_blocks(block, 1, block_buffer);
-    //         memcpy(buf, block_buffer + block_offset, block_size - block_offset);
+        if (block_offset) {
+            this->read_blocks(block, 1, block_buffer);
+            memcpy(buf, block_buffer + block_offset, block_size - block_offset);
 
-    //         buf += block_size - block_offset;
+            buf += block_size - block_offset;
 
-    //         block++;
-    //         total_blocks--;
-    //     }
+            block++;
+            total_blocks--;
+        }
 
-    //     this->read_blocks(block, total_blocks, buf);
-    //     if (remaining_bytes) {
-    //         this->read_blocks(block + total_blocks, 1, block_buffer);
-    //         memcpy(buf + size - remaining_bytes, block_buffer, remaining_bytes);
-    //     }
+        this->read_blocks(block, total_blocks, buf);
+        if (remaining_bytes) {
+            this->read_blocks(block + total_blocks, 1, block_buffer);
+            memcpy(buf + size - remaining_bytes, block_buffer, remaining_bytes);
+        }
         
-    //     return size;
-    // }
+        return size;
+    }
 
     size_t bytes_read = 0;
     u8 block_buffer[block_size];
@@ -254,7 +254,9 @@ void InodeEntry::write_blocks(size_t block, size_t count, const u8* buffer) {
 }
 
 Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
-    if (!this->is_directory()) return {};
+    if (!this->is_directory()) {
+        return {};
+    }
 
     u8 buffer[m_fs->block_size()];
     Vector<fs::DirectoryEntry> entries;
@@ -266,14 +268,13 @@ Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
         size_t offset = 0;
         while (offset < m_fs->block_size()) {
             DirEntry* entry = reinterpret_cast<DirEntry*>(buffer + offset);
-            StringView name = StringView(
-                reinterpret_cast<const char*>(buffer + offset + sizeof(DirEntry)), 
-                entry->name_length
-            );
+            StringView name { entry->name, entry->name_length };
 
-            if (entry->inode == 0) break;
+            if (entry->inode == 0) {
+                break;
+            }
+
             offset += entry->size;
-
             entries.append(fs::DirectoryEntry(entry->inode, static_cast<fs::DirectoryEntry::Type>(entry->type_indicator), String(name)));
         }
     }
@@ -281,15 +282,32 @@ Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
     return entries;
 }
 
+void InodeEntry::readdir(std::Function<IterationAction(const fs::DirectoryEntry&)> callback) const {
+    if (!this->is_directory()) {
+        return;
+    }
+
+    for (auto& entry : m_entries) {
+        if (callback(entry) == IterationAction::Break) {
+            break;
+        }
+    }
+}
+
 void InodeEntry::write_directory_entries() {
-    if (!this->is_directory()) return;
+    if (!this->is_directory()) {
+        return;
+    }
 
     ASSERT(false, "Writing directory entries is not implemented yet.");
 }
 
 ErrorOr<void> InodeEntry::add_directory_entry(ino_t inode, String name, fs::DirectoryEntry::Type type) {
-    if (!this->is_directory()) return Error(ENOTDIR);
-    if (name.size() > MAX_NAME_SIZE) return Error(ENAMETOOLONG);
+    if (!this->is_directory()) {
+        return Error(ENOTDIR);
+    } else if (name.size() > MAX_NAME_SIZE) {
+        return Error(ENAMETOOLONG);
+    }
 
     for (auto& entry : m_entries) {
         if (entry.name == name) {

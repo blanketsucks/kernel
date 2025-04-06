@@ -63,7 +63,10 @@ char** Command::argv() const {
 
 size_t Command::argc() const { return args.size() + 1; }
 
-Terminal::Terminal(gfx::RenderContext& context, RefPtr<gfx::Font> font) : on_line_flush(nullptr), m_render_context(context), m_font(font) {
+Terminal::Terminal(
+    u32 width, u32 height,
+    gfx::RenderContext& context, RefPtr<gfx::Font> font
+) : on_line_flush(nullptr), m_width(width), m_height(height), m_render_context(context), m_font(font) {
     this->add_line({});
 }
 
@@ -90,10 +93,9 @@ void Terminal::add_line_without_prompt(String text) {
 
 void Terminal::render(int size) {
     auto box = m_font->measure(current_line().text, size);
-
     int y = box.y;
-    int width = m_render_context.framebuffer().width();
 
+    int width = m_render_context.framebuffer().width();
     for (auto& line : m_lines) {
         if (line.text.empty()) {
             y += box.height;
@@ -145,6 +147,16 @@ void Terminal::on_char(char c) {
     }
 
     line.dirty = true;
+}
+
+void Terminal::clear() {
+    m_lines.clear();
+    this->add_line({});
+    
+    m_current_line = 0;
+
+    gfx::Rect rect = { 0, 0, (int)m_width, (int)m_height };
+    rect.draw(m_render_context, 0x000000);
 }
 
 }

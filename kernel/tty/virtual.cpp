@@ -3,7 +3,7 @@
 
 namespace kernel {
 
-VirtualTTY::VirtualTTY(u32 index) : TTY(69, index) {}
+VirtualTTY::VirtualTTY(u32 index) : TTY(DeviceMajor::VirtualTTY, index) {}
 
 void VirtualTTY::on_write(const u8* data, size_t size) {
     StringView view(reinterpret_cast<const char*>(data), size);

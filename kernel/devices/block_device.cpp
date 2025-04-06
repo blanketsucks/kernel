@@ -1,7 +1,7 @@
 #include <kernel/devices/block_device.h>
 #include <std/string.h>
 
-namespace kernel::devices {
+namespace kernel {
 
 ssize_t BlockDevice::read(void* buffer, size_t size, size_t offset) {
     size_t block = offset / this->block_size();

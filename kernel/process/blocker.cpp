@@ -3,7 +3,6 @@
 #include <kernel/process/threads.h>
 #include <kernel/time/rtc.h>
 
-
 namespace kernel {
 
 void Blocker::wait() {

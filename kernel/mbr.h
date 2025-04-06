@@ -75,7 +75,7 @@ struct GPTEntry {
         String name;
         name.resize(partition_name.size());
 
-        for (size_t i = 0; i < partition_name.size(); i += 1) {
+        for (size_t i = 0; i < partition_name.size(); i++) {
             u8 c = partition_name[i] & 0xFF;
             if (c == 0) {
                 break;

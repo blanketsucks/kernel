@@ -17,6 +17,10 @@ public:
     String() = default;
 
     String(const char* str) {
+        if (!str) {
+            return;
+        }
+
         m_size = strlen(str);
         m_capacity = m_size;
         

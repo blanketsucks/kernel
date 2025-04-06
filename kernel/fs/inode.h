@@ -7,6 +7,7 @@
 #include <std/vector.h>
 #include <std/memory.h>
 #include <std/string.h>
+#include <std/function.h>
 
 namespace kernel::fs {
 
@@ -66,7 +67,8 @@ public:
 
     virtual struct stat stat() const = 0;
 
-    virtual Vector<DirectoryEntry> readdir() const = 0;
+    virtual void readdir(std::Function<IterationAction(const fs::DirectoryEntry&)>) const = 0;
+
     virtual RefPtr<Inode> lookup(StringView name) const = 0;
 
     virtual ErrorOr<void> add_entry(String name, RefPtr<Inode> inode) = 0;

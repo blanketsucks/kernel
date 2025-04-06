@@ -5,7 +5,7 @@
 
 namespace kernel {
 
-class PTYMultiplexer : public devices::CharacterDevice {
+class PTYMultiplexer : public CharacterDevice {
 public:
     PTYMultiplexer();
 

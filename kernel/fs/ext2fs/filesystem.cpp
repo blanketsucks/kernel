@@ -6,7 +6,7 @@
 
 namespace kernel::ext2fs {
 
-FileSystem* FileSystem::create(devices::BlockDevice* disk) {
+FileSystem* FileSystem::create(BlockDevice* disk) {
     if (disk->block_size() != SECTOR_SIZE) {
         return nullptr;
     }
@@ -25,7 +25,7 @@ FileSystem* FileSystem::create(devices::BlockDevice* disk) {
     return fs;
 }
 
-FileSystem::FileSystem(Superblock* superblock, devices::BlockDevice* disk) : m_superblock(superblock), m_disk(disk) {}
+FileSystem::FileSystem(Superblock* superblock, BlockDevice* disk) : m_superblock(superblock), m_disk(disk) {}
 
 void FileSystem::flush_superblock() const {
     m_disk->write_blocks(m_superblock, 2, 2);

@@ -17,7 +17,7 @@ namespace kernel::ext2fs {
 
 class FileSystem : public fs::FileSystem {
 public:
-    static FileSystem* create(devices::BlockDevice* disk);
+    static FileSystem* create(BlockDevice* disk);
 
     RefPtr<fs::Inode> inode(ino_t inode) override;
     ino_t root() const override { return ROOT_INODE; }
@@ -62,10 +62,10 @@ public:
     RefPtr<fs::Inode> create_inode(mode_t mode, uid_t uid, gid_t gid);
 
 private:
-    FileSystem(Superblock* superblock, devices::BlockDevice* drive);
+    FileSystem(Superblock* superblock, BlockDevice* drive);
 
     Superblock* m_superblock;
-    devices::BlockDevice* m_disk;
+    BlockDevice* m_disk;
 
     Vector<BlockGroup*> m_block_groups;
 };

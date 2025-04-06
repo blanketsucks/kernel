@@ -11,7 +11,7 @@ ROOT = CWD.parent
 DEFAULT_DISK_IMAGE = CWD / 'disk.img'
 DEFAULT_KERNEL_LOCATION = ROOT  / 'build' / 'kernel' / 'kernel.bin'
 
-DEFAULT_QEMU_ARGS: List[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int', '-no-reboot', '-no-shutdown']
+DEFAULT_QEMU_ARGS: List[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int,guest_errors,unimp', '-no-reboot', '-no-shutdown']
 
 class DiskImage(NamedTuple):
     file: str
@@ -37,10 +37,11 @@ class QemuArgs(NamedTuple):
 
     ovmf: str
 
-    devices: List[str] = ['ac97']
+    netdev: str = 'user,id=net0,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888'
+    devices: List[str] = ['ac97', 'e1000,netdev=net0', 'ahci,id=ahci', 'ide-hd,bus=ahci.0,drive=map']
 
     def build_disk_image_argument(self) -> List[str]:
-        return ['-drive', self.disk_image.build()]
+        return ['-drive', self.disk_image.build(), '-drive', 'if=none,id=map,format=raw,file=kernel.map']
     
     def build_memory_argument(self) -> List[str]:
         return ['-m', str(self.memory)]
@@ -54,6 +55,9 @@ class QemuArgs(NamedTuple):
     def build_debug_argument(self) -> List[str]:
         return ['-s', '-S'] if self.debug else []
     
+    def build_network_argument(self) -> List[str]:
+        return ['-netdev', self.netdev]
+    
     def build(self) -> List[str]:
         args = [
             *DEFAULT_QEMU_ARGS,
@@ -61,8 +65,7 @@ class QemuArgs(NamedTuple):
             *self.build_memory_argument(),
             *self.build_serial_argument(),
             *self.build_debug_argument(),
-            '-D', 'qemu.log',
-            '-no-reboot',
+            *self.build_network_argument()
         ]
 
         for device in self.devices:

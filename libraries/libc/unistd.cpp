@@ -27,6 +27,10 @@ ssize_t write(int fd, const void* buffer, size_t count) {
     return syscall(SYS_WRITE, fd, buffer, count);
 }
 
+off_t lseek(int fd, off_t offset, int whence) {
+    return syscall(SYS_LSEEK, fd, offset, whence);
+}
+
 pid_t getpid(void) {
     return syscall(SYS_GETPID);
 }
@@ -58,6 +62,10 @@ int chdir(const char* path) {
 
 pid_t fork(void) {
     return syscall(SYS_FORK);
+}
+
+int execve(const char* path, char* const argv[], char* const envp[]) {
+    return syscall(SYS_EXECVE, path, argv, envp);
 }
 
 }

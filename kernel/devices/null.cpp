@@ -1,6 +1,6 @@
 #include <kernel/devices/null.h>
 
-namespace kernel::devices {
+namespace kernel {
 
 ssize_t NullDevice::read(void*, size_t, size_t) {
     return 0;

@@ -57,6 +57,13 @@ union Command {
     Command(u16 value) : value(value) {}
 };
 
+enum class BARType : u8 {
+    Memory16,
+    Memory32,
+    Memory64,
+    IO,
+};
+
 union Address {
     struct {
         u32 register_offset : 8;
@@ -73,12 +80,18 @@ union Address {
     Address(u32 value) : value(value) {}
     Address(u8 bus, u8 device, u8 function) : function(function), device(device), bus(bus) {}
 
+    bool is_null() const { return value == 0; }
+
     u32 bar0() const;
     u32 bar1() const;
     u32 bar2() const;
     u32 bar3() const;
     u32 bar4() const;
     u32 bar5() const;
+
+    u32 bar(u8 index) const;
+    BARType bar_type(u8 index) const;
+    size_t bar_size(u8 index) const;
 
     u8 prog_if() const;
     u8 interrupt_line() const;
@@ -265,6 +278,10 @@ struct Device {
 
     bool is_ide_controller() const {
         return device_class == DeviceClass::MassStorageController && subclass == DeviceSubclass::IDEController;
+    }
+
+    bool is_sata_controller() const {
+        return device_class == DeviceClass::MassStorageController && subclass == DeviceSubclass::SATAController;
     }
 
     bool is_usb_controller() const {

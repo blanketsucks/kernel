@@ -3,7 +3,7 @@
 #include <kernel/common.h>
 #include <kernel/devices/device.h>
 
-namespace kernel::devices {
+namespace kernel {
 
 class CharacterDevice : public Device {
 public:
@@ -15,7 +15,7 @@ public:
     bool is_character_device() const final override { return true; }
 
 protected:
-    CharacterDevice(u32 major, u32 minor) : Device(major, minor) {}
+    CharacterDevice(DeviceMajor major, u32 minor) : Device(major, minor) {}
 };
 
 }

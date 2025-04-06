@@ -31,6 +31,7 @@ public:
 
     bool empty() const { return this->buffer.empty(); }
     size_t size() const { return this->buffer.size(); }
+    size_t capacity() const { return this->buffer.capacity(); }
 
     void clear() { this->buffer.clear(); }
 

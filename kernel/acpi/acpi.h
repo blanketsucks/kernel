@@ -46,6 +46,11 @@ struct RSDT {
     u32 tables[];
 } PACKED;
 
+struct XSDT {
+    SDTHeader header;
+    u64 tables[];
+} PACKED;
+
 struct MADT {
     SDTHeader header;
 
@@ -85,11 +90,29 @@ struct IOAPIC {
     u32 global_system_interrupt_base;
 } PACKED;
 
+enum class AddressSpace : u8 {
+    SystemMemory = 0,
+    SystemIO = 1,
+    PCIConfigurationSpace = 2,
+    EmbeddedController = 3,
+    SMBus = 4,
+    SystemCMOS = 5,
+    PCC = 0x0A
+};
+
+enum class AccessSize : u8 {
+    Undefined = 0,
+    Byte = 1,
+    Word = 2,
+    DWord = 3,
+    QWord = 4
+};
+
 struct GenericAddressStructure {
-    u8 address_space;
+    AddressSpace address_space;
     u8 bit_width;
     u8 bit_offset;
-    u8 access_size;
+    AccessSize access_size;
     u64 address;
 } PACKED;  
 
@@ -139,6 +162,7 @@ struct FADT {
     GenericAddressStructure reset_reg;
     u8 reset_value;
     u8 reserved3[3];
+    
     u64 x_firmware_control;
     u64 x_dsdt;
 
@@ -164,13 +188,16 @@ public:
 
     SDTHeader* find_table(const char* signature);
 private:
-    bool find_rsdt();
+    bool find_root_table();
     void parse_acpi_tables();
 
-    SDTHeader* map_acpi_table(u32 address);
+    SDTHeader* map_acpi_table(PhysicalAddress address);
 
     RSDP* m_rsdp = nullptr;
+    XSDP* m_xsdp = nullptr;
+
     RSDT* m_rsdt = nullptr;
+    XSDT* m_xsdt = nullptr;
 
     SDTHeader* m_dsdt = nullptr;
 

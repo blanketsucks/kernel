@@ -1,4 +1,6 @@
 
+#include "kernel/arch/boot_info.h"
+#include "kernel/common.h"
 #include <kernel/acpi/acpi.h>
 #include <kernel/acpi/lai.h>
 #include <kernel/memory/manager.h>
@@ -20,13 +22,13 @@ Parser* Parser::instance() {
 }
 
 void Parser::init() {
-    this->find_rsdt();
+    this->find_root_table();
     this->parse_acpi_tables();
 }
 
-SDTHeader* Parser::map_acpi_table(u32 addr) {
-    u32 base = page_base_of(addr);
-    u32 offset = offset_in_page(addr);
+SDTHeader* Parser::map_acpi_table(PhysicalAddress addr) {
+    VirtualAddress base = page_base_of(addr);
+    size_t offset = offset_in_page(addr);
 
     void* ptr = reinterpret_cast<void*>(base);
 
@@ -45,7 +47,21 @@ SDTHeader* Parser::map_acpi_table(u32 addr) {
     return reinterpret_cast<SDTHeader*>(region + offset);
 }
 
-bool Parser::find_rsdt() {
+bool Parser::find_root_table() {
+    if (g_boot_info->rsdp) {
+        m_rsdp = reinterpret_cast<RSDP*>(g_boot_info->rsdp);
+        if (m_rsdp->revision == 2) {
+            
+            m_xsdp = reinterpret_cast<XSDP*>(g_boot_info->rsdp);
+            m_xsdt = reinterpret_cast<XSDT*>(this->map_acpi_table(m_xsdp->xsdt_address));
+
+            return true;
+        }
+
+        m_rsdt = reinterpret_cast<RSDT*>(this->map_acpi_table(m_rsdp->rsdt_address));
+        return true;
+    }
+
     void* start = reinterpret_cast<void*>(RSDP_START);
     size_t size = RSDP_END - RSDP_START;
 
@@ -65,19 +81,28 @@ bool Parser::find_rsdt() {
         return false;
     }
 
-    // TODO: Support for XSDT and make sure to validate the checksum
     m_rsdt = reinterpret_cast<RSDT*>(this->map_acpi_table(m_rsdp->rsdt_address));
     return true;
 }
 
 void Parser::parse_acpi_tables() {
-    u32 entries = (m_rsdt->header.length - sizeof(SDTHeader)) / 4;
+    size_t entries = 0;
+    if (m_xsdt) {
+        entries = (m_xsdt->header.length - sizeof(SDTHeader)) / 8;
+    } else {
+        entries = (m_rsdt->header.length - sizeof(SDTHeader)) / 4;
+    }
 
     m_tables.reserve(entries);
     dbgln("ACPI Tables ({} entries):", entries);
 
     for (u32 i = 0; i < entries; i++) {
-        u32 table = m_rsdt->tables[i];
+        PhysicalAddress table = 0;
+        if (m_xsdt) {
+            table = m_xsdt->tables[i];
+        } else {
+            table = m_rsdt->tables[i];
+        }
 
         SDTHeader* header = this->map_acpi_table(table);
         dbgln("  {}{}{}{}:", header->signature[0], header->signature[1], header->signature[2], header->signature[3]);
@@ -94,9 +119,6 @@ void Parser::parse_acpi_tables() {
 
     FADT* fadt = this->find_table<FADT>("FACP");
     m_dsdt = this->map_acpi_table(fadt->dsdt);
-
-    // lai_set_acpi_revision(m_rsdp->revision);
-    // lai_create_namespace();
 }
 
 SDTHeader* Parser::find_table(const char* signature) {

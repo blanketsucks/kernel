@@ -1,16 +1,11 @@
-#include <sys/syscall.hpp>
-#include <unistd.h>
 #include <fcntl.h>
-#include <std/format.h>
-#include <sys/syscall.h>
+#include <sched.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
 #include <sys/mman.h>
 
-void yield() {
-    syscall(SYS_YIELD);
-}
+#include <std/format.h>
 
 int main() {
     bool* ptr = (bool*)mmap(nullptr, sizeof(bool), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
@@ -21,11 +16,11 @@ int main() {
         dbgln("Child writing to memory...");
         *ptr = true;
 
-        yield();
+        sched_yield();
     } else {
         dbgln("Parent waiting for child to write to memory...");
         while (*ptr == false) {
-            yield();
+            sched_yield();
         }
 
         dbgln("Child wrote to memory, exiting...");

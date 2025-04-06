@@ -49,22 +49,18 @@ struct stat Inode::stat() const {
     return stat;
 }
 
-Vector<fs::DirectoryEntry> Inode::readdir() const {
+void Inode::readdir(std::Function<IterationAction(const fs::DirectoryEntry&)> callback) const {
     if (!this->is_directory()) {
-        return {};
+        return;
     }
 
-    Vector<fs::DirectoryEntry> entries;
-
-    entries.append({ m_id, fs::DirectoryEntry::Directory, "." });
-    entries.append({ m_parent, fs::DirectoryEntry::Directory, ".." });
+    callback({ m_id, fs::DirectoryEntry::Directory, "." });
+    callback({ m_parent, fs::DirectoryEntry::Directory, ".." });
 
     for (auto& [name, inode] : m_children) {
         auto type = inode->is_directory() ? fs::DirectoryEntry::Directory : fs::DirectoryEntry::RegularFile;
-        entries.append({ inode->id(), type, name });
+        callback({ inode->id(), type, name });
     }
-
-    return entries;
 }
 
 RefPtr<fs::Inode> Inode::lookup(StringView name) const {

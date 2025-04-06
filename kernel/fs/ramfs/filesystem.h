@@ -44,7 +44,7 @@ public:
 
     struct stat stat() const override;
 
-    Vector<fs::DirectoryEntry> readdir() const override;
+   void readdir(std::Function<IterationAction(const fs::DirectoryEntry&)>) const override;
     RefPtr<fs::Inode> lookup(StringView name) const override;
 
     ErrorOr<void> add_entry(String name, RefPtr<fs::Inode> inode) override;

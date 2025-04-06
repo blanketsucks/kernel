@@ -5,8 +5,8 @@ namespace kernel {
 
 static HashMap<u32, Device*> s_devices;
 
-Device::Device(u32 major, u32 minor) : m_major(major), m_minor(minor) {
-    s_devices.set(encode(major, minor), this);
+Device::Device(DeviceMajor major, u32 minor) : m_major(major), m_minor(minor) {
+    s_devices.set(encode(to_underlying(major), minor), this);
 }
 
 Device* Device::get_device(u32 major, u32 minor) {

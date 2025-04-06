@@ -6,7 +6,7 @@
 
 namespace kernel {
 
-class TTY : public devices::CharacterDevice {
+class TTY : public CharacterDevice {
 public:
     virtual ~TTY() = default;
 
@@ -16,7 +16,7 @@ public:
     void emit(u8 byte);
 
 protected:
-    TTY(u32 major, u32 minor);
+    TTY(DeviceMajor major, u32 minor);
 
     virtual void on_write(const u8* buffer, size_t size) = 0;
     virtual void echo(u8) = 0;
