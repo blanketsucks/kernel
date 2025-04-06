@@ -11,7 +11,7 @@ namespace kernel {
 class IDEController : public StorageController {
 public:
     static RefPtr<IDEController> create();
-    static RefPtr<IDEController> create(pci::Address address);
+    static RefPtr<IDEController> create(pci::Device address);
 
     RefPtr<StorageDevice> device(size_t index) const override;
     RefPtr<StorageDevice> device(ata::Channel channel, ata::Drive drive) const;

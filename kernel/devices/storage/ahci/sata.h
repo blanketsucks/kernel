@@ -17,7 +17,7 @@ public:
     bool write_blocks(const void* buffer, size_t count, size_t block) override;
 
 private:
-    SATADevice(AHCIPort* port, size_t max_addressable_block) : StorageDevice(0, SECTOR_SIZE), m_port(port) {
+    SATADevice(AHCIPort* port, size_t max_addressable_block) : StorageDevice(SECTOR_SIZE), m_port(port) {
         m_max_addressable_block = max_addressable_block;
     }
 

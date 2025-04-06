@@ -4,22 +4,26 @@
 namespace kernel {
 
 RefPtr<IDEController> IDEController::create() {
-    pci::Address address;
-    pci::enumerate([&address](pci::Device device) {
+    pci::Device dev;
+    pci::enumerate([&dev](pci::Device device) {
         if (device.is_ide_controller()) {
-            address = device.address;
+            dev = device;
         }
     });
 
-    if (!address.value) {
+    if (!dev.id) {
         return nullptr;
     }
 
-    return IDEController::create(address);
+    return IDEController::create(dev);
 }
 
-RefPtr<IDEController> IDEController::create(pci::Address address) {
-    auto controller = RefPtr<IDEController>(new IDEController(address));
+RefPtr<IDEController> IDEController::create(pci::Device device) {
+    if (!device.is_ide_controller()) {
+        return nullptr;
+    }
+
+    auto controller = RefPtr<IDEController>(new IDEController(device.address));
     controller->m_devices.fill({});
 
     controller->enumerate();

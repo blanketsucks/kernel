@@ -15,7 +15,7 @@ RefPtr<PATADevice> PATADevice::create(ata::Channel channel, ata::Drive drive, pc
 
 PATADevice::PATADevice(
     ata::Channel channel, ata::Drive drive, pci::Address address
-) : StorageDevice(0, SECTOR_SIZE),
+) : StorageDevice(SECTOR_SIZE),
     IRQHandler(drive == ata::Drive::Master ? ata::PRIMARY_IRQ : ata::SECONDARY_IRQ), 
     m_channel(channel), m_drive(drive) {
     this->disable_irq_handler();
@@ -53,6 +53,8 @@ PATADevice::PATADevice(
 
         m_data.write<u8>(ata::CommandReg, ata::IdentifyPacket);
         while (m_data.read<u8>(ata::StatusReg) & ata::Busy);
+
+        // TODO: Implement ATAPI
     } else {
         m_type = ATA;
     }

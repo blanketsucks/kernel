@@ -268,28 +268,28 @@ struct Device {
     u16 vendor_id;
     u16 id;
 
-    DeviceClass device_class;
-    DeviceSubclass subclass;
+    DeviceClass class_id;
+    DeviceSubclass subclass_id;
 
     bool operator==(const Device& other) const { return vendor_id == other.vendor_id && id == other.id; }
 
-    StringView class_name() const { return get_class_name(device_class); }
-    StringView subclass_name() const { return get_subclass_name(device_class, subclass); }
+    StringView class_name() const { return get_class_name(class_id); }
+    StringView subclass_name() const { return get_subclass_name(class_id, subclass_id); }
 
     bool is_ide_controller() const {
-        return device_class == DeviceClass::MassStorageController && subclass == DeviceSubclass::IDEController;
+        return class_id == DeviceClass::MassStorageController && subclass_id == DeviceSubclass::IDEController;
     }
 
     bool is_sata_controller() const {
-        return device_class == DeviceClass::MassStorageController && subclass == DeviceSubclass::SATAController;
+        return class_id == DeviceClass::MassStorageController && subclass_id == DeviceSubclass::SATAController;
     }
 
     bool is_usb_controller() const {
-        return device_class == DeviceClass::SerialBusController && subclass == DeviceSubclass::USBController;
+        return class_id == DeviceClass::SerialBusController && subclass_id == DeviceSubclass::USBController;
     }
 
     bool is_audio_device() const {
-        return device_class == DeviceClass::MultimediaController && subclass == DeviceSubclass::MultimediaAudioController;
+        return class_id == DeviceClass::MultimediaController && subclass_id == DeviceSubclass::MultimediaAudioController;
     }
 
     bool is_bochs_vga() const {

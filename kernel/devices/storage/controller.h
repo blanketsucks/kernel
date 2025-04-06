@@ -1,8 +1,12 @@
 #pragma once
 
-#include <kernel/devices/storage/device.h>
+#include <kernel/common.h>
+
+#include <std/memory.h>
 
 namespace kernel {
+
+class StorageDevice;
 
 class StorageController {
 public:
