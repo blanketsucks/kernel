@@ -4,7 +4,6 @@
 #include <kernel/serial.h>
 #include <kernel/ctors.h>
 #include <kernel/pci.h>
-#include <kernel/mbr.h>
 #include <kernel/symbols.h>
 
 #include <std/result.h>
@@ -30,7 +29,6 @@
 #include <kernel/devices/video/bochs.h>
 #include <kernel/devices/storage/ide/controller.h>
 #include <kernel/devices/audio/ac97.h>
-#include <kernel/devices/storage/partition.h>
 #include <kernel/devices/storage/ahci/controller.h>
 
 #include <kernel/process/scheduler.h>
@@ -93,10 +91,6 @@ void stage2() {
     dbgln("PCI Bus:");
     pci::enumerate([](pci::Device device) {
         dbgln("  {}: {}", device.class_name(), device.subclass_name());
-
-        if (device.is_sata_controller()) {
-            AHCIController::create(device);
-        }
     });
     
     dbgln();
@@ -112,53 +106,19 @@ void stage2() {
     
     BochsVGADevice::create(800, 600);
 
-    auto controller = IDEController::create(); 
-    auto* disk = controller->device(ata::Channel::Primary, ata::Drive::Master).ptr();
+    StorageManager::initialize();
+    auto* disk = StorageManager::determine_boot_device();
 
     if (!disk) {
-        dbgln("No IDE Controller found");
+        auto* cmdline = CommandLine::instance();
+        dbgln("Could not find boot device: '{}'\n", cmdline->root());
         process->sys$exit(1);
     }
 
-    MasterBootRecord mbr = {};
-    disk->read_blocks(reinterpret_cast<u8*>(&mbr), 1, 0);
-
-    u32 offset = 0;
-    // FIXME: This assumes that the OS partition is always the first
-    if (!mbr.is_protective()) {
-        for (auto& partition : mbr.partitions) {
-            if (!partition.is_bootable()) {
-                continue;
-            }
-
-            offset = partition.offset;
-            break;
-        }
-    } else {
-        GPTHeader gpt = {};
-        disk->read_blocks(reinterpret_cast<u8*>(&gpt), 1, 1);
-
-        if (memcmp(gpt.signature, "EFI PART", 8) != 0) {
-            dbgln("Invalid GPT header signature\n");
-            process->sys$exit(1);
-        }
-
-        Vector<GPTEntry> entries;
-        entries.resize(gpt.partition_count);
-
-        disk->read_blocks(entries.data(), gpt.partition_count, gpt.partition_table_lba);
-        offset = entries[1].first_lba; // FIXME: This assumes that the OS partition is always the second
-    }
-
-
-    BlockDevice* device = disk;
-    if (offset != 0) {
-        device = PartitionDevice::create(disk, offset);
-    }
-
-    auto* fs = ext2fs::FileSystem::create(device);
+    auto* fs = ext2fs::FileSystem::create(disk);
     if (!fs) {
         dbgln("Could not create main ext2 filesystem.\n");
+        process->sys$exit(1);
     }
 
     auto* vfs = fs::vfs();

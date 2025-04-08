@@ -11,11 +11,6 @@ namespace kernel {
 
 class PATADevice : public StorageDevice, IRQHandler {
 public:
-    enum Type {
-        ATA,
-        ATAPI
-    };
-
     struct PhysicalRegionDescriptor {
         u32 base;
         u16 size;
@@ -29,7 +24,7 @@ public:
     ata::Channel channel() const { return m_channel; }
     ata::Drive drive() const { return m_drive; }
     
-    Type type() const { return m_type; }
+    Type type() const override { return m_type; }
 
     bool has_48bit_pio() const { return m_has_48bit_pio; }
 

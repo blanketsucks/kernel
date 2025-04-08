@@ -2,13 +2,14 @@
 
 namespace kernel {
 
-CommandLine* CommandLine::s_instance = nullptr;
-
-CommandLine::CommandLine() {}
+CommandLine s_instance;
 
 void CommandLine::init() {
-    s_instance = new CommandLine();
-    s_instance->parse(g_boot_info->cmdline);
+    s_instance.parse(g_boot_info->cmdline);
+}
+
+CommandLine* CommandLine::instance() {
+    return &s_instance;
 }
 
 void CommandLine::parse(StringView cmdline) {

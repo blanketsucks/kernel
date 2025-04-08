@@ -78,6 +78,8 @@ AHCIController::AHCIController(pci::Address address) : IRQHandler(address.interr
         
         port->initialize();
     }
+
+    dbgln();
 }
 
 void AHCIController::handle_interrupt(arch::InterruptRegisters*) {

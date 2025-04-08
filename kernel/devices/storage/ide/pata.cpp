@@ -49,14 +49,14 @@ PATADevice::PATADevice(
     u8 ch = m_data.read<u8>(ata::LBA2);
 
     if (cl == 0x14 && ch == 0xEB) {
-        m_type = ATAPI;
+        m_type = PATAPI;
 
         m_data.write<u8>(ata::CommandReg, ata::IdentifyPacket);
         while (m_data.read<u8>(ata::StatusReg) & ata::Busy);
 
         // TODO: Implement ATAPI
     } else {
-        m_type = ATA;
+        m_type = PATA;
     }
 
     u16* buffer = new u16[256];

@@ -11,14 +11,11 @@ namespace kernel {
 class CommandLine {
 public:
     static void init();
-    static CommandLine* instance() { return s_instance; }
+    static CommandLine* instance();
 
     [[nodiscard]] StringView root() const;
 
 private:
-    static CommandLine* s_instance;
-
-    CommandLine();
     void parse(StringView cmdline);
 
     bool has(StringView key) const;
