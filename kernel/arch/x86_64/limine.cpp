@@ -1,7 +1,7 @@
 #include <limine.h>
 
 #include <kernel/serial.h>
-#include <kernel/arch/boot_info.h>
+#include <kernel/boot/boot_info.h>
 
 #include <std/vector.h>
 
@@ -37,12 +37,12 @@ static volatile limine_rsdp_request rsdp_request = {
     .revision = 0
 };
 
-extern "C" void main(arch::BootInfo const&);
+extern "C" void main(BootInfo const&);
 
 extern "C" void _early_main() {
     asm volatile("cli");
 
-    arch::BootInfo boot_info;
+    BootInfo boot_info;
 
     auto* kernel_address = kernel_address_request.response;
     
@@ -62,15 +62,15 @@ extern "C" void _early_main() {
     auto* rsdp = rsdp_request.response;
     boot_info.rsdp = rsdp->address;
 
-    Vector<arch::MemoryMapEntry> entries;
+    Vector<MemoryMapEntry> entries;
     entries.reserve(mmap_request.response->entry_count);
 
     for (size_t i = 0; i < mmap_request.response->entry_count; i++) {
         limine_memmap_entry* entry = mmap_request.response->entries[i];
-        entries.append(arch::MemoryMapEntry {
+        entries.append(MemoryMapEntry {
             .base = entry->base,
             .length = entry->length,
-            .type = static_cast<arch::MemoryType>(entry->type + 1)
+            .type = static_cast<MemoryType>(entry->type + 1)
         });
     }
 

@@ -1,4 +1,4 @@
-#include <kernel/arch/command_line.h>
+#include <kernel/boot/command_line.h>
 
 namespace kernel {
 

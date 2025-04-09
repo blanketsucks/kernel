@@ -1,8 +1,7 @@
 #pragma once
 
-#include "std/types.h"
 #include <kernel/common.h>
-#include <kernel/arch/boot_info.h>
+#include <kernel/boot/boot_info.h>
 
 #define COMMON_PAGE_METHODS                                                                                         \
     u64 value() const { return m_value; }                                                                           \
@@ -188,7 +187,7 @@ public:
         User
     };
 
-    static void create_kernel_page_directory(arch::BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
+    static void create_kernel_page_directory(BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
     static PageDirectory* create_user_page_directory();
 
     bool is_user() const { return m_type == Type::User; }

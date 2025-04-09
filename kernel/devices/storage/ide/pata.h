@@ -5,7 +5,7 @@
 #include <kernel/devices/storage/ata.h>
 #include <kernel/arch/pic.h>
 #include <kernel/pci.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 
 namespace kernel {
 

@@ -2,7 +2,7 @@
 #include <kernel/net/ethernet.h>
 #include <kernel/net/ip/arp.h>
 #include <kernel/memory/manager.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 
 #include <std/format.h>
 

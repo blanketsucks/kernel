@@ -1,5 +1,5 @@
 #include <kernel/vga.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 #include <std/string.h>
 
 #include <stdarg.h>

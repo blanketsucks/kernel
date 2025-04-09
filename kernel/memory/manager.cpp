@@ -1,4 +1,4 @@
-#include <kernel/arch/boot_info.h>
+#include <kernel/boot/boot_info.h>
 #include <kernel/memory/manager.h>
 #include <kernel/memory/pmm.h>
 #include <kernel/memory/liballoc.h>

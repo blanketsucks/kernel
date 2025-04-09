@@ -1,6 +1,5 @@
 #pragma once
 
-#include "std/types.h"
 #include <kernel/common.h>
 
 namespace kernel::io {

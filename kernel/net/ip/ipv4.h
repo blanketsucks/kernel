@@ -7,6 +7,14 @@
 
 namespace kernel::net {
 
+struct IPProtocol {
+    enum : u8 {
+        ICMP = 1,
+        TCP = 6,
+        UDP = 17
+    };
+};
+
 class IPv4Address {
 public:
     IPv4Address() = default;

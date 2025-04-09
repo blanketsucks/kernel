@@ -1,5 +1,5 @@
 #include <kernel/devices/storage/manager.h>
-#include <kernel/arch/command_line.h>
+#include <kernel/boot/command_line.h>
 #include <kernel/pci.h>
 
 #include <kernel/devices/storage/ahci/controller.h>

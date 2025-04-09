@@ -1,5 +1,5 @@
 #include <kernel/devices/audio/pcspeaker.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 
 namespace kernel {
 

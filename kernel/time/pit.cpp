@@ -1,5 +1,5 @@
 #include <kernel/time/pit.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 #include <kernel/serial.h>
 #include <kernel/arch/cpu.h>
 #include <kernel/process/scheduler.h>

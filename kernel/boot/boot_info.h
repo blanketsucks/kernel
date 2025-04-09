@@ -4,7 +4,7 @@
 #include <std/string_view.h>
 #include <limine.h>
 
-namespace kernel::arch {
+namespace kernel {
 
 enum class MemoryType {
     Available = 1,
@@ -76,4 +76,4 @@ constexpr std::StringView memory_type_to_string(MemoryType type) {
 
 }
 
-extern kernel::arch::BootInfo const* g_boot_info;
+extern kernel::BootInfo const* g_boot_info;

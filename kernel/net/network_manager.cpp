@@ -1,4 +1,5 @@
 #include <kernel/net/network_manager.h>
+#include <kernel/net/ip/udp.h>
 #include <kernel/net/e1000.h>
 
 #include <kernel/process/process.h>
@@ -11,6 +12,10 @@ void handle_packet(net::NetworkAdapter& adapter, u8* data, size_t size);
 void handle_arp_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size);
 void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size);
 void handle_ipv6_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size);
+
+void handle_tcp_packet(net::NetworkAdapter& adapter, net::IPv4Packet* packet, size_t size);
+void handle_udp_packet(net::NetworkAdapter& adapter, net::IPv4Packet* packet, size_t size);
+void handle_icmp_packet(net::NetworkAdapter& adapter, net::IPv4Packet* packet, size_t size);
 
 using NetworkAdapterInitializer = RefPtr<net::NetworkAdapter> (*)(pci::Device);
 
@@ -126,7 +131,7 @@ void handle_arp_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, 
     }
 }
 
-void handle_ipv4_packet(net::NetworkAdapter&, net::EthernetFrame* frame, size_t size) {
+void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size) {
     auto* ipv4 = reinterpret_cast<net::IPv4Packet*>(frame->payload);
 
     dbgln("IPv4 packet (size={}):", size);
@@ -142,8 +147,34 @@ void handle_ipv4_packet(net::NetworkAdapter&, net::EthernetFrame* frame, size_t 
     dbgln(" - Checksum: {}", ipv4->checksum);
     dbgln(" - Source: {}", ipv4->source);
     dbgln(" - Destination: {}", ipv4->destination);
+
+    switch (ipv4->protocol) {
+        case net::IPProtocol::TCP:
+            handle_tcp_packet(adapter, ipv4, size); break;
+        case net::IPProtocol::UDP:
+            handle_udp_packet(adapter, ipv4, size); break;
+        case net::IPProtocol::ICMP:
+            handle_icmp_packet(adapter, ipv4, size); break;
+        default:
+            dbgln("Unknown IPv4 protocol: {}", ipv4->protocol);
+            break;
+    }
 }
 
 void handle_ipv6_packet(net::NetworkAdapter&, net::EthernetFrame*, size_t) {}
+
+void handle_tcp_packet(net::NetworkAdapter&, net::IPv4Packet*, size_t) {}
+
+void handle_udp_packet(net::NetworkAdapter&, net::IPv4Packet* packet, size_t size) {
+    auto* udp = reinterpret_cast<net::UDPPacket*>(packet->payload);
+
+    dbgln("UDP packet (size={}):", size);
+    dbgln(" - Source port: {}", udp->source_port);
+    dbgln(" - Destination port: {}", udp->destination_port);
+    dbgln(" - Length: {}", udp->length);
+    dbgln(" - Checksum: {}", udp->checksum);
+}
+
+void handle_icmp_packet(net::NetworkAdapter&, net::IPv4Packet*, size_t) {}
 
 }

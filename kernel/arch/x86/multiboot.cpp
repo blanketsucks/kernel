@@ -13,10 +13,10 @@ constexpr VirtualAddress KERNEL_HEAP_BASE = 0xE0000000;
 extern "C" u64 _kernel_start;
 extern "C" u64 _kernel_end;
 
-extern "C" void main(arch::BootInfo const&);
+extern "C" void main(BootInfo const&);
 
 extern "C" void _early_main(multiboot_info_t* header) {
-    arch::BootInfo boot_info;
+    BootInfo boot_info;
 
     boot_info.kernel_virtual_base = KERNEL_VIRTUAL_BASE + 0x100000;
     boot_info.kernel_physical_base = KERNEL_PHYSICAL_BASE;

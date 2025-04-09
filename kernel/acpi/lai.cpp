@@ -9,7 +9,7 @@
 #include <kernel/panic.h>
 #include <kernel/memory/liballoc.h>
 #include <kernel/memory/manager.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 #include <kernel/pci.h>
 #include <kernel/acpi/acpi.h>
 

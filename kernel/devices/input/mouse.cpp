@@ -1,5 +1,5 @@
 #include <kernel/devices/input/mouse.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 #include <kernel/serial.h>
 
 #include <std/string.h>

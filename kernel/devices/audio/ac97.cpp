@@ -3,7 +3,7 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
 #include <kernel/posix/sys/ioctl.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 
 #include <std/format.h>
 

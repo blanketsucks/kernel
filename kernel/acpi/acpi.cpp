@@ -1,6 +1,3 @@
-
-#include "kernel/arch/boot_info.h"
-#include "kernel/common.h"
 #include <kernel/acpi/acpi.h>
 #include <kernel/acpi/lai.h>
 #include <kernel/memory/manager.h>

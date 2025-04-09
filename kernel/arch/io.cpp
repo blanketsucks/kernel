@@ -1,4 +1,4 @@
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 
 namespace kernel {
 

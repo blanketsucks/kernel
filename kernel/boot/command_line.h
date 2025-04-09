@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/arch/boot_info.h>
+#include <kernel/boot/boot_info.h>
 
 #include <std/optional.h>
 #include <std/hash_map.h>

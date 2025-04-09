@@ -4,7 +4,7 @@
 #include <kernel/arch/pic.h>
 #include <kernel/process/blocker.h>
 #include <kernel/pci.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 
 namespace kernel {
 

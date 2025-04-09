@@ -1,5 +1,5 @@
 #include <kernel/time/rtc.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 
 namespace kernel::rtc {
 

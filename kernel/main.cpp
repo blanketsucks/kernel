@@ -1,6 +1,6 @@
 #include <kernel/common.h>
 #include <kernel/vga.h>
-#include <kernel/io.h>
+#include <kernel/arch/io.h>
 #include <kernel/serial.h>
 #include <kernel/ctors.h>
 #include <kernel/pci.h>
@@ -44,9 +44,9 @@
 
 #include <kernel/arch/arch.h>
 #include <kernel/arch/cpu.h>
-#include <kernel/arch/boot_info.h>
 #include <kernel/arch/processor.h>
-#include <kernel/arch/command_line.h>
+#include <kernel/boot/command_line.h>
+#include <kernel/boot/boot_info.h>
 
 #include <kernel/tty/virtual.h>
 
@@ -57,8 +57,8 @@ using namespace kernel;
 
 void stage2();
 
-arch::BootInfo const* g_boot_info = nullptr;
-extern "C" void main(arch::BootInfo const& boot_info) {
+BootInfo const* g_boot_info = nullptr;
+extern "C" void main(BootInfo const& boot_info) {
     g_boot_info = &boot_info;
     kernel::run_global_constructors();
 
@@ -98,20 +98,21 @@ void stage2() {
     CommandLine::init();
     
     AC97Device::create();
-    // NetworkManager::initialize();
-
-    // while (1) {
-    //     Scheduler::yield();
-    // }
     
+    NetworkManager::initialize();
+    while (1) {
+        Scheduler::yield();
+    }
+        
     BochsVGADevice::create(800, 600);
-
+        
     StorageManager::initialize();
     auto* disk = StorageManager::determine_boot_device();
-
+    
     if (!disk) {
         auto* cmdline = CommandLine::instance();
         dbgln("Could not find boot device: '{}'\n", cmdline->root());
+
         process->sys$exit(1);
     }
 

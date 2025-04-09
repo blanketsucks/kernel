@@ -68,14 +68,14 @@ ErrorOr<void> PhysicalRegion::free(void* frame, size_t count) {
     return {};
 }
 
-PhysicalMemoryManager* PhysicalMemoryManager::create(arch::BootInfo const& boot_info) {
+PhysicalMemoryManager* PhysicalMemoryManager::create(BootInfo const& boot_info) {
     PhysicalMemoryManager* pmm = new PhysicalMemoryManager();
     pmm->init(boot_info);
     
     return pmm;
 }
 
-void PhysicalMemoryManager::init(arch::BootInfo const& boot_info) {
+void PhysicalMemoryManager::init(BootInfo const& boot_info) {
     dbgln("Memory map:");
     for (size_t i = 0; i < boot_info.mmap.count; i++) {
         auto& entry = boot_info.mmap.entries[i];
@@ -84,8 +84,8 @@ void PhysicalMemoryManager::init(arch::BootInfo const& boot_info) {
         PhysicalAddress address = std::align_up(entry.base, static_cast<u64>(PAGE_SIZE));
 
         PhysicalAddress end = entry.base + size;
-        dbgln("  {:#p} - {:#p}: {}", address, end, arch::memory_type_to_string(entry.type));
-        if (entry.type != arch::MemoryType::Available || size < PAGE_SIZE) {
+        dbgln("  {:#p} - {:#p}: {}", address, end, memory_type_to_string(entry.type));
+        if (entry.type != MemoryType::Available || size < PAGE_SIZE) {
             continue;
         }
 

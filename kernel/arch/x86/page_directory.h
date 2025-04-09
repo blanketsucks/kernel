@@ -127,7 +127,7 @@ public:
     };
 
     static PageDirectory* create_user_page_directory();
-    static void create_kernel_page_directory(arch::BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
+    static void create_kernel_page_directory(BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
 
     void clone_into(PageDirectory* other) const;
     PageDirectory* clone() const;

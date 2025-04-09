@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/arch/boot_info.h>
+#include <kernel/boot/boot_info.h>
 #include <kernel/common.h>
 
 #include <std/stack.h>
@@ -44,7 +44,7 @@ class PhysicalMemoryManager {
 public:
     static constexpr size_t PREFRAME_COUNT = 1024;
 
-    static PhysicalMemoryManager* create(arch::BootInfo const&);
+    static PhysicalMemoryManager* create(BootInfo const&);
 
     size_t total_usable_memory() const { return m_total_usable_memory; }
     size_t total_pages() const { return m_total_pages; }
@@ -62,7 +62,7 @@ public:
     void fill_preframe_buffer();
 
 private:
-    void init(arch::BootInfo const&);
+    void init(BootInfo const&);
 
     bool m_initialized = false;
     size_t m_allocations = 0;

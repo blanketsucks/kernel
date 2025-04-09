@@ -207,7 +207,7 @@ PageDirectory* PageDirectory::kernel_page_directory() {
     return &s_kernel_page_directory;
 }
 
-void PageDirectory::create_kernel_page_directory(arch::BootInfo const& boot_info, memory::RegionAllocator& kernel_region_allocator) {
+void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memory::RegionAllocator& kernel_region_allocator) {
     PageDirectory* dir = PageDirectory::kernel_page_directory();
     dir->clear();
     
