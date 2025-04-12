@@ -1,6 +1,6 @@
 #include <multiboot.h>
 
-#include <kernel/arch/boot_info.h>
+#include <kernel/boot/boot_info.h>
 #include <std/vector.h>
 
 using namespace kernel;
@@ -21,21 +21,23 @@ extern "C" void _early_main(multiboot_info_t* header) {
     boot_info.kernel_virtual_base = KERNEL_VIRTUAL_BASE + 0x100000;
     boot_info.kernel_physical_base = KERNEL_PHYSICAL_BASE;
     boot_info.kernel_heap_base = KERNEL_HEAP_BASE;
+
+    boot_info.cmdline = reinterpret_cast<char*>(header->cmdline + KERNEL_VIRTUAL_BASE);
     
     u64 kernel_start = reinterpret_cast<u64>(&_kernel_start);
     u64 kernel_end = reinterpret_cast<u64>(&_kernel_end);
 
     boot_info.kernel_size = std::align_up(kernel_end - kernel_start, PAGE_SIZE);
 
-    Vector<arch::MemoryMapEntry> entries;
+    Vector<MemoryMapEntry> entries;
     entries.reserve(header->mmap_length / sizeof(multiboot_memory_map_t));
 
     for (u32 i = 0; i < header->mmap_length; i += sizeof(multiboot_memory_map_t)) {
         multiboot_memory_map_t* entry = reinterpret_cast<multiboot_memory_map_t*>(header->mmap_addr + KERNEL_VIRTUAL_BASE + i);
-        entries.append(arch::MemoryMapEntry {
+        entries.append(MemoryMapEntry {
             .base = entry->addr,
             .length = entry->len,
-            .type = static_cast<arch::MemoryType>(entry->type)
+            .type = static_cast<MemoryType>(entry->type)
         });
     }
 

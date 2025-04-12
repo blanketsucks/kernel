@@ -1,5 +1,5 @@
-#include <kernel/net/network_adapter.h>
-#include <kernel/net/network_manager.h>
+#include <kernel/net/adapter.h>
+#include <kernel/net/manager.h>
 #include <kernel/net/ethernet.h>
 #include <kernel/arch/interrupts.h>
 

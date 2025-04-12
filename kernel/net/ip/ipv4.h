@@ -30,10 +30,6 @@ public:
         m_value.m_address = address;
     }
     
-    static IPv4Address any() {
-        return IPv4Address(0);
-    }
-
     u8 operator[](size_t index) const {
         return m_value.m_bytes[index];
     }
@@ -48,14 +44,6 @@ public:
 
     u32 value() const {
         return m_value.m_address;
-    }
-
-    bool is_zero() const {
-        return m_value.m_address == 0;
-    }
-
-    bool is_broadcast() const {
-        return m_value.m_address == 0xFFFFFFFF;
     }
 
     String to_string() const {

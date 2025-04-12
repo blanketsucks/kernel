@@ -2,7 +2,7 @@
 
 #include <kernel/common.h>
 
-#include <kernel/arch/boot_info.h>
+#include <kernel/boot/boot_info.h>
 
 namespace kernel {
 

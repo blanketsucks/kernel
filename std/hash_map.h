@@ -87,8 +87,8 @@ public:
         return m_table.find(Hash::hash(key), [&](auto& entry) { return key == entry.key; });
     }
 
-    template<typename Finder>
-    Iterator find(unsigned hash, Finder finder) {
+    template<typename F>
+    Iterator find(unsigned hash, F&& finder) {
         return m_table.find(hash, finder);
     }
 
@@ -99,8 +99,8 @@ public:
         return m_table.find(Hash::hash(key), [&](auto& entry) { return key == entry.key; });
     }
 
-    template<typename Finder>
-    ConstIterator find(size_t hash, Finder finder) const {
+    template<typename F>
+    ConstIterator find(size_t hash, F&& finder) const {
         return m_table.find(hash, finder);
     }
 

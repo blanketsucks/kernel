@@ -1,4 +1,4 @@
-#include <kernel/net/e1000.h>
+#include <kernel/net/adapters/e1000.h>
 #include <kernel/net/ethernet.h>
 #include <kernel/net/ip/arp.h>
 #include <kernel/memory/manager.h>
@@ -65,35 +65,35 @@ u32 E1000NetworkAdapter::read(u16 address) {
 }
 
 void E1000NetworkAdapter::setup_link() {
-    write(REG_CTRL, read(REG_CTRL) | ECTRL_SLU);
+    write(Control, read(Control) | SLU);
 }
 
 void E1000NetworkAdapter::enable_interrupts() {
     this->enable_irq_handler();
 
-    write(REG_ITR, 5580);
-    write(REG_IMASK, IMS_LSC | IMS_RX0 | IMS_RXT0);
+    write(InterruptThrottle, 5580);
+    write(InterruptMask, LCS | RXO | RXT0);
     
-    read(REG_ICR);
+    read(InterruptCause);
     m_address.set_interrupt_line(true);   
 }
 
 void E1000NetworkAdapter::handle_interrupt(arch::InterruptRegisters*) {
-    u32 status = read(REG_ICR);
+    u32 status = read(InterruptCause);
     if (!status) {
         return;
     }
 
-    if (status & IMS_LSC) {
+    if (status & LCS) {
         dbgln("E1000: Link Status Change");
         this->setup_link();
     }
 
-    if (status & IMS_RX0) {
+    if (status & RXO) {
         dbgln("E1000: Receiver FIFO Overrun");
     }
 
-    if (status & IMS_RXT0) {
+    if (status & RXT0) {
         this->receive();
     }
 }
@@ -101,9 +101,9 @@ void E1000NetworkAdapter::handle_interrupt(arch::InterruptRegisters*) {
 void E1000NetworkAdapter::detect_eeprom() {
     static constexpr int TRIES = 1000;
 
-    write(REG_EEPROM, 0x1);
+    write(EEPROM, 0x1);
     for (int i = 0; i < TRIES; i++) {
-        if (read(REG_EEPROM) & 0x10) {
+        if (read(EEPROM) & 0x10) {
             m_has_eeprom = true;
             return;
         }
@@ -113,13 +113,13 @@ void E1000NetworkAdapter::detect_eeprom() {
 u32 E1000NetworkAdapter::read_eeprom(u8 address) {
     u32 tmp = 0;
     if (m_has_eeprom) {
-        write(REG_EEPROM, 1 | (static_cast<u32>(address) << 8));
-        while (!((tmp = read(REG_EEPROM)) & (1 << 4))) {
+        write(EEPROM, 1 | (static_cast<u32>(address) << 8));
+        while (!((tmp = read(EEPROM)) & (1 << 4))) {
             asm volatile("pause");
         }
     } else {
-        write(REG_EEPROM, 1 | (static_cast<u32>(address) << 2));
-        while (!((tmp = read(REG_EEPROM)) & (1 << 1))) {
+        write(EEPROM, 1 | (static_cast<u32>(address) << 2));
+        while (!((tmp = read(EEPROM)) & (1 << 1))) {
             asm volatile("pause");
         }
     }
@@ -150,7 +150,7 @@ void E1000NetworkAdapter::read_mac_address() {
 
 void E1000NetworkAdapter::rx_init() {
     m_rx_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(NUM_RX_DESCRIPTORS * BUFFER_SIZE));
-    m_rx_descriptors = reinterpret_cast<E1000RxDescriptor*>(MM->allocate_dma_region(NUM_RX_DESCRIPTORS * sizeof(E1000RxDescriptor)));
+    m_rx_descriptors = reinterpret_cast<RxDescriptor*>(MM->allocate_dma_region(NUM_RX_DESCRIPTORS * sizeof(RxDescriptor)));
 
     for (size_t i = 0; i < NUM_RX_DESCRIPTORS; i++) {
         auto& descriptor = m_rx_descriptors[i];
@@ -162,18 +162,30 @@ void E1000NetworkAdapter::rx_init() {
 
     PhysicalAddress address = MM->get_physical_address(m_rx_descriptors);
 
-    write(REG_RXDESCLO, static_cast<u64>(address) & 0xFFFFFFFF);
-    write(REG_RXDESCHI, static_cast<u64>(address) >> 32);
-    write(REG_RXDESCLEN, NUM_RX_DESCRIPTORS * sizeof(E1000RxDescriptor));
-    write(REG_RXDESCHEAD, 0);
-    write(REG_RXDESCTAIL, NUM_RX_DESCRIPTORS - 1);
+    write(RxDescriptorLow, static_cast<u64>(address) & 0xFFFFFFFF);
+    write(RxDescriptorHigh, static_cast<u64>(address) >> 32);
+    write(RxDescriptorLength, NUM_RX_DESCRIPTORS * sizeof(RxDescriptor));
+    write(RxDescriptorHead, 0);
+    write(RxDescriptorTail, NUM_RX_DESCRIPTORS - 1);
 
-    write(REG_RCTRL, RCTL_EN | RCTL_SBP | RCTL_UPE | RCTL_MPE | RCTL_LBM_NONE | RTCL_RDMTS_HALF | RCTL_BAM | RCTL_SECRC | RCTL_BSIZE_8192);
+    ReceiveControl ctrl;
+
+    ctrl.enable = 1;
+    ctrl.store_bad_packets = 1;
+    ctrl.unicast_promiscuous = 1;
+    ctrl.multicast_promiscuous = 1;
+    ctrl.receive_descrptor_threshold_size = ReceiveThresholdSize::Half;
+    ctrl.broadcast_accept_mode = 1;
+    ctrl.buffer_size_extension = 1;
+    ctrl.buffer_size = BufferSize::BufferSize8192;
+    ctrl.strip_ethernet_crc = 1;
+
+    write(ReceiveCtrl, ctrl.value);
 }
 
 void E1000NetworkAdapter::tx_init() {
     m_tx_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(NUM_TX_DESCRIPTORS * BUFFER_SIZE));
-    m_tx_descriptors = reinterpret_cast<E1000TxDescriptor*>(MM->allocate_dma_region(NUM_TX_DESCRIPTORS * sizeof(E1000TxDescriptor)));
+    m_tx_descriptors = reinterpret_cast<TxDescriptor*>(MM->allocate_dma_region(NUM_TX_DESCRIPTORS * sizeof(TxDescriptor)));
 
     for (size_t i = 0; i < NUM_TX_DESCRIPTORS; i++) {
         auto& descriptor = m_tx_descriptors[i];
@@ -181,35 +193,48 @@ void E1000NetworkAdapter::tx_init() {
 
         descriptor.address = MM->get_physical_address(buffer);
         descriptor.cmd = 0;
-        descriptor.status = TSTA_DD;
+        descriptor.status = 0;
     }
 
     PhysicalAddress address = MM->get_physical_address(m_tx_descriptors);
 
-    write(REG_TXDESCLO, static_cast<u64>(address) & 0xFFFFFFFF);
-    write(REG_TXDESCHI, static_cast<u64>(address) >> 32);
-    write(REG_TXDESCLEN, NUM_TX_DESCRIPTORS * sizeof(E1000TxDescriptor));
-    write(REG_TXDESCHEAD, 0);
-    write(REG_TXDESCTAIL, 0);
+    write(TxDescriptorLow, static_cast<u64>(address) & 0xFFFFFFFF);
+    write(TxDescriptorHigh, static_cast<u64>(address) >> 32);
+    write(TxDescriptorLength, NUM_TX_DESCRIPTORS * sizeof(TxDescriptor));
+    write(TxDescriptorHead, 0);
+    write(TxDescriptorTail, 0);
 
-    write(REG_TCTRL, read(REG_TCTRL) | TCTL_EN | TCTL_PSP);
-    write(REG_TIPG, 0x0060200A);
+    TransmitControl ctrl;
+
+    ctrl.enable = 1;
+    ctrl.pad_short_packets = 1;
+    ctrl.collision_threshold = 0x0F;
+    ctrl.collision_distance = CollisionDistance::FullDuplex;
+
+    TransmitInterPacketGap ipg;
+    
+    ipg.ipg_transmit_time = 10;
+    ipg.ipg_receive_time_1 = 8;
+    ipg.ipg_receive_time_2 = 6;
+
+    write(TransmitCtrl, ctrl.value);
+    write(TransmitIPG, ipg.value);
 }
 
 void E1000NetworkAdapter::send(u8 const* data, size_t size) {
     this->disable_irq_handler();
 
-    size_t current = read(REG_TXDESCTAIL);
+    size_t current = read(TxDescriptorTail);
     auto& descriptor = m_tx_descriptors[current];
     
     memcpy(m_tx_buffer + current * BUFFER_SIZE, data, size);
 
     descriptor.length = size;
-    descriptor.cmd = CMD_EOP | CMD_IFCS | CMD_RS;
+    descriptor.cmd = EOP | IFCS | RS;
     descriptor.status = 0;
 
     this->enable_irq_handler();
-    write(REG_TXDESCTAIL, (current + 1) % NUM_TX_DESCRIPTORS);
+    write(TxDescriptorTail, (current + 1) % NUM_TX_DESCRIPTORS);
 
     while (true) {
         if (descriptor.status) {
@@ -220,7 +245,7 @@ void E1000NetworkAdapter::send(u8 const* data, size_t size) {
 
 void E1000NetworkAdapter::receive() {
     while (true) {
-        u32 current = (read(REG_RXDESCTAIL) + 1) % NUM_RX_DESCRIPTORS;
+        u32 current = (read(RxDescriptorTail) + 1) % NUM_RX_DESCRIPTORS;
         auto& descriptor = m_rx_descriptors[current];
         if (!(descriptor.status & 0x1)) {
             break;
@@ -232,7 +257,7 @@ void E1000NetworkAdapter::receive() {
         on_packet_receive(buffer, length);
 
         descriptor.status = 0;
-        write(REG_RXDESCTAIL, current);
+        write(RxDescriptorTail, current);
     }    
 }
 

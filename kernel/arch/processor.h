@@ -3,6 +3,8 @@
 #include <kernel/arch/tss.h>
 #include <kernel/arch/cpu.h>
 
+#include <std/string.h>
+
 namespace kernel {
 
 class Processor {

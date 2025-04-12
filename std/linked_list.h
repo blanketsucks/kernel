@@ -33,13 +33,20 @@
 
 namespace std {
 
-template<typename ListType, typename ElementType>
+template<typename L, typename E>
 class SinglyLinkedListIterator {
 public:
-    using Node = typename ListType::Node;
+    using Node = typename L::Node;
 
-    bool operator!=(const SinglyLinkedListIterator& other) const { return m_node != other.m_node; }
-    bool operator==(const SinglyLinkedListIterator& other) const { return m_node == other.m_node; }
+    SinglyLinkedListIterator(Node* node, Node* prev = nullptr) : m_node(node), m_prev(prev) {}
+
+    bool operator!=(const SinglyLinkedListIterator& other) const {
+        return m_node != other.m_node;
+    }
+
+    bool operator==(const SinglyLinkedListIterator& other) const {
+        return m_node == other.m_node;
+    }
 
     SinglyLinkedListIterator& operator++() {
         m_prev = m_node;
@@ -48,16 +55,13 @@ public:
         return *this;
     }
 
-    ElementType& operator*() { return m_node->value; }
-    ElementType* operator->() { return &m_node->value; }
+    E& operator*() { return m_node->value; }
+    E* operator->() { return &m_node->value; }
 
-    bool is_end() const { return !m_node; }
-    static SinglyLinkedListIterator universal_end() { return SinglyLinkedListIterator(nullptr); }
+    Node* node() const { return m_node; }
 
 private:
-    friend ListType;
-
-    explicit SinglyLinkedListIterator(Node* node, Node* prev = nullptr) : m_node(node), m_prev(prev) {}
+    friend L;
 
     Node* m_node = nullptr;
     Node* m_prev = nullptr;
@@ -72,20 +76,15 @@ public:
     SinglyLinkedList() = default;
     ~SinglyLinkedList() { this->clear(); }
 
-    bool empty() const { return !this->head(); }
-
-    inline size_t size_slow() const {
-        size_t size = 0;
-        for (auto* node = m_head; node; node = node->next)
-            ++size;
-        return size;
-    }
+    size_t size() const { return m_size; }
+    bool empty() const { return !m_head; }
 
     void clear() {
         Node* node = m_head;
         while (node) {
             auto* next = node->next;
             delete node;
+
             node = next;
         }
 
@@ -93,31 +92,17 @@ public:
         m_tail = nullptr;
     }
 
-    T& first() {
-        ASSERT(this->head(), "SinglyLinkedList is empty");
-        return this->head()->value;
-    }
+    // FIXME: Add bounds checking
+    T& first() { return m_head->value; }
+    const T& first() const { return m_head->value; }
 
-    const T& first() const {
-        ASSERT(this->head(), "SinglyLinkedList is empty");
-        return this->head()->value;
-    }
-
-    T& last() {
-        ASSERT(this->head(), "SinglyLinkedList is empty");
-        return this->tail()->value;
-    }
-
-    const T& last() const {
-        ASSERT(this->head(), "SinglyLinkedList is empty");
-        return this->tail()->value;
-    }
+    T& last() { return m_tail->value; }
+    const T& last() const { return m_tail->value; }
 
     T take_first() {
-        ASSERT(m_head, "SinglyLinkedList is empty");
         auto* prev_head = m_head;
-
         T value = move(this->first());
+
         if (m_tail == m_head) {
             m_tail = nullptr;
         }
@@ -137,6 +122,7 @@ public:
         if (!m_head) {
             m_head = node;
             m_tail = node;
+
             return;
         }
 
@@ -144,43 +130,47 @@ public:
         m_tail = node;
     }
 
-    bool contains_slow(const T& value) const {
+    bool contains(const T& value) const {
         for (auto* node = m_head; node; node = node->next) {
-            if (node->value == value)
+            if (node->value == value) {
                 return true;
+            }
         }
+
         return false;
     }
 
     Iterator begin() { return Iterator(m_head); }
-    Iterator end() { return Iterator::universal_end(); }
+    Iterator end() { return Iterator(nullptr); }
 
     ConstIterator begin() const { return ConstIterator(m_head); }
-    ConstIterator end() const { return ConstIterator::universal_end(); }
+    ConstIterator end() const { return ConstIterator(nullptr); }
 
-    template<typename Finder>
-    ConstIterator find(Finder finder) const {
+    template<typename F>
+    ConstIterator find(F&& predicate) const {
         Node* prev = nullptr;
         for (auto* node = m_head; node; node = node->next) {
-            if (finder(node->value)) {
+            if (predicate(node->value)) {
                 return ConstIterator(node, prev);
             }
         
             prev = node;
         }
+
         return end();
     }
 
-    template<typename Finder>
-    Iterator find(Finder finder) {
+    template<typename F>
+    Iterator find(F&& predicate) {
         Node* prev = nullptr;
         for (auto* node = m_head; node; node = node->next) {
-            if (finder(node->value)) {
+            if (predicate(node->value)) {
                 return Iterator(node, prev);
             }
 
             prev = node;
         }
+
         return end();
     }
 
@@ -193,13 +183,22 @@ public:
     }
 
     void remove(Iterator iterator) {
-        ASSERT(!iterator.is_end(), "Cannot remove end iterator");
-        if (m_head == iterator.m_node)
+        if (!iterator.m_node) {
+            return;
+        }
+
+        if (iterator.m_node == m_head) {
             m_head = iterator.m_node->next;
-        if (m_tail == iterator.m_node)
+        }
+
+        if (iterator.m_node == m_tail) {
             m_tail = iterator.m_prev;
-        if (iterator.m_prev)
+        }
+
+        if (iterator.m_prev) {
             iterator.m_prev->next = iterator.m_node->next;
+        }
+
         delete iterator.m_node;
     }
 
@@ -225,7 +224,7 @@ public:
     }
 
     void insert_after(Iterator iterator, T&& value) {
-        if (iterator.is_end()) {
+        if (!iterator.m_node) {
             this->append(value);
             return;
         }
@@ -244,21 +243,17 @@ private:
     friend ConstIterator;
 
     struct Node {
-        explicit Node(T&& v) : value(move(v)) {}
-        explicit Node(const T& v) : value(v) {}
+        Node(T&& v) : value(move(v)) {}
+        Node(const T& v) : value(v) {}
 
         T value;
         Node* next = nullptr;
     };
 
-    Node* head() { return m_head; }
-    const Node* head() const { return m_head; }
+    Node* m_head = nullptr;
+    Node* m_tail = nullptr;
 
-    Node* tail() { return m_tail; }
-    const Node* tail() const { return m_tail; }
-
-    Node* m_head { nullptr };
-    Node* m_tail { nullptr };
+    size_t m_size = 0;
 };
 
 }

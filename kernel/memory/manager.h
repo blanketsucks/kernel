@@ -8,7 +8,6 @@
 #include <kernel/arch/page_directory.h>
 #include <kernel/arch/registers.h>
 
-
 #include <std/result.h>
 
 #define MM kernel::memory::MemoryManager::instance()

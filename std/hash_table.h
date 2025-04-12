@@ -36,7 +36,7 @@ namespace std {
 template<typename T, typename = traits::Hash<T>>
 class HashTable;
 
-template<typename HashTableType, typename ElementType, typename BucketIteratorType>
+template<typename HT, typename E, typename BI>
 class HashTableIterator {
 public:
     bool operator!=(const HashTableIterator& other) const {
@@ -44,15 +44,13 @@ public:
             return false;
         }
 
-        return m_table != other.m_table || m_is_end != other.m_is_end 
-                || m_bucket_index != other.m_bucket_index 
-                || m_bucket_iterator != other.m_bucket_iterator;
+        return m_table != other.m_table || m_is_end != other.m_is_end || m_bucket_index != other.m_bucket_index || m_bucket_iterator != other.m_bucket_iterator;
     }
 
     bool operator==(const HashTableIterator& other) const { return !(*this != other); }
 
-    ElementType& operator*() { return *m_bucket_iterator; }
-    ElementType* operator->() { return m_bucket_iterator.operator->(); }
+    E& operator*() { return *m_bucket_iterator; }
+    E* operator->() { return m_bucket_iterator.operator->(); }
 
     HashTableIterator& operator++() {
         this->skip_to_next();
@@ -61,45 +59,49 @@ public:
 
     void skip_to_next() {
         while (!m_is_end) {
-            if (m_bucket_iterator.is_end()) {
+            if (!m_bucket_iterator.node()) {
                 ++m_bucket_index;
                 if (m_bucket_index >= m_table->capacity()) {
                     m_is_end = true;
                     return;
                 }
+
                 m_bucket_iterator = m_table->bucket(m_bucket_index).begin();
             } else {
                 ++m_bucket_iterator;
             }
 
-            if (!m_bucket_iterator.is_end()) {
+            if (m_bucket_iterator.node()) {
                 return;
             }
         }
     }
 
 private:
-    friend HashTableType;
+    friend HT;
 
     explicit HashTableIterator(
-        HashTableType* table, 
+        HT* table, 
         bool is_end, 
-        BucketIteratorType bucket_iterator = BucketIteratorType::universal_end(), 
+        BI bucket_iterator = BI(nullptr), 
         size_t bucket_index = 0
     ) : m_table(table), m_bucket_index(bucket_index), m_is_end(is_end), m_bucket_iterator(bucket_iterator) {
 
-        bool is_universal_end = m_bucket_iterator == BucketIteratorType::universal_end();
+        bool is_universal_end = m_bucket_iterator == BI(nullptr);
+
         if (!is_end && !m_table->empty() && is_universal_end) {
             m_bucket_iterator = m_table->bucket(0).begin();
-            if (m_bucket_iterator.is_end())
+
+            if (!m_bucket_iterator.node()) {
                 this->skip_to_next();
+            }
         }
     }
 
-    HashTableType* m_table;
+    HT* m_table;
     size_t m_bucket_index = 0;
     bool m_is_end = false;
-    BucketIteratorType m_bucket_iterator;
+    BI m_bucket_iterator;
 };
 
 template<typename T, typename Hash>
@@ -122,8 +124,9 @@ public:
 
     HashTable(const HashTable& other) {
         this->reserve(other.size());
-        for (auto& it : other)
+        for (auto& it : other) {
             this->set(it);
+        }
     }
 
     HashTable& operator=(const HashTable& other) {
@@ -184,9 +187,11 @@ public:
     ConstIterator begin() const { return ConstIterator(this, this->empty()); }
     ConstIterator end() const { return ConstIterator(this, true); }
 
-    template<typename Finder>
-    Iterator find(size_t hash, Finder finder) {
-        if (this->empty()) return this->end();
+    template<typename F>
+    Iterator find(size_t hash, F&& finder) {
+        if (this->empty()) {
+            return this->end();
+        }
         
         size_t index = 0;
         auto& bucket = this->lookup_with_hash(hash, &index);
@@ -199,9 +204,11 @@ public:
         return this->end();
     }
 
-    template<typename Finder>
-    ConstIterator find(unsigned hash, Finder finder) const {
-        if (this->empty()) return this->end();
+    template<typename F>
+    ConstIterator find(unsigned hash, F&& finder) const {
+        if (this->empty()) {
+            return this->end();
+        }
 
         size_t index = 0;
         auto& bucket = this->lookup_with_hash(hash, &index);
@@ -243,14 +250,18 @@ private:
     const Bucket& lookup(const T&, size_t* bucket_index = nullptr) const;
 
     Bucket& lookup_with_hash(size_t hash, size_t* bucket_index) {
-        if (bucket_index)
+        if (bucket_index) {
             *bucket_index = hash % m_capacity;
+        }
+
         return m_buckets[hash % m_capacity];
     }
 
     const Bucket& lookup_with_hash(size_t hash, size_t* bucket_index) const {
-        if (bucket_index)
+        if (bucket_index) {
             *bucket_index = hash % m_capacity;
+        }
+
         return m_buckets[hash % m_capacity];
     }
 
@@ -370,7 +381,9 @@ bool HashTable<T, Hash>::contains(const T& value) const {
 
 template<typename T, typename Hash>
 void HashTable<T, Hash>::remove(Iterator it) {
-    if (this->empty()) return;
+    if (this->empty()) {
+        return;
+    }
 
     m_buckets[it.m_bucket_index].remove(it.m_bucket_iterator);
     --m_size;
@@ -388,8 +401,10 @@ auto HashTable<T, Hash>::lookup(const T& value, size_t* bucket_index) -> Bucket&
 template<typename T, typename Hash>
 auto HashTable<T, Hash>::lookup(const T& value, size_t* bucket_index) const -> const Bucket& {
     size_t hash = Hash::hash(value);
-    if (bucket_index)
+    if (bucket_index) {
         *bucket_index = hash % m_capacity;
+    }
+    
     return m_buckets[hash % m_capacity];
 }
 

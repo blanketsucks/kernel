@@ -18,6 +18,10 @@ Device* Device::get_device(u32 major, u32 minor) {
     return iterator->value;
 }
 
+HashMap<u32, Device*> const& Device::devices() {
+    return s_devices;
+}
+
 RefPtr<fs::FileDescriptor> Device::open(int options) {
     return fs::FileDescriptor::create(this, options);
 }

@@ -49,6 +49,7 @@ public:
     }
 
     static Device* get_device(u32 major, u32 minor);
+    static HashMap<u32, Device*> const& devices();
 
     virtual RefPtr<fs::FileDescriptor> open(int options);
 

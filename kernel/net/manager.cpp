@@ -1,6 +1,10 @@
-#include <kernel/net/network_manager.h>
+#include <kernel/net/manager.h>
+
+#include <kernel/net/ip/tcp.h>
 #include <kernel/net/ip/udp.h>
-#include <kernel/net/e1000.h>
+
+#include <kernel/net/adapters/e1000.h>
+#include <kernel/net/adapters/loopback.h>
 
 #include <kernel/process/process.h>
 #include <kernel/process/scheduler.h>
@@ -64,6 +68,12 @@ void NetworkManager::spawn() {
 
 void NetworkManager::initialize() {
     s_instance.enumerate();
+
+    auto loopback = net::LoopbackAdapter::create();
+    s_instance.m_loopback_adapter = loopback;
+
+    s_instance.m_adapters.append(loopback);   
+
     s_instance.spawn();
 }
 
@@ -148,6 +158,7 @@ void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame,
     dbgln(" - Source: {}", ipv4->source);
     dbgln(" - Destination: {}", ipv4->destination);
 
+    size -= sizeof(net::IPv4Packet) + sizeof(net::EthernetFrame);
     switch (ipv4->protocol) {
         case net::IPProtocol::TCP:
             handle_tcp_packet(adapter, ipv4, size); break;
@@ -163,7 +174,19 @@ void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame,
 
 void handle_ipv6_packet(net::NetworkAdapter&, net::EthernetFrame*, size_t) {}
 
-void handle_tcp_packet(net::NetworkAdapter&, net::IPv4Packet*, size_t) {}
+void handle_tcp_packet(net::NetworkAdapter&, net::IPv4Packet* packet, size_t size) {
+    auto* tcp = reinterpret_cast<net::TCPPacket*>(packet);
+
+    dbgln("TCP Packet (size={})", size);
+    dbgln(" - Source port: {}", tcp->source_port);
+    dbgln(" - Destination port: {}", tcp->destination_port);
+    dbgln(" - Sequence number: {}", tcp->sequence_number);
+    dbgln(" - Acknowledgment number: {}", tcp->ack_number);
+    dbgln(" - Flags and Data offset: {}", tcp->flags_and_data_offset);
+    dbgln(" - Window size: {}", tcp->window_size);
+    dbgln(" - Checksum: {}", tcp->checksum);
+    dbgln(" - Urgent pointer: {}", tcp->urgent_pointer);
+}
 
 void handle_udp_packet(net::NetworkAdapter&, net::IPv4Packet* packet, size_t size) {
     auto* udp = reinterpret_cast<net::UDPPacket*>(packet->payload);

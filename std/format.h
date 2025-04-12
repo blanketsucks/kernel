@@ -210,6 +210,12 @@ template<> struct Formatter<char> {
     }
 };
 
+template<> struct Formatter<const char*> {
+    static void format(FormatBuffer& buffer, const char* value, const FormatStyle&) {
+        buffer.append(value);
+    }
+};
+
 template<> struct Formatter<bool> {
     static void format(FormatBuffer& buffer, const bool& value, const FormatStyle&) {
         buffer.append(value ? "true" : "false");

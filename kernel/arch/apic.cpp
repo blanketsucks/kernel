@@ -10,12 +10,20 @@ PhysicalAddress get_apic_base() {
     u32 low, high;
     asm volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(IA32_APIC_BASE));
 
-    return low & 0xfffff000;
+    if constexpr (sizeof(PhysicalAddress) > 4) {
+        return (low & 0xfffff000) | (static_cast<u64>(high & 0x0f) << 32);
+    } else {
+        return low & 0xfffff000;
+    }
 }
 
 void set_apic_base(PhysicalAddress base) {
     u32 low = (base & 0xfffff0000) | IA32_APIC_BASE_ENABLE;
     u32 high = 0;
+
+    if constexpr (sizeof(PhysicalAddress) > 4) {
+        high = (base >> 32) & 0x0f;
+    }
 
     asm volatile("wrmsr" :: "a"(low), "d"(high), "c"(IA32_APIC_BASE));
 }

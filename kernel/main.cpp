@@ -50,8 +50,7 @@
 
 #include <kernel/tty/virtual.h>
 
-#include <kernel/net/e1000.h>
-#include <kernel/net/network_manager.h>
+#include <kernel/net/manager.h>
 
 using namespace kernel;
 
@@ -98,7 +97,7 @@ void stage2() {
     CommandLine::init();
     
     AC97Device::create();
-    
+
     NetworkManager::initialize();
     while (1) {
         Scheduler::yield();
@@ -108,7 +107,7 @@ void stage2() {
         
     StorageManager::initialize();
     auto* disk = StorageManager::determine_boot_device();
-    
+
     if (!disk) {
         auto* cmdline = CommandLine::instance();
         dbgln("Could not find boot device: '{}'\n", cmdline->root());
