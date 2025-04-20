@@ -48,6 +48,8 @@ struct BootInfo {
     // Page aligned kernel size
     size_t kernel_size;
 
+    u64* pml4t;
+
     char* cmdline;
 
     u64 hhdm;

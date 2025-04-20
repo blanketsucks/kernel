@@ -9,7 +9,9 @@ CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
 
 DEFAULT_DISK_IMAGE = CWD / 'disk.img'
+
 DEFAULT_KERNEL_LOCATION = ROOT  / 'build' / 'kernel' / 'kernel.bin'
+DEFAULT_LOADER_LOCATION = ROOT / 'build' / 'kernel' / 'loader' / 'loader.bin'
 
 DEFAULT_QEMU_ARGS: List[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int,guest_errors,unimp', '-no-reboot', '-no-shutdown']
 
@@ -34,6 +36,7 @@ class QemuArgs(NamedTuple):
     x86_64: bool
     uefi: bool
     usb: bool
+    use_loader: bool
 
     ovmf: str
 
@@ -73,6 +76,8 @@ class QemuArgs(NamedTuple):
 
         if not self.x86_64:
             args.extend(['-kernel', self.kernel])
+        elif self.use_loader:
+            args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
 
         if self.uefi:
             args.extend(['-bios', self.ovmf])
@@ -93,6 +98,7 @@ def main():
     parser.add_argument('--memory', type=int, default=256, help='Amount of memory to allocate to QEMU (in MB).')
     parser.add_argument('--debug', action='store_true', help='Run QEMU in debug mode and listen to GDB connections.')
     parser.add_argument('--with-monitor', action='store_true', help='Run QEMU with a monitor (useful for debugging).')
+    parser.add_argument('--with-loader', action='store_true', help='Run the kernel with a WIP loader.')
     parser.add_argument('--usb', action='store_true', help='Enable USB support.')
     
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
@@ -106,6 +112,10 @@ def main():
         action.default = 'C:/Program Files/qemu/OVMF.fd'
     
     args = parser.parse_args()
+    if args.with_loader and not args.x86_64:
+        print('Loader is only supported in x86_64 mode.')
+        return
+
     qemu_args = QemuArgs(
         disk_image=DiskImage(args.disk_image),
         kernel=str(args.kernel),
@@ -116,7 +126,8 @@ def main():
         uefi=args.uefi,
         ovmf=args.ovmf,
         serial=True,
-        usb=args.usb
+        usb=args.usb,
+        use_loader=args.with_loader,
     )
 
     if not args.qemu:

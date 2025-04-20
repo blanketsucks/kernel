@@ -37,6 +37,8 @@ public:
     bool init();
 
     void write(char c);
+    void write(const char* str);
+
     char read();
 
     bool is_transmit_empty();

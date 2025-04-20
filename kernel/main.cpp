@@ -104,7 +104,7 @@ void stage2() {
     }
         
     BochsVGADevice::create(800, 600);
-        
+
     StorageManager::initialize();
     auto* disk = StorageManager::determine_boot_device();
 

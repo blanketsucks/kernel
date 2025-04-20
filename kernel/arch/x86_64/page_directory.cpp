@@ -168,10 +168,9 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memo
     auto& dir = s_kernel_page_directory;
     dir.set_type(Kernel);
 
-    dir.m_pml4 = {
-        reinterpret_cast<PML4Entry*>((u8*)MM->allocate_page_frame() + boot_info.hhdm)
-    };
-
+    dir.m_pml4 = { reinterpret_cast<PML4Entry*>((u8*)MM->allocate_page_frame() + boot_info.hhdm) };
+    memset(dir.m_pml4.entries, 0, PAGE_SIZE);
+    
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += PAGE_SIZE) {
         VirtualAddress virt = boot_info.hhdm + i;
         dir.map(virt, i, PageFlags::Write);
@@ -181,13 +180,13 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memo
     for (size_t i = 0; i < boot_info.kernel_size; i += PAGE_SIZE) {
         PhysicalAddress phys = boot_info.kernel_physical_base + i;
         VirtualAddress virt = boot_info.kernel_virtual_base + i;
-
+        
         dir.map(virt, phys, PageFlags::Write);
     }
-
+    
     kernel_region_allocator.reserve(boot_info.kernel_virtual_base, boot_info.kernel_size, PROT_READ | PROT_WRITE);
     kernel_region_allocator.reserve(boot_info.hhdm, GB, PROT_READ | PROT_WRITE);
-
+    
     dir.switch_to();
 }
 

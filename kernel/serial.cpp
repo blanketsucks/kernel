@@ -1,8 +1,6 @@
 #include <kernel/serial.h>
 #include <kernel/arch/io.h>
 
-#include <std/cstring.h>
-
 namespace kernel::serial {
 
 static COMPort s_com1(COM1);
@@ -34,6 +32,12 @@ bool COMPort::init() {
 void COMPort::write(char c) {
     while (!this->is_transmit_empty()) {}
     m_port.write<u8>(Data, c);
+}
+
+void COMPort::write(const char* str) {
+    while (*str) {
+        this->write(*str++);
+    }
 }
 
 char COMPort::read() {
@@ -69,7 +73,9 @@ void write(const char* str, size_t len) {
 }
 
 void write(const char* str) {
-    write(str, std::strlen(str));
+    while (*str) {
+        putc(*str++);
+    }
 }
 
 }

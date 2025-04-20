@@ -6,7 +6,7 @@
 
 namespace std {
 
-#ifdef __KERNEL__
+#if defined(__KERNEL__) || defined(__KERNEL_LOADER__)
 
 size_t strlen(const char* str) {
     size_t len = 0;

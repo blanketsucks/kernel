@@ -28,6 +28,9 @@ if (x86_64)
 
     set(TARGET_TRIPLE x86_64-pc-none-elf)
     set(BITS 64)
+
+    add_subdirectory(loader)
+    list(FILTER CPP_SOURCES EXCLUDE REGEX ".*loader/.*")
 else()
     list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86_64/.*")
     file(GLOB_RECURSE ASM_SOURCES arch/x86/asm/*.asm)
@@ -56,6 +59,8 @@ target_link_options(
     PRIVATE
     -T ${LINKER_SCRIPT} -nostdlib -ffreestanding -fno-exceptions -fno-rtti -g
 )
+
+set_target_properties(kernel.bin PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(kernel.bin PRIVATE --target=${TARGET_TRIPLE} -m${BITS} -Wno-interrupt-service-routine)
