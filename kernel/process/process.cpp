@@ -466,7 +466,7 @@ void* Process::sys$mmap(void*, size_t size, int prot, int flags, int fileno, off
 
         address = result.value();
     }
-    
+
     auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
     
     region->set_prot(prot);
@@ -567,9 +567,6 @@ int Process::exec(StringView path, ProcessArguments arguments) {
 int Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {
     ProcessArguments args;
     StringView path = this->validate_string(pathname);
-
-    u8* foo = nullptr;
-    *foo = 0;
 
     if (!argv) {
         args.argv = { path, nullptr };
