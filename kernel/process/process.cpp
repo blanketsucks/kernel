@@ -152,10 +152,6 @@ void* Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags)
 
 void* Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
     ASSERT(address % PAGE_SIZE == 0, "Physical address must be page aligned.");
-    // auto* region = m_allocator.with([size](auto& allocator) {
-    //     return allocator.allocate(size, PROT_READ | PROT_WRITE);
-    // });
-
     auto* region = m_allocator->allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
         return nullptr;
@@ -175,10 +171,6 @@ void* Process::allocate_with_physical_region(PhysicalAddress address, size_t siz
 
 void* Process::allocate_file_backed_region(fs::File* file, size_t size) {
     ASSERT(size % PAGE_SIZE == 0, "size must be page aligned");
-    // auto* region = m_allocator.with([file, size](auto& allocator) {
-    //     return allocator.create_file_backed_region(file, size);
-    // });
-
     auto* region = m_allocator->create_file_backed_region(file, size);
     if (!region) {
         return nullptr;
@@ -225,9 +217,9 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
     }
 
     size_t offset = address - region->base();
-    size_t index = std::align_down(offset, PAGE_SIZE);
-
     auto* file = region->file();
+
+    size_t index = std::align_down(offset, PAGE_SIZE);
 
     void* frame = MM->allocate_page_frame();
     m_page_directory->map(region->base() + index, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
@@ -249,10 +241,6 @@ void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
 }
 
 memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
-    // auto* region = m_allocator.with([&](auto& allocator) { 
-    //     return allocator.find_region(reinterpret_cast<VirtualAddress>(ptr), true);
-    // });
-
     auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(ptr), true);
 
     if (!region) {
@@ -478,11 +466,7 @@ void* Process::sys$mmap(void*, size_t size, int prot, int flags, int fileno, off
 
         address = result.value();
     }
-
-    // auto* region = m_allocator.with([address](auto& allocator) {
-    //     return allocator.find_region(reinterpret_cast<VirtualAddress>(address), true);
-    // });
-
+    
     auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
     
     region->set_prot(prot);
