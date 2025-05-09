@@ -28,6 +28,9 @@ void itoa(i32 n, char* str, u32 base);
 u32 strtoul(const char* str, char** endptr, u32 base);
 u32 strntoul(const char* str, size_t n, char** endptr, u32 base);
 
+u64 strtoull(const char* str, char** endptr, u32 base);
+u64 strntoull(const char* str, size_t n, char** endptr, u32 base);
+
 int strcmp(const char* str1, const char* str2);
 int strncmp(const char* str1, const char* str2, size_t n);
 

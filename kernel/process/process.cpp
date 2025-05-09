@@ -29,10 +29,6 @@ Process::Process(
 ) : m_state(Alive), m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_cwd(cwd), m_arguments(move(arguments)) {
     if (!kernel) {
         m_page_directory = arch::PageDirectory::create_user_page_directory();
-        // m_allocator.with([&](auto& allocator) {
-        //     allocator = memory::RegionAllocator({ PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) }, m_page_directory);
-        // });
-
         if (!parent) {
             m_allocator = memory::RegionAllocator::create(
                 { PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) }, m_page_directory
@@ -200,10 +196,6 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
     memory::PageFault fault = regs->errno;
     bool is_null_pointer_dereference = address < PAGE_SIZE;
 
-    // auto* region = m_allocator.with([&](auto& allocator) {
-    //     return allocator.find_region(address, true);
-    // });
-
     auto* region = m_allocator->find_region(address, true);
     if (!region || !region->is_file_backed() || !region->used()) {
         if (is_null_pointer_dereference) {
@@ -223,6 +215,10 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
             dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
         });
 
+        dbgln("");
+
+        // TODO: User stack trace
+        dbgln("Stack trace:");
         kernel::print_stack_trace();
 
         this->kill();
@@ -243,6 +239,9 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
 void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
     dbgln("\033[1;31mGeneral protection fault at IP={:#p}:\033[0m", regs->ip());
     dbgln("  \033[1;31mError code: {:#x}\033[0m", regs->errno);
+
+    dbgln();
+    dbgln("Stack trace:");
 
     kernel::print_stack_trace();
 
@@ -584,6 +583,9 @@ int Process::exec(StringView path, ProcessArguments arguments) {
 int Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {
     ProcessArguments args;
     StringView path = this->validate_string(pathname);
+
+    u8* foo = nullptr;
+    *foo = 0;
 
     if (!argv) {
         args.argv = { path, nullptr };

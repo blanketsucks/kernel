@@ -27,7 +27,7 @@ Symbol* resolve_symbol(const char* name) {
     return nullptr;
 }
 
-Symbol* resolve_symbol(u32 address) {
+Symbol* resolve_symbol(FlatPtr address) {
     if (!s_loaded_symbols) {
         return nullptr;
     }
@@ -64,7 +64,7 @@ void parse_symbols(StringView symbols) {
 
         buffer[name.size()] = '\0';
 
-        u32 addr = std::strntoul(address.data(), address.size(), nullptr, 16);
+        FlatPtr addr = std::strntoull(address.data(), address.size(), nullptr, 16);
         s_symbols.append(Symbol { buffer, addr });
     }
 

@@ -70,8 +70,37 @@ u32 strntoul(const char* str, size_t n, char** endptr, u32 base) {
     return result;
 }
 
+u64 strntoull(const char* str, size_t n, char** endptr, u32 base) {
+    u64 result = 0;
+    u32 i = 0;
+
+    while (i < n) {
+        u32 digit = 0;
+        if (isdigit(str[i])) {
+            digit = str[i] - '0';
+        } else if (islower(str[i])) {
+            digit = str[i] - 'a' + 10;
+        } else {
+            digit = str[i] - 'A' + 10;
+        }
+
+        result = result * base + digit;
+        i++;
+    }
+
+    if (endptr) {
+        *endptr = const_cast<char*>(str + i);
+    }
+
+    return result;
+}
+
 u32 strtoul(const char* str, char** endptr, u32 base) {
     return strntoul(str, strlen(str), endptr, base);
+}
+
+u64 strtoull(const char* str, char** endptr, u32 base) {
+    return strntoull(str, strlen(str), endptr, base);
 }
 
 int strcmp(const char* str1, const char* str2) {

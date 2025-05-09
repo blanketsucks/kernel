@@ -138,9 +138,11 @@ void stage2() {
         dbgln("Could not create main ext2 filesystem.\n");
         process->sys$exit(1);
     }
-    
+
     auto* vfs = fs::vfs();
     vfs->mount_root(fs);
+
+    parse_symbols_from_fs();
 
     PTYMultiplexer::create();
 
