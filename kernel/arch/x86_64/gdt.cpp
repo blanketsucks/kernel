@@ -84,19 +84,6 @@ void write_tss(u16 index, TSS& tss) {
     s_gdt_entries[index + 1] = entry;
 }
 
-void dump_entry(size_t index) {
-    GDTEntry& entry = s_gdt_entries[index];
-
-    u32 base = entry.base_low | (entry.base_middle << 16) | (entry.base_high << 24);
-    u32 limit = entry.limit_low | (entry.flags.limit_high << 16);
-
-    dbgln("GDT Entry {}:", index);
-    dbgln("  Base: {:#x}", base);
-    dbgln("  Limit: {:#x}", limit);
-    dbgln("  Access: {:#x}", entry.access.value);
-    dbgln("  Flags: {:#x}", entry.flags.value);
-}
-
 void init_gdt() {
     GDTDescriptor gdtr {
         .limit = sizeof(s_gdt_entries) - 1,

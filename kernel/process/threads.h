@@ -74,7 +74,7 @@ private:
     Thread(Process*, arch::Registers&);
 
     void create_stack();
-    void set_initial_stack_state(uintptr_t esp, arch::ThreadRegisters&);
+    void set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters&);
     
     void setup_thread_arguments();
 

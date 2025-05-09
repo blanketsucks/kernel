@@ -102,12 +102,12 @@ void Parser::parse_acpi_tables() {
         }
 
         SDTHeader* header = this->map_acpi_table(table);
-        dbgln("  {}{}{}{}:", header->signature[0], header->signature[1], header->signature[2], header->signature[3]);
+        dbgln(" - {}{}{}{}:", header->signature[0], header->signature[1], header->signature[2], header->signature[3]);
 
-        dbgln("    Length: {}", header->length);
-        dbgln("    Revision: {}", header->revision);
-        dbgln("    Checksum: {}", header->checksum);
-        dbgln("    OEM ID: {}{}{}{}{}{}", header->oem_id[0], header->oem_id[1], header->oem_id[2], header->oem_id[3], header->oem_id[4], header->oem_id[5]);
+        dbgln("  - Length: {}", header->length);
+        dbgln("  - Revision: {}", header->revision);
+        dbgln("  - Checksum: {:#x}", header->checksum);
+        dbgln("  - OEM ID: {}{}{}{}{}{}", header->oem_id[0], header->oem_id[1], header->oem_id[2], header->oem_id[3], header->oem_id[4], header->oem_id[5]);
 
         m_tables.append(header);
     }

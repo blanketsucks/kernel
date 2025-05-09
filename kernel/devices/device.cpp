@@ -3,14 +3,14 @@
 
 namespace kernel {
 
-static HashMap<u32, Device*> s_devices;
+static HashMap<u32, RefPtr<Device>> s_devices;
 
 Device::Device(DeviceMajor major, u32 minor) : m_major(major), m_minor(minor) {
     s_devices.set(encode(to_underlying(major), minor), this);
 }
 
-Device* Device::get_device(u32 major, u32 minor) {
-    auto iterator = s_devices.find(encode(major, minor));
+RefPtr<Device> Device::get_device(DeviceMajor major, u32 minor) {
+    auto iterator = s_devices.find(encode(to_underlying(major), minor));
     if (iterator == s_devices.end()) {
         return nullptr;
     }
@@ -18,12 +18,12 @@ Device* Device::get_device(u32 major, u32 minor) {
     return iterator->value;
 }
 
-HashMap<u32, Device*> const& Device::devices() {
-    return s_devices;
+RefPtr<Device> Device::as_ref() const {
+    return Device::get_device(m_major, m_minor);
 }
 
 RefPtr<fs::FileDescriptor> Device::open(int options) {
-    return fs::FileDescriptor::create(this, options);
+    return fs::FileDescriptor::create(as_ref(), options);
 }
 
 }

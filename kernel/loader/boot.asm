@@ -10,6 +10,9 @@ global kernel_pd
 
 extern init
 
+HIGHER_HALF_DIRECT_MAP equ 0xffff800000000000
+HHDM_PML4E equ 0x800
+
 VIDEO_ADDRESS equ 0xB8000
 PAGE_SIZE equ 0x1000
 
@@ -126,10 +129,25 @@ _start:
 
     ; Set boot_pml4t[0] to point to boot_pdpt
     mov edi, boot_pml4t
+
     mov dword [edi], boot_pdpt + 0x3
+    mov dword [edi + HHDM_PML4E], boot_pdpt + 0x3
     
     ; Set boot_pdpt[0..3] to point to boot_pd[0..3]
-    ; TODO: Maybe check if 1GB pages are supported and use that instead.
+    ; First check if 1GB pages are supported and use that instead.
+    test edx, 1 << 26
+    jz .no_1gb_pages
+
+    mov edi, boot_pdpt
+
+    mov dword [edi +  0], boot_pd + PAGE_SIZE * 0 + 0x83
+    mov dword [edi +  8], boot_pd + PAGE_SIZE * 1 + 0x83
+    mov dword [edi + 16], boot_pd + PAGE_SIZE * 2 + 0x83
+    mov dword [edi + 24], boot_pd + PAGE_SIZE * 3 + 0x83
+
+    jmp .loop.end
+    
+.no_1gb_pages:
     mov edi, boot_pdpt
     
     mov dword [edi +  0], boot_pd + PAGE_SIZE * 0 + 0x3
@@ -141,6 +159,7 @@ _start:
     mov edi, boot_pd
     mov ecx, 512 * 4
     mov eax, 0x83 ; Present and RW and PS (2MB page)
+
 .loop:
     mov dword [edi], eax
     add eax, 0x200000 ; Add 2MB
@@ -148,6 +167,7 @@ _start:
 
     loop .loop
 
+.loop.end:
     mov eax, boot_pml4t
     mov cr3, eax
 
@@ -167,9 +187,6 @@ _start:
     or eax, 1 << 31
     mov cr0, eax
 
-    mov esp, stack.bottom
-    and esp, 0xFFFFFFF0 ; Align stack pointer to 16 bytes
-
     ; Actually enter 64-bit mode by loading a 64-bit GDT
     lgdt [gdt.ptr]
     jmp gdt.code:_64bit_start
@@ -186,6 +203,9 @@ _start:
 
 _64bit_start:
     cli
+
+    mov rsp, stack.bottom + HIGHER_HALF_DIRECT_MAP
+    and rsp, 0xFFFFFFFFFFFFFFF0 ; Align to 16 bytes
 
     mov ax, 0
     mov ds, ax

@@ -50,9 +50,29 @@ constexpr bool has_flag(T value, T mask) {
     return to_underlying(value & mask) == to_underlying(mask);
 }
 
+template<typename T> requires(is_integral_v<T>)
+constexpr bool has_flag(T value, T mask) {
+    return (value & mask) == mask;
+}
+
+template<typename T, typename U> requires(is_integral_v<T> && is_integral_v<U>)
+constexpr bool has_flag(T value, U mask) {
+    return (value & static_cast<T>(mask)) == static_cast<T>(mask);
+}
+
 template<typename T> requires(is_enum<T>)
 constexpr bool has_any_flag(T value, T mask) {
     return to_underlying(value & mask) != 0;
+}
+
+template<typename T> requires(is_integral_v<T>)
+constexpr bool has_any_flag(T value, T mask) {
+    return (value & mask) != 0;
+}
+
+template<typename T, typename U> requires(is_integral_v<T> && is_integral_v<U>)
+constexpr bool has_any_flag(T value, U mask) {
+    return (value & static_cast<T>(mask)) != 0;
 }
 
 }

@@ -46,7 +46,7 @@ RefPtr<net::NetworkAdapter> NetworkManager::create_network_adapter(pci::Device d
 
 void NetworkManager::enumerate() {
     pci::enumerate([&](pci::Device device) {
-        if (device.class_id != pci::DeviceClass::NetworkController) {
+        if (device.class_id() != pci::DeviceClass::NetworkController) {
             return;
         }
 
@@ -105,11 +105,13 @@ void NetworkManager::main() {
 }
 void handle_packet(net::NetworkAdapter& adapter, u8* data, size_t size) {
     auto* frame = reinterpret_cast<net::EthernetFrame*>(data);
-    
+
+if constexpr (false) {
     dbgln("Ethernet packet (size={}):", size);
     dbgln(" - Source: {}", frame->source);
     dbgln(" - Destination: {}", frame->destination);
     dbgln(" - Type: {}", frame->type);
+}
 
     switch (frame->type) {
         case net::EtherType::ARP:
@@ -144,6 +146,7 @@ void handle_arp_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, 
 void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size) {
     auto* ipv4 = reinterpret_cast<net::IPv4Packet*>(frame->payload);
 
+if constexpr (false) {
     dbgln("IPv4 packet (size={}):", size);
     dbgln(" - Version: {}", ipv4->version);
     dbgln(" - IHL: {}", ipv4->ihl);
@@ -157,8 +160,8 @@ void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame,
     dbgln(" - Checksum: {}", ipv4->checksum);
     dbgln(" - Source: {}", ipv4->source);
     dbgln(" - Destination: {}", ipv4->destination);
+}
 
-    size -= sizeof(net::IPv4Packet) + sizeof(net::EthernetFrame);
     switch (ipv4->protocol) {
         case net::IPProtocol::TCP:
             handle_tcp_packet(adapter, ipv4, size); break;
@@ -182,7 +185,8 @@ void handle_tcp_packet(net::NetworkAdapter&, net::IPv4Packet* packet, size_t siz
     dbgln(" - Destination port: {}", tcp->destination_port);
     dbgln(" - Sequence number: {}", tcp->sequence_number);
     dbgln(" - Acknowledgment number: {}", tcp->ack_number);
-    dbgln(" - Flags and Data offset: {}", tcp->flags_and_data_offset);
+    dbgln(" - Data offset: {}", tcp->data_offset & 0xF0);
+    dbgln(" - Flags: {}", tcp->flags);
     dbgln(" - Window size: {}", tcp->window_size);
     dbgln(" - Checksum: {}", tcp->checksum);
     dbgln(" - Urgent pointer: {}", tcp->urgent_pointer);

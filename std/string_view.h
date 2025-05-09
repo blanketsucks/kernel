@@ -85,6 +85,14 @@ public:
     constexpr char operator[](size_t index) const { return m_data[index]; }
 
     constexpr StringView substr(size_t start, size_t end) const {
+        if (start >= m_size || end > m_size) {
+            return {};
+        }
+
+        if (start > end) {
+            return {};
+        }
+
         return StringView(m_data + start, end - start);
     }
 
@@ -175,8 +183,8 @@ public:
     }
     
 private:
-    const char* m_data;
-    size_t m_size;
+    const char* m_data = nullptr;
+    size_t m_size = 0;
 };
 
 namespace traits {

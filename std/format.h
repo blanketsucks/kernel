@@ -28,7 +28,15 @@ struct FormatBuffer {
     String value() const { return m_buffer; }
 
     void append(char ch) { m_buffer.append(ch); }
-    void append(const char* str, size_t length) { m_buffer.append(str, length); }
+    
+    void append(const char* str, size_t length) {
+        if (length == 0) {
+            return;
+        }
+
+        m_buffer.append(str, length);
+    }
+
     void append(const char* str) { m_buffer.append(str); }
     void append(const String& str) { m_buffer.append(str); }
 
@@ -36,7 +44,9 @@ struct FormatBuffer {
         va_list args;
         va_start(args, fmt);
 
-        char buffer[4096];
+        static char buffer[4096];
+        memset(buffer, 0, sizeof(buffer));
+
         stbsp_vsnprintf(buffer, 4096, fmt, args);
 
         this->append(buffer);
@@ -110,24 +120,24 @@ void __format_64_integer(FormatBuffer& buffer, const T& value, const FormatStyle
     } else if (style.hex) {
         if (style.prefix) {
             if (!style.uppercase) {
-                stbsp_sprintf(temp, "%#llx", value);
+                stbsp_sprintf(temp, "%#lx", value);
             } else {
-                stbsp_sprintf(temp, "%#llX", value);
+                stbsp_sprintf(temp, "%#lX", value);
             }
         } else {
             if (!style.uppercase) {
-                stbsp_sprintf(temp, "%llx", value);
+                stbsp_sprintf(temp, "%lx", value);
             } else {
-                stbsp_sprintf(temp, "%llX", value);
+                stbsp_sprintf(temp, "%lX", value);
             }
         }
     } else if (style.character) {
         stbsp_sprintf(temp, "%c", static_cast<char>(value));
     } else {
         if constexpr (is_signed) {
-            stbsp_sprintf(temp, "%lld", value);
+            stbsp_sprintf(temp, "%ld", value);
         } else {
-            stbsp_sprintf(temp, "%llu", value);
+            stbsp_sprintf(temp, "%lu", value);
         }
     }
 
@@ -212,6 +222,12 @@ template<> struct Formatter<char> {
 
 template<> struct Formatter<const char*> {
     static void format(FormatBuffer& buffer, const char* value, const FormatStyle&) {
+        buffer.append(value);
+    }
+};
+
+template<> struct Formatter<char*> {
+    static void format(FormatBuffer& buffer, char* value, const FormatStyle&) {
         buffer.append(value);
     }
 };
@@ -306,6 +322,7 @@ void dbgln(const char* fmt, Args const&... args) {
     _dbg_impl(fmt, params, true);
 }
 
+void dbgln(StringView);
 void dbgln();
 
 }

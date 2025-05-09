@@ -22,8 +22,8 @@ else()
         set(CMAKE_CXX_COMPILER x86_64-corn-g++)
         set(CMAKE_C_COMPILER x86_64-corn-gcc)
     else()
-        set(CMAKE_CXX_COMPILER i686-chair-g++)
-        set(CMAKE_C_COMPILER i686-chair-gcc)
+        set(CMAKE_CXX_COMPILER i686-corn-g++)
+        set(CMAKE_C_COMPILER i686-corn-gcc)
     endif()
 
     add_link_options(-z noexecstack)
@@ -45,12 +45,13 @@ file(GLOB_RECURSE STD_CPP_SOURCES ${CMAKE_SOURCE_DIR}/std/*.cpp)
 
 set(DISK_IMAGE ${CMAKE_SOURCE_DIR}/scripts/disk.img)
 set(SCRIPTS ${CMAKE_SOURCE_DIR}/scripts)
+set(VENDOR ${CMAKE_SOURCE_DIR}/vendor)
 
 function(create_library libname output dst)
-    add_library(${libname}-static STATIC ${CPP_SOURCES})
+    add_library(${libname}-static STATIC ${CPP_SOURCES} ${STD_CPP_SOURCES})
     set_target_properties(${libname}-static PROPERTIES OUTPUT_NAME ${output})
 
-    add_library(${libname}-shared SHARED ${CPP_SOURCES})
+    add_library(${libname}-shared SHARED ${CPP_SOURCES} ${STD_CPP_SOURCES})
     set_target_properties(${libname}-shared PROPERTIES OUTPUT_NAME ${output})
 
     add_custom_target(${libname})

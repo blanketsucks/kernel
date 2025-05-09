@@ -11,16 +11,17 @@ namespace kernel::pit {
 u32 s_ticks = 0;
 PIT* s_pit = nullptr;
 
-void PIT::handle_interrupt(arch::InterruptRegisters*) {
-    pic::eoi(0);
+void PIT::handle_irq() {
     s_ticks++;
-
+    // dbgln("Tick: {}", s_ticks);
     Scheduler::invoke_async();
 }
 
 void init() {
     set_frequency(DEFAULT_FREQUENCY);
-    // s_pit = new PIT();
+    s_pit = new PIT();
+
+    s_pit->enable_irq();
 }
 
 void set_frequency(u32 frequency) {

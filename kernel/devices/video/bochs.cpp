@@ -5,7 +5,7 @@
 #include <kernel/process/process.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/serial.h>
-#include <kernel/pci.h>
+#include <kernel/pci/pci.h>
 #include <kernel/arch/io.h>
 
 namespace kernel {
@@ -15,17 +15,17 @@ BochsVGADevice* BochsVGADevice::s_instance = nullptr;
 BochsVGADevice* BochsVGADevice::create(i32 width, i32 height) {
     pci::Address address = {};
     pci::enumerate([&address](pci::Device device) {
-        if (device.is_bochs_vga()) {
-            address = device.address;
+        if (device.vendor_id() == VENDOR_ID && device.device_id() == DEVICE_ID) {
+            address = device.address();
         }
     });
 
-    if (!address.value) {
+    if (!address.value()) {
         return nullptr;
     }
 
     auto* device = new BochsVGADevice();
-    device->m_physical_address = address.bar0() & 0xFFFFFFF0;
+    device->m_physical_address = address.bar(0) & 0xFFFFFFF0;
 
     device->set_resolution(width, height, 32, false);
     if (!device->map()) {

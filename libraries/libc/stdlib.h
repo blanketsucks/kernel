@@ -14,6 +14,8 @@ __BEGIN_DECLS
 int atexit(void (*function)(void));
 
 int posix_openpt(int flags);
+char* ptsname(int fd);
+int ptsname_r(int fd, char* buf, size_t buflen);
 
 void* malloc(size_t size);
 void free(void* ptr);

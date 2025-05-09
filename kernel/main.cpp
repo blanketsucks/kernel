@@ -3,7 +3,7 @@
 #include <kernel/arch/io.h>
 #include <kernel/serial.h>
 #include <kernel/ctors.h>
-#include <kernel/pci.h>
+#include <kernel/pci/pci.h>
 #include <kernel/symbols.h>
 
 #include <std/result.h>
@@ -27,6 +27,8 @@
 #include <kernel/devices/input/mouse.h>
 #include <kernel/devices/audio/pcspeaker.h>
 #include <kernel/devices/video/bochs.h>
+#include <kernel/devices/video/virtio/device.h>
+#include <kernel/devices/video/generic.h>
 #include <kernel/devices/storage/ide/controller.h>
 #include <kernel/devices/audio/ac97.h>
 #include <kernel/devices/storage/ahci/controller.h>
@@ -42,15 +44,20 @@
 #include <kernel/fs/ramfs/filesystem.h>
 #include <kernel/fs/ext2fs/filesystem.h>
 
-#include <kernel/arch/arch.h>
 #include <kernel/arch/cpu.h>
 #include <kernel/arch/processor.h>
+#include <kernel/arch/pic.h>
 #include <kernel/boot/command_line.h>
 #include <kernel/boot/boot_info.h>
 
 #include <kernel/tty/virtual.h>
+#include <kernel/tty/multiplexer.h>
 
 #include <kernel/net/manager.h>
+
+#include <kernel/usb/uhci/controller.h>
+#include <kernel/virtio/virtio.h>
+#include <kernel/virtio/device.h>
 
 using namespace kernel;
 
@@ -71,7 +78,7 @@ extern "C" void main(BootInfo const& boot_info) {
     MouseDevice::init();
     
     memory::MemoryManager::init();
-    
+
     asm volatile("sti");
 
     auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
@@ -89,7 +96,7 @@ void stage2() {
 
     dbgln("PCI Bus:");
     pci::enumerate([](pci::Device device) {
-        dbgln("  {}: {}", device.class_name(), device.subclass_name());
+        dbgln(" - {}: {}", device.class_name(), device.subclass_name());
     });
     
     dbgln();
@@ -98,12 +105,23 @@ void stage2() {
     
     AC97Device::create();
 
-    NetworkManager::initialize();
-    while (1) {
-        Scheduler::yield();
+    auto result = VirtIOGPUDevice::create();
+    if (!result.is_err()) {
+        auto* device = result.release_value();
+        auto result = device->test();
+        if (result.is_err()) {
+            dbgln("Failed to test VirtIO GPU device: {}", result.error().err());
+        }
     }
-        
-    BochsVGADevice::create(800, 600);
+    
+    if (g_boot_info->framebuffer.address) {
+        GenericVideoDevice::create_from_boot();
+    } else {
+        BochsVGADevice::create(1280, 720);
+    }
+    
+    usb::UHCIController::create();
+    NetworkManager::initialize();
 
     StorageManager::initialize();
     auto* disk = StorageManager::determine_boot_device();
@@ -120,12 +138,12 @@ void stage2() {
         dbgln("Could not create main ext2 filesystem.\n");
         process->sys$exit(1);
     }
-
+    
     auto* vfs = fs::vfs();
     vfs->mount_root(fs);
-    
-    parse_symbols_from_fs();
-    
+
+    PTYMultiplexer::create();
+
     auto* ptsfs = new fs::PTSFS();
     ptsfs->init();
 
@@ -133,15 +151,13 @@ void stage2() {
 
     auto* tty0 = new VirtualTTY(0);
     
-    auto fd = vfs->open("/bin/execve", O_RDONLY, 0).unwrap();
+    auto fd = vfs->open("/bin/shell", O_RDONLY, 0).unwrap();
     ELF elf(fd);
 
-    auto cwd = vfs->resolve("/").unwrap();
-
     ProcessArguments arguments;
-    arguments.argv = { "/bin/execve" };
+    arguments.argv = { "/bin/shell" };
 
-    auto* shell = Process::create_user_process("/bin/execve", elf, cwd, move(arguments), tty0);
+    Process* shell = Process::create_user_process("/bin/shell", elf, nullptr, move(arguments), tty0);
     Scheduler::add_process(shell);
 
     process->sys$exit(0);

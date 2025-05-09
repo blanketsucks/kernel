@@ -1,53 +1,44 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <std/vector.h>
+#include <std/linked_list.h>
 
 namespace std {
 
 template<typename T>
 class Stack {
 public:
-    using Iterator = typename Vector<T>::Iterator;
-    using ConstIterator = typename Vector<T>::ConstIterator;
+    using Iterator = typename SinglyLinkedList<T>::Iterator;
+    using ConstIterator = typename SinglyLinkedList<T>::ConstIterator;
 
     Stack() = default;
 
-    Stack(const Stack<T>& other) : buffer(other.buffer) {}
+    Stack(const Stack<T>& other) : m_list(other.m_list) {}
 
-    void reserve(size_t capacity) { this->buffer.reserve(capacity); }
-    void resize(size_t size) { this->buffer.resize(size); }
+    void push(const T& value) { m_list.prepend(value); }
+    T pop() { return m_list.take_first(); }
 
-    void shrink_to_fit() { this->buffer.shrink_to_fit(); }
+    T& top() { return m_list.first(); }
+    const T& top() const { return m_list.first(); }
 
-    void push(const T& value) { this->buffer.append(value); }
+    bool empty() const { return m_list.empty(); }
+    size_t size() const { return m_list.size(); }
 
-    T pop() {
-        return this->buffer.take_last();
-    }
+    void clear() { m_list.clear(); }
 
-    T& top() { return this->buffer.last(); }
-    const T& top() const { return this->buffer.last(); }
+    Iterator begin() { return m_list.begin(); }
+    Iterator end() { return m_list.end(); }
 
-    bool empty() const { return this->buffer.empty(); }
-    size_t size() const { return this->buffer.size(); }
-    size_t capacity() const { return this->buffer.capacity(); }
+    ConstIterator begin() const { return m_list.begin(); }
+    ConstIterator end() const { return m_list.end(); }
 
-    void clear() { this->buffer.clear(); }
-
-    Iterator begin() { return this->buffer.begin(); }
-    Iterator end() { return this->buffer.end(); }
-
-    ConstIterator begin() const { return this->buffer.begin(); }
-    ConstIterator end() const { return this->buffer.end(); }
-
-    Iterator find(const T& value) { return this->buffer.find(value); }
-    ConstIterator find(const T& value) const { return this->buffer.find(value); }
+    Iterator find(const T& value) { return m_list.find(value); }
+    ConstIterator find(const T& value) const { return m_list.find(value); }
     
-    bool contains(const T& value) const { return this->buffer.contains(value); }
+    bool contains(const T& value) const { return m_list.contains(value); }
 
 private:
-    Vector<T> buffer;
+    SinglyLinkedList<T> m_list;
 };
 
 }

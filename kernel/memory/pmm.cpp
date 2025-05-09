@@ -99,18 +99,20 @@ void PhysicalMemoryManager::init(BootInfo const& boot_info) {
     m_total_pages = m_total_usable_memory / PAGE_SIZE;
 
     // FIXME: This specific call crashes the kernel down the line for some reason
-    // this->fill_preframe_buffer();
+    this->fill_preframe_buffer();
 
     dbgln("Total usable pages: {}", m_total_pages);
     dbgln("Total usable memory: {} MB\n", m_total_usable_memory / MB);
 }
 
-void PhysicalMemoryManager::fill_preframe_buffer() {
+ErrorOr<void> PhysicalMemoryManager::fill_preframe_buffer() {
     if (!m_frames.empty()) {
-        return;
+        return {};
     }
 
     size_t remaining = PREFRAME_COUNT;
+    bool found = false;
+
     for (auto& region : m_physical_regions) {
         if (region.free_pages() < remaining) {
             continue;
@@ -126,7 +128,14 @@ void PhysicalMemoryManager::fill_preframe_buffer() {
             m_frames.push(address + i * PAGE_SIZE);
         }
 
+        found = true;
         break;
+    }
+
+    if (!found) {
+        return Error(ENOMEM);
+    } else {
+        return {};
     }
 }
 
@@ -135,31 +144,35 @@ ErrorOr<void*> PhysicalMemoryManager::allocate() {
         return Error(ENXIO);
     }
 
-    for (auto& region : m_physical_regions) {
-        auto result = region.allocate();
-        if (result.is_ok()) {
-            m_allocations++;
-            return result.value();
-        }
+    if (m_frames.empty()) {
+        TRY(this->fill_preframe_buffer());
     }
 
-    return Error(ENOMEM);
+    return reinterpret_cast<void*>(m_frames.pop());
 }
 
 ErrorOr<void*> PhysicalMemoryManager::allocate_contiguous(size_t count) {
     if (!this->is_initialized()) {
         return Error(ENXIO);
     }
-    
-    for (auto& region : m_physical_regions) {
-        auto result = region.allocate_contiguous(count);
-        if (result.is_ok()) {
-            m_allocations += count;
-            return result.value();
-        }
+
+    if (m_frames.empty()) {
+        TRY(this->fill_preframe_buffer());
     }
 
-    return Error(ENOMEM);
+    for (size_t i = 0; i < count - 1; i++) {
+        if (m_frames.empty()) {
+            return Error(ENOMEM);
+        }
+
+        m_frames.pop();
+    }
+
+    if (m_frames.empty()) {
+        return Error(ENOMEM);
+    }
+
+    return reinterpret_cast<void*>(m_frames.pop());
 }
 
 ErrorOr<void> PhysicalMemoryManager::free(void* frame, size_t count) {

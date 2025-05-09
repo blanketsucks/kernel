@@ -78,7 +78,7 @@ bool AHCIPort::initialize() {
             max_addressable_block = identify->lba_28_max_addressable_block;
         }
 
-        dbgln("AHCI Port {}: Device Signature: {}, Max Addressable Block: {}", m_index, to_underlying(signature()), max_addressable_block);
+        dbgln(" - AHCI Port {}: Device Signature: {:#x}, Max Addressable Block: {}", m_index, to_underlying(signature()), max_addressable_block);
         m_device = SATADevice::create(this, max_addressable_block);
     }
 
@@ -273,8 +273,6 @@ void AHCIPort::handle_interrupt() {
 
     m_irq_blocker.set_value(true);
     this->clear_interrupt_status();
-
-    Scheduler::yield(true);
 }
 
 }

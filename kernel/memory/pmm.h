@@ -6,6 +6,7 @@
 #include <std/stack.h>
 #include <std/result.h>
 #include <std/bitmap.h>
+#include <std/vector.h>
 
 namespace kernel::memory {
 
@@ -59,7 +60,7 @@ public:
 
     ErrorOr<void> free(void* frame, size_t count);
 
-    void fill_preframe_buffer();
+    ErrorOr<void> fill_preframe_buffer();
 
 private:
     void init(BootInfo const&);

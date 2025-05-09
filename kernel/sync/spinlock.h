@@ -18,11 +18,26 @@ public:
 
     bool is_locked();
 
-    void acquire();
-    void release();
+    void lock();
+    void unlock();
 
 private:
-    std::Atomic<bool> m_lock { false };
+    std::Atomic<u8> m_lock { 0 };
+};
+
+template<typename Lock>
+class ScopedSpinLock {
+public:
+    explicit ScopedSpinLock(Lock& lock) : m_lock(lock) {
+        m_lock.lock();
+    }
+
+    ~ScopedSpinLock() {
+        m_lock.unlock();
+    }
+
+private:
+    Lock& m_lock;
 };
 
 }

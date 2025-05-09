@@ -5,6 +5,7 @@
 
 __BEGIN_DECLS
 
+int stat(const char* path, struct stat* buf);
 int fstat(int fd, struct stat* buf);
 
 __END_DECLS

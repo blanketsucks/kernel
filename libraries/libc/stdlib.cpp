@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/ioctl.h>
+
+#include <std/format.h>
 
 extern "C" {
 
@@ -34,5 +39,41 @@ int atexit(void (*function)(void)) {
 int posix_openpt(int flags) {
     return open("/dev/ptmx", flags);
 }
+
+
+static char s_ptsname_buffer[32];
+char* ptsname(int fd) {
+    if (ptsname_r(fd, s_ptsname_buffer, 32) < 0) {
+        return nullptr;
+    }
+
+    return s_ptsname_buffer;
+}
+
+int ptsname_r(int fd, char* buffer, size_t size) {
+
+    int pts = -1;
+    if (ioctl(fd, TIOCGPTN, &pts) < 0) {
+        return -1;
+    }
+
+    if (pts < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    String fmt = std::format("/dev/pts/{}", pts);
+    if (fmt.size() > size) {
+        errno = ERANGE;
+        return -1;
+    }
+
+    memset(buffer, 0, fmt.size() + 1);
+    memcpy(buffer, fmt.data(), fmt.size());
+
+    buffer[fmt.size()] = '\0';
+    return 0;
+}
+
     
 }

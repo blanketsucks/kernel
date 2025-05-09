@@ -2,8 +2,10 @@
 
 #include <kernel/common.h>
 #include <kernel/posix/sys/mman.h>
+#include <kernel/sync/spinlock.h>
 
 #include <std/enums.h>
+#include <std/memory.h>
 
 namespace kernel::arch {
     class PageDirectory;
@@ -39,7 +41,9 @@ private:
 
 class Region {
 public:
-    Region(const Range& range) : m_range(range) {}
+    Region(const Range& range) : m_range(range), next(nullptr), prev(nullptr) {}
+    Region() = default;
+
     Region* clone() const;
 
     Range const& range() const { return m_range; }
@@ -69,15 +73,16 @@ public:
     void set_shared(bool shared) { m_shared = shared; }
 
 private:
-    void set_size(size_t size) { m_range.m_size = size; }
-    void set_base(VirtualAddress base) { m_range.m_base = base; }
+    void set_range(const Range& range) {
+        m_range = range;
+    }
 
     Range m_range;
 
     bool m_used = false;
     bool m_shared = false;
 
-    int m_prot;
+    int m_prot = 0;
 
     fs::File* m_file = nullptr;
 
@@ -93,7 +98,11 @@ public:
     RegionAllocator() = default;
     RegionAllocator(const Range& range, arch::PageDirectory*);
 
-    RegionAllocator clone_with_page_directory(arch::PageDirectory*) const;
+    static RefPtr<RegionAllocator> create(const Range& range, arch::PageDirectory* page_directory) {
+        return RefPtr<RegionAllocator>(new RegionAllocator(range, page_directory));
+    }
+
+    RefPtr<RegionAllocator> clone(arch::PageDirectory*) const;
 
     Range const& range() const { return m_range; }
     arch::PageDirectory* page_directory() const { return m_page_directory; }

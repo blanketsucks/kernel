@@ -1,8 +1,12 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/posix/sys/types.h>
 
 namespace kernel {
+
+class Thread;
+class Process;
 
 class Blocker {
 public:
@@ -32,6 +36,31 @@ public:
 
 private:
     i32 m_wake_time;
+};
+
+class WaitBlocker : public Blocker {
+public:
+    WaitBlocker(Thread* thread, pid_t pid) : m_thread(thread), m_pid(pid) {}
+
+    static WaitBlocker* create(Thread* thread, pid_t pid);
+    
+    static void try_wake_all(Process*, int status);
+    void try_wake(Process*, int status);
+
+    bool should_unblock() override {
+        return m_ready;
+    }
+
+    int status() const {
+        return m_status;
+    }
+
+private:
+    Thread* m_thread;
+    pid_t m_pid;
+
+    int m_status;
+    bool m_ready = false;
 };
 
 }

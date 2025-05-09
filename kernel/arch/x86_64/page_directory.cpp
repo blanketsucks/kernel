@@ -164,7 +164,7 @@ PageDirectory* PageDirectory::kernel_page_directory() {
     return &s_kernel_page_directory;
 }
 
-void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memory::RegionAllocator& kernel_region_allocator) {
+void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memory::RegionAllocator&) {
     auto& dir = s_kernel_page_directory;
     dir.set_type(Kernel);
 
@@ -183,9 +183,6 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memo
         
         dir.map(virt, phys, PageFlags::Write);
     }
-    
-    kernel_region_allocator.reserve(boot_info.kernel_virtual_base, boot_info.kernel_size, PROT_READ | PROT_WRITE);
-    kernel_region_allocator.reserve(boot_info.hhdm, GB, PROT_READ | PROT_WRITE);
     
     dir.switch_to();
 }

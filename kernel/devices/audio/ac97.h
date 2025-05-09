@@ -1,9 +1,9 @@
 #pragma once
 
 #include <kernel/devices/character_device.h>
-#include <kernel/arch/pic.h>
+#include <kernel/arch/irq.h>
 #include <kernel/process/blocker.h>
-#include <kernel/pci.h>
+#include <kernel/pci/pci.h>
 #include <kernel/arch/io.h>
 
 namespace kernel {
@@ -116,7 +116,7 @@ public:
 private:
     AC97Device(pci::Address address);
 
-    void handle_interrupt(arch::InterruptRegisters*) override;
+    void handle_irq() override;
 
     io::Port m_audio_mixer;
     io::Port m_audio_bus;

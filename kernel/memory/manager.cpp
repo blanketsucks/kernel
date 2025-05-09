@@ -16,7 +16,7 @@ namespace kernel::memory {
 static u8 s_kernel_heap[INITIAL_KERNEL_HEAP_SIZE];
 static u32 s_kernel_heap_offset = 0;
 
-static MemoryManager s_mm = MemoryManager();
+static MemoryManager* s_mm = nullptr;
 
 size_t MemoryManager::current_kernel_heap_offset() {
     return s_kernel_heap_offset;
@@ -29,12 +29,14 @@ MemoryManager::MemoryManager() {
     VirtualAddress virtual_base = g_boot_info->kernel_virtual_base;
 
     m_heap_region_allocator = RegionAllocator({ heap_base, MAX_VIRTUAL_ADDRESS - heap_base }, dir);
-    m_kernel_region_allocator = RegionAllocator({ virtual_base, heap_base - virtual_base }, dir);
+    m_kernel_region_allocator = RegionAllocator::create({ virtual_base + g_boot_info->kernel_size, heap_base - virtual_base - g_boot_info->kernel_size }, dir);
 }
 
 void MemoryManager::init() {
-    s_mm.m_pmm = PhysicalMemoryManager::create(*g_boot_info);
-    arch::PageDirectory::create_kernel_page_directory(*g_boot_info, s_mm.m_kernel_region_allocator);
+    s_mm = new MemoryManager();
+        
+    s_mm->m_pmm = PhysicalMemoryManager::create(*g_boot_info);
+    arch::PageDirectory::create_kernel_page_directory(*g_boot_info, *s_mm->m_kernel_region_allocator);
 }
 
 void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
@@ -69,7 +71,7 @@ void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
 }
 
 MemoryManager* MemoryManager::instance() {
-    return &s_mm;
+    return s_mm;
 }
 
 arch::PageDirectory* MemoryManager::kernel_page_directory() {
@@ -87,7 +89,6 @@ void* MemoryManager::allocate_page_frame() {
 
 void* MemoryManager::allocate_contiguous_frames(size_t count) {
     auto result = m_pmm->allocate_contiguous(count);
-
     if (result.is_err()) {
         return nullptr;
     }
@@ -99,18 +100,38 @@ ErrorOr<void> MemoryManager::free_page_frame(void* frame) {
     return m_pmm->free(frame, 1);
 }
 
+ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Region* region, PageFlags flags) {
+    ScopedSpinLock lock(m_lock);
+    if (this->try_allocate_contiguous(page_directory, region, flags)) {
+        return {};
+    }
+
+    for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
+        void* frame = this->allocate_page_frame();
+        if (!frame) {
+            return Error(ENOMEM);
+        }
+
+        page_directory->map(region->base() + i, reinterpret_cast<PhysicalAddress>(frame), flags);
+    }
+
+    return {};
+}
+
 void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags) {
+    ScopedSpinLock lock(m_lock);
+
     size = std::align_up(size, PAGE_SIZE);
     auto* region = allocator.allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
         return nullptr;
     }
 
-    if (this->try_allocate_contiguous(allocator, region, size, flags)) {
+    auto* page_directory = allocator.page_directory();
+    if (this->try_allocate_contiguous(page_directory, region, flags)) {
         return reinterpret_cast<void*>(region->base());
     }
 
-    auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         void* frame = this->allocate_page_frame();
         if (!frame) {
@@ -123,14 +144,13 @@ void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags
     return reinterpret_cast<void*>(region->base());
 }
 
-bool MemoryManager::try_allocate_contiguous(RegionAllocator& allocator, Region* region, size_t size, PageFlags flags) {
-    auto* page_directory = allocator.page_directory();
-    void* frame = this->allocate_contiguous_frames(size / PAGE_SIZE);
+bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory, Region* region, PageFlags flags) {
+    void* frame = this->allocate_contiguous_frames(region->size() / PAGE_SIZE);
     if (!frame) {
         return false;
     }
     
-    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+    for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
         page_directory->map(region->base() + i, reinterpret_cast<PhysicalAddress>(frame) + i, flags);
     }
 
@@ -190,26 +210,26 @@ ErrorOr<void> MemoryManager::free_heap_region(void* start, size_t size) {
 }
 
 void* MemoryManager::allocate_kernel_region(size_t size) {
-    return this->allocate(m_kernel_region_allocator, size, PageFlags::Write);
+    return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write);
 }
 
 ErrorOr<void> MemoryManager::free_kernel_region(void* ptr, size_t size) {
-    return this->free(m_kernel_region_allocator, ptr, size);
+    return this->free(*m_kernel_region_allocator, ptr, size);
 }
 
 void* MemoryManager::allocate_dma_region(size_t size) {
-    return this->allocate(m_kernel_region_allocator, size, PageFlags::Write | PageFlags::CacheDisable);
+    return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write | PageFlags::CacheDisable);
 }
 
 ErrorOr<void> MemoryManager::free_dma_region(void* ptr, size_t size) {
-    return this->free(m_kernel_region_allocator, ptr, size);
+    return this->free(*m_kernel_region_allocator, ptr, size);
 }
 
 void* MemoryManager::map_physical_region(void* ptr, size_t size) {
     size = std::align_up(size, PAGE_SIZE);
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
-    auto* region = m_kernel_region_allocator.allocate(size, PROT_READ | PROT_WRITE);
+    auto* region = m_kernel_region_allocator->allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
         return nullptr;
     }
@@ -224,7 +244,7 @@ void* MemoryManager::map_physical_region(void* ptr, size_t size) {
 
 void MemoryManager::unmap_physical_region(void* ptr) {
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
-    auto* region = m_kernel_region_allocator.find_region(reinterpret_cast<VirtualAddress>(ptr));
+    auto* region = m_kernel_region_allocator->find_region(reinterpret_cast<VirtualAddress>(ptr));
 
     if (!region) {
         return;
@@ -234,12 +254,12 @@ void MemoryManager::unmap_physical_region(void* ptr) {
         page_directory->unmap(region->base() + i);
     }
 
-    m_kernel_region_allocator.free(region);
+    m_kernel_region_allocator->free(region);
 }
 
 void* MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory, void* ptr, size_t size) {
     size = std::align_up(size, PAGE_SIZE);
-    auto* region = m_kernel_region_allocator.allocate(size, PROT_READ | PROT_WRITE);
+    auto* region = m_kernel_region_allocator->allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
         return nullptr;
     }
@@ -256,9 +276,9 @@ void* MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory
 void MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
     void* dst = this->map_physical_region(d, size);
     void* src = this->map_physical_region(s, size);
-
+    
     memcpy(dst, src, size);
-
+    
     this->unmap_physical_region(dst);
     this->unmap_physical_region(src);
 }
@@ -274,21 +294,31 @@ PhysicalAddress MemoryManager::get_physical_address(void* addr) {
 }
 
 TemporaryMapping::TemporaryMapping(arch::PageDirectory& page_directory, void* ptr, size_t size) : m_size(size) {
-    m_ptr = (u8*)s_mm.map_from_page_directory(&page_directory, ptr, size);
+    m_ptr = (u8*)s_mm->map_from_page_directory(&page_directory, ptr, size);
 }
 
 TemporaryMapping::~TemporaryMapping() {
-    s_mm.unmap_physical_region(m_ptr);
+    s_mm->unmap_physical_region(m_ptr);
 }
 
 }
 
 // FIXME: Implement
 int liballoc_lock() {
+    using namespace kernel::memory;
+    if (s_mm) {
+        s_mm->liballoc_lock().lock();
+    }
+
     return 0;
 }
 
 int liballoc_unlock() {
+    using namespace kernel::memory;
+    if (s_mm) {
+        s_mm->liballoc_lock().unlock();
+    }
+
     return 0;
 }
 

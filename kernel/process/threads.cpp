@@ -2,12 +2,9 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
 #include <kernel/process/blocker.h>
-#include <kernel/arch/arch.h>
 #include <std/format.h>
 
 namespace kernel {
-
-extern "C" void _thread_first_enter();
 
 Thread* Thread::create(u32 id, String name, Process* process, Entry entry, ProcessArguments& arguments) {
     return new Thread(move(name), process, id, entry, arguments);
@@ -26,7 +23,6 @@ Thread::Thread(
 Thread::Thread(
     Process* process, arch::Registers& registers
 ) : m_id(process->id()), m_state(Running), m_name("main"), m_process(process), m_arguments(process->m_arguments) {
-
     void* kernel_stack = MM->allocate_kernel_region(KERNEL_STACK_SIZE);
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
@@ -58,7 +54,7 @@ void Thread::create_stack() {
         void* user_stack = m_process->allocate(USER_STACK_SIZE, PageFlags::Write);
         m_user_stack = Stack(user_stack, USER_STACK_SIZE);
 
-        // this->setup_thread_arguments();
+        this->setup_thread_arguments();
 
         m_registers.cs = arch::USER_CODE_SELECTOR | 3;
         m_registers.ss = arch::USER_DATA_SELECTOR | 3;
@@ -103,6 +99,11 @@ void Thread::setup_thread_arguments() {
 
     auto prepare_argument_vector = [this](Vector<String>& src, Vector<VirtualAddress>& dst) {
         for (auto& argument : src) {
+            if (argument.empty()) {
+                dst.append(0);
+                continue;
+            }
+
             // FIXME: Maybe we should just use the stack for this?
             void* address = m_process->allocate(argument.size() + 1, PageFlags::Write);
             memcpy(address, argument.data(), argument.size());
@@ -159,6 +160,10 @@ void Thread::kill() {
 }
 
 bool Thread::should_unblock() const {
+    if (m_state != Blocked) {
+        return false;
+    }
+
     return m_blocker && m_blocker->should_unblock();
 }
 

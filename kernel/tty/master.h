@@ -16,6 +16,10 @@ public:
     ssize_t read(void* buffer, size_t size, size_t offset) override;
     ssize_t write(const void* buffer, size_t size, size_t offset) override;
 
+    void close() override;
+
+    ErrorOr<int> ioctl(unsigned, unsigned) override;
+
     u32 pts() const { return m_pts; }
     PTYSlave* slave() const { return m_slave; }
 

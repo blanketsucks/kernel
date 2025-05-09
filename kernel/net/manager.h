@@ -4,7 +4,7 @@
 #include <kernel/net/adapter.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/blocker.h>
-#include <kernel/pci.h>
+#include <kernel/pci/pci.h>
 
 #include <std/vector.h>
 #include <std/memory.h>

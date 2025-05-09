@@ -20,9 +20,7 @@ PATADevice::PATADevice(
 ) : StorageDevice(SECTOR_SIZE),
     IRQHandler(drive == ata::Drive::Master ? ata::PRIMARY_IRQ : ata::SECONDARY_IRQ), 
     m_channel(channel), m_drive(drive) {
-    this->disable_irq_handler();
-
-    m_bus_master = address.bar4() & ~1;
+    m_bus_master = address.bar(4) & ~1;
     if (channel == ata::Channel::Primary) {
         m_data = ata::PRIMARY_DATA_PORT;
         m_control = ata::PRIMARY_CONTROL_PORT;
@@ -90,6 +88,8 @@ PATADevice::PATADevice(
         m_dma_buffer = reinterpret_cast<u8*>(mm->allocate_dma_region(DMA_BUFFER_SIZE));
 
         m_prdt->base = mm->get_physical_address(m_dma_buffer);
+
+        this->enable_irq();
     }
 
     size_t capacity = m_max_addressable_block * SECTOR_SIZE;
@@ -101,7 +101,7 @@ PATADevice::PATADevice(
     dbgln(" - Capacity: {} MB\n", capacity / MB);
 }
 
-void PATADevice::handle_interrupt(arch::InterruptRegisters*) {
+void PATADevice::handle_irq() {
     u8 status = m_bus_master.read<u8>(ata::BMStatus);
     if (!(status & 0x04)) {
         return;
@@ -110,7 +110,7 @@ void PATADevice::handle_interrupt(arch::InterruptRegisters*) {
     m_bus_master.write<u8>(ata::BMStatus, status | 0x04);
     m_irq_blocker.set_value(true);
 
-    Scheduler::yield(true);
+    // Scheduler::yield(true);
 }
 
 size_t PATADevice::max_io_block_count() const {
@@ -128,8 +128,6 @@ void PATADevice::wait_while_busy() const {
 void PATADevice::wait_for_irq() {
     Thread* thread = Scheduler::current_thread();
     thread->block(&m_irq_blocker);
-
-    this->disable_irq_handler();
 }
 
 void PATADevice::poll() const {
@@ -239,8 +237,6 @@ void PATADevice::read_sectors_with_dma(size_t lba, u8 count, u8* buffer) {
     m_bus_master.write<u8>(ata::BMStatus, status | 0x06);
 
     this->prepare_for(ata::ReadDMA, lba, count);
-
-    this->enable_irq_handler();
 
     while (!(m_control.read<u8>() & to_underlying(ata::DataRequest)));
 

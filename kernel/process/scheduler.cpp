@@ -10,9 +10,6 @@
 
 namespace kernel {
 
-extern "C" void _switch_context(arch::ThreadRegisters*, arch::ThreadRegisters*);
-extern "C" void _switch_context_no_state(arch::ThreadRegisters*);
-
 static u32 s_next_id = 0;
 static bool s_initialized = false;
 
@@ -24,6 +21,26 @@ static Thread* s_current_thread = nullptr;
 static Process* s_kernel_process = nullptr;
 
 static u32 s_irq_disable_counter = 0;
+
+static bool s_invoked_async = false;
+
+void Scheduler::invoke_async() {
+    s_invoked_async = true;
+}
+
+bool Scheduler::is_invoked_async() {
+    return s_invoked_async;
+}
+
+Process* Scheduler::get_process(pid_t id) {
+    for (auto& process : s_processes) {
+        if (process->id() == id) {
+            return process;
+        }
+    }
+    
+    return nullptr;
+}
 
 void _idle() {
     Scheduler::yield();
@@ -65,7 +82,7 @@ void Scheduler::init() {
 }
 
 void Scheduler::yield(bool if_idle) {
-    if (!s_initialized) {
+    if (!s_initialized || !s_current_thread) {
         return;
     }
 
@@ -83,13 +100,12 @@ void Scheduler::yield(bool if_idle) {
         return;
     }
     
-    if (if_idle && s_current_thread->process() != s_kernel_process) {
+    Thread* old = s_current_thread;
+    if (if_idle && old->process() != s_kernel_process) {
         return;
     }
 
-    Thread* old = s_current_thread;
     s_current_thread = next;
-
     if (old->is_running() && old->pid() != s_kernel_process->id()) {
         Scheduler::queue(old);
     }

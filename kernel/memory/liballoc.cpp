@@ -1,17 +1,13 @@
 #include <kernel/memory/liballoc.h>
 #include <kernel/memory/manager.h>
 
-#include <kernel/common.h>
-
-#include <stdint.h>
-
 /**  Durand's Amazing Super Duper Memory functions.  */
 
 #define VERSION 	"1.1"
 #define ALIGNMENT	16ul//4ul				///< This is the byte alignment that memory must be allocated on. IMPORTANT for GTK and other stuff.
 
-#define ALIGN_TYPE	char ///unsigned char[16] /// unsigned short
-#define ALIGN_INFO	sizeof(ALIGN_TYPE)*16	///< Alignment information is stored right before the pointer. This is the number of bytes of information stored there.
+#define ALIGN_TYPE		char ///unsigned char[16] /// unsigned short
+#define ALIGN_INFO		sizeof(ALIGN_TYPE)*16	///< Alignment information is stored right before the pointer. This is the number of bytes of information stored there.
 
 
 #define USE_CASE1
@@ -22,47 +18,56 @@
 
 
 /** This macro will conveniently align our pointer upwards */
-#define ALIGN(ptr)													\
-	if (ALIGNMENT > 1) {											\
-		uintptr_t diff;												\
-		ptr = (void*)((uintptr_t)ptr + ALIGN_INFO);					\
-		diff = (uintptr_t)ptr & (ALIGNMENT-1);						\
-		if (diff != 0) {											\
-			diff = ALIGNMENT - diff;								\
-			ptr = (void*)((uintptr_t)ptr + diff);					\
-		}															\
-		*((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO)) = 			\
-			diff + ALIGN_INFO;										\
-	}
+#define ALIGN( ptr )													\
+		if ( ALIGNMENT > 1 )											\
+		{																\
+			uintptr_t diff;												\
+			ptr = (void*)((uintptr_t)ptr + ALIGN_INFO);					\
+			diff = (uintptr_t)ptr & (ALIGNMENT-1);						\
+			if ( diff != 0 )											\
+			{															\
+				diff = ALIGNMENT - diff;								\
+				ptr = (void*)((uintptr_t)ptr + diff);					\
+			}															\
+			*((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO)) = 			\
+				diff + ALIGN_INFO;										\
+		}															
 
 
-#define UNALIGN(ptr)													\
-    if (ALIGNMENT > 1) {												\
-        uintptr_t diff = *((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO));	\
-        if (diff < (ALIGNMENT + ALIGN_INFO)) {						    \
-            ptr = (void*)((uintptr_t)ptr - diff);					    \
-        }															    \
-    }
+#define UNALIGN( ptr )													\
+		if ( ALIGNMENT > 1 )											\
+		{																\
+			uintptr_t diff = *((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO));	\
+			if ( diff < (ALIGNMENT + ALIGN_INFO) )						\
+			{															\
+				ptr = (void*)((uintptr_t)ptr - diff);					\
+			}															\
+		}
 				
 
 
 #define LIBALLOC_MAGIC	0xc001c0de
 #define LIBALLOC_DEAD	0xdeaddead
 
-struct liballoc_minor;
+#if defined DEBUG || defined INFO
+#include <stdio.h>
+#include <stdlib.h>
+
+#define FLUSH()		fflush( stdout )
+
+#endif
 
 /** A structure found at the top of all system allocated 
  * memory blocks. It details the usage of the memory block.
  */
-struct liballoc_major {
-	liballoc_major* prev; // Linked list information.
-	liballoc_major* next; // Linked list information.
-
-	u32 pages;			  // The number of pages in the block.
-	u32 size;			  // The number of pages in the block.
-	u32 usage;			  // The number of bytes used in the block.
-
-	liballoc_minor* first; // A pointer to the first allocated memory in the block.	
+struct liballoc_major
+{
+	struct liballoc_major *prev;		///< Linked list information.
+	struct liballoc_major *next;		///< Linked list information.
+	unsigned int pages;					///< The number of pages in the block.
+	unsigned int size;					///< The number of pages in the block.
+	unsigned int usage;					///< The number of bytes used in the block.
+	struct liballoc_minor *first;		///< A pointer to the first allocated memory in the block.	
 };
 
 
@@ -70,422 +75,755 @@ struct liballoc_major {
  * sections in a major block which were allocated by a
  * malloc, calloc, realloc call.
  */
-struct liballoc_minor {
-	liballoc_minor* prev;  // Linked list information.
-	liballoc_minor* next;  // Linked list information.
-	liballoc_major* block; // The owning block. A pointer to the major structure.
-
-	u32 magic;			   // A magic number to idenfity correctness.
-	u32 size; 			   // The size of the memory allocated. Could be 1 byte or more.
-	u32 req_size;		   // The size of memory requested.
+struct	liballoc_minor
+{
+	struct liballoc_minor *prev;		///< Linked list information.
+	struct liballoc_minor *next;		///< Linked list information.
+	struct liballoc_major *block;		///< The owning block. A pointer to the major structure.
+	unsigned int magic;					///< A magic number to idenfity correctness.
+	unsigned int size; 					///< The size of the memory allocated. Could be 1 byte or more.
+	unsigned int req_size;				///< The size of memory requested.
 };
 
 
-static liballoc_major* l_memRoot = nullptr;	// The root memory block acquired from the system.
-static liballoc_major* l_bestBet = nullptr;  // The major with the most free memory.
+static struct liballoc_major *l_memRoot = NULL;	///< The root memory block acquired from the system.
+static struct liballoc_major *l_bestBet = NULL; ///< The major with the most free memory.
 
-static u32 l_pageSize  = 4096;		// The size of an individual page. Set up in liballoc_init.
-static u32 l_pageCount = 16;		// The number of pages to request per chunk. Set up in liballoc_init.
-static u64 l_allocated = 0;		    // Running total of allocated memory.
-static u64 l_inuse	 = 0;		    // Running total of used memory.
+static unsigned int l_pageSize  = 4096;			///< The size of an individual page. Set up in liballoc_init.
+static unsigned int l_pageCount = 16;			///< The number of pages to request per chunk. Set up in liballoc_init.
+static unsigned long long l_allocated = 0;		///< Running total of allocated memory.
+static unsigned long long l_inuse	 = 0;		///< Running total of used memory.
 
-static i64 l_warningCount = 0;		// Number of warnings encountered
-static i64 l_errorCount = 0;		// Number of actual errors
-static i64 l_possibleOverruns = 0;	// Number of possible overruns
+
+static long long l_warningCount = 0;		///< Number of warnings encountered
+static long long l_errorCount = 0;			///< Number of actual errors
+static long long l_possibleOverruns = 0;	///< Number of possible overruns
+
+
+
 
 
 // ***********   HELPER FUNCTIONS  *******************************
 
-static void* liballoc_memset(void* s, int c, size_t n) {
-	for (unsigned int i = 0; i < n ; i++) {
+static void *liballoc_memset(void* s, int c, size_t n)
+{
+	unsigned int i;
+	for ( i = 0; i < n ; i++)
 		((char*)s)[i] = c;
-    }
 	
 	return s;
 }
+static void* liballoc_memcpy(void* s1, const void* s2, size_t n)
+{
+  char *cdest;
+  char *csrc;
+  unsigned int *ldest = (unsigned int*)s1;
+  unsigned int *lsrc  = (unsigned int*)s2;
 
-static void* liballoc_memcpy(void* s1, const void* s2, size_t n) {
-    char *cdest;
-    char *csrc;
-    unsigned int *ldest = (unsigned int*)s1;
-    unsigned int *lsrc  = (unsigned int*)s2;
+  while ( n >= sizeof(unsigned int) )
+  {
+      *ldest++ = *lsrc++;
+	  n -= sizeof(unsigned int);
+  }
 
-    while (n >= sizeof(unsigned int)) {
-        *ldest++ = *lsrc++;
-        n -= sizeof(unsigned int);
-    }
-
-    cdest = (char*)ldest;
-    csrc  = (char*)lsrc;
-    
-    while (n > 0) {
-        *cdest++ = *csrc++;
-        n -= 1;
-    }
-    
-    return s1;
+  cdest = (char*)ldest;
+  csrc  = (char*)lsrc;
+  
+  while ( n > 0 )
+  {
+      *cdest++ = *csrc++;
+	  n -= 1;
+  }
+  
+  return s1;
 }
+ 
+
+#if defined DEBUG || defined INFO
+static void liballoc_dump()
+{
+#ifdef DEBUG
+	struct liballoc_major *maj = l_memRoot;
+	struct liballoc_minor *min = NULL;
+#endif
+
+	printf( "liballoc: ------ Memory data ---------------\n");
+	printf( "liballoc: System memory allocated: %i bytes\n", l_allocated );
+	printf( "liballoc: Memory in used (malloc'ed): %i bytes\n", l_inuse );
+	printf( "liballoc: Warning count: %i\n", l_warningCount );
+	printf( "liballoc: Error count: %i\n", l_errorCount );
+	printf( "liballoc: Possible overruns: %i\n", l_possibleOverruns );
+
+#ifdef DEBUG
+		while ( maj != NULL )
+		{
+			printf( "liballoc: %x: total = %i, used = %i\n",
+						maj, 
+						maj->size,
+						maj->usage );
+
+			min = maj->first;
+			while ( min != NULL )
+			{
+				printf( "liballoc:    %x: %i bytes\n",
+							min, 
+							min->size );
+				min = min->next;
+			}
+
+			maj = maj->next;
+		}
+#endif
+
+	FLUSH();
+}
+#endif
+
+
 
 // ***************************************************************
 
-static struct liballoc_major* allocate_new_page(unsigned int size) {
-    // This is how much space is required.
-	unsigned int st = size + sizeof(struct liballoc_major) + sizeof(struct liballoc_minor);
+static struct liballoc_major *allocate_new_page( unsigned int size )
+{
+	unsigned int st;
+	struct liballoc_major *maj;
 
-    // Perfect amount of space?
-    if ((st % l_pageSize) == 0) {
-        st /= l_pageSize;
-    } else {
-        st = (st / l_pageSize) + 1; // No, add the buffer.
-    }
+		// This is how much space is required.
+		st  = size + sizeof(struct liballoc_major);
+		st += sizeof(struct liballoc_minor);
 
-    if (st < l_pageCount) st = l_pageCount;
+				// Perfect amount of space?
+		if ( (st % l_pageSize) == 0 )
+			st  = st / (l_pageSize);
+		else
+			st  = st / (l_pageSize) + 1;
+							// No, add the buffer. 
 
-    auto* major = (liballoc_major*)liballoc_alloc(st);
-    if (!major) {
-        l_warningCount += 1;
-        return nullptr;
-    }
+		
+		// Make sure it's >= the minimum size.
+		if ( st < l_pageCount ) st = l_pageCount;
+		
+		maj = (struct liballoc_major*)liballoc_alloc( st );
 
-    major->prev = nullptr;
-    major->next = nullptr;
-    major->pages = st;
-    major->size = st * l_pageSize;
-    major->usage = sizeof(struct liballoc_major);
-    major->first = nullptr;
+		if ( maj == NULL ) 
+		{
+			l_warningCount += 1;
+			#if defined DEBUG || defined INFO
+			printf( "liballoc: WARNING: liballoc_alloc( %i ) return NULL\n", st );
+			FLUSH();
+			#endif
+			return NULL;	// uh oh, we ran out of memory.
+		}
+		
+		maj->prev 	= NULL;
+		maj->next 	= NULL;
+		maj->pages 	= st;
+		maj->size 	= st * l_pageSize;
+		maj->usage 	= sizeof(struct liballoc_major);
+		maj->first 	= NULL;
 
-    l_allocated += major->size;
-    return major;
+		l_allocated += maj->size;
+
+		#ifdef DEBUG
+		printf( "liballoc: Resource allocated %x of %i pages (%i bytes) for %i size.\n", maj, st, maj->size, size );
+
+		printf( "liballoc: Total memory usage = %i KB\n",  (int)((l_allocated / (1024))) );
+		FLUSH();
+		#endif
+	
+		
+      return maj;
 }
 
 
-void *PREFIX(malloc)(size_t req_size) {
+	
+
+
+void *PREFIX(malloc)(size_t req_size)
+{
 	int startedBet = 0;
+	unsigned long long bestSize = 0;
 	void *p = NULL;
 	uintptr_t diff;
+	struct liballoc_major *maj;
+	struct liballoc_minor *min;
+	struct liballoc_minor *new_min;
 	unsigned long size = req_size;
 
 	// For alignment, we adjust size so there's enough space to align.
-	if (ALIGNMENT > 1) {
+	if ( ALIGNMENT > 1 )
+	{
 		size += ALIGNMENT + ALIGN_INFO;
 	}
-
-    // So, ideally, we really want an alignment of 0 or 1 in order
-    // to save space.
+				// So, ideally, we really want an alignment of 0 or 1 in order
+				// to save space.
 	
 	liballoc_lock();
-    if (size == 0) {
-        l_warningCount += 1;
 
-        liballoc_unlock();
-        return PREFIX(malloc)(1);
-    }
-
-	if (!l_memRoot) {	
-		// This is the first time we are being used.
-		l_memRoot = allocate_new_page(size);
-		if (!l_memRoot) {
-            liballoc_unlock();
-            return nullptr;
-		}
+	if ( size == 0 )
+	{
+		l_warningCount += 1;
+		#if defined DEBUG || defined INFO
+		printf( "liballoc: WARNING: alloc( 0 ) called from %x\n",
+							__builtin_return_address(0) );
+		FLUSH();
+		#endif
+		liballoc_unlock();
+		return PREFIX(malloc)(1);
 	}
+	
+
+	if ( l_memRoot == NULL )
+	{
+		#if defined DEBUG || defined INFO
+		#ifdef DEBUG
+		printf( "liballoc: initialization of liballoc " VERSION "\n" );
+		#endif
+		atexit( liballoc_dump );
+		FLUSH();
+		#endif
+			
+		// This is the first time we are being used.
+		l_memRoot = allocate_new_page( size );
+		if ( l_memRoot == NULL )
+		{
+		  liballoc_unlock();
+		  #ifdef DEBUG
+		  printf( "liballoc: initial l_memRoot initialization failed\n", p); 
+		  FLUSH();
+		  #endif
+		  return NULL;
+		}
+
+		#ifdef DEBUG
+		printf( "liballoc: set up first memory major %x\n", l_memRoot );
+		FLUSH();
+		#endif
+	}
+
+
+	#ifdef DEBUG
+	printf( "liballoc: %x PREFIX(malloc)( %i ): ", 
+					__builtin_return_address(0),
+					size );
+	FLUSH();
+	#endif
 
 	// Now we need to bounce through every major and find enough space....
 
-	liballoc_major* major = l_memRoot;
+	maj = l_memRoot;
 	startedBet = 0;
-
-    u64 best_size = 0;
 	
 	// Start at the best bet....
-	if (l_bestBet != NULL) {
-		best_size = l_bestBet->size - l_bestBet->usage;
+	if ( l_bestBet != NULL )
+	{
+		bestSize = l_bestBet->size - l_bestBet->usage;
 
-		if (best_size > (size + sizeof(liballoc_minor))) {
-			major = l_bestBet;
+		if ( bestSize > (size + sizeof(struct liballoc_minor)))
+		{
+			maj = l_bestBet;
 			startedBet = 1;
 		}
 	}
 	
-	while (major) {
-		diff = major->size - major->usage;// free memory in the block
+	while ( maj != NULL )
+	{
+		diff  = maj->size - maj->usage;	
+										// free memory in the block
 
-		if (best_size < diff) {
+		if ( bestSize < diff )
+		{
 			// Hmm.. this one has more memory then our bestBet. Remember!
-			l_bestBet = major;
-			best_size = diff;
+			l_bestBet = maj;
+			bestSize = diff;
 		}
+		
+		
+#ifdef USE_CASE1
+			
+		// CASE 1:  There is not enough space in this major block.
+		if ( diff < (size + sizeof( struct liballoc_minor )) )
+		{
+			#ifdef DEBUG
+			printf( "CASE 1: Insufficient space in block %x\n", maj);
+			FLUSH();
+			#endif
+				
+				// Another major block next to this one?
+			if ( maj->next != NULL ) 
+			{
+				maj = maj->next;		// Hop to that one.
+				continue;
+			}
 
+			if ( startedBet == 1 )		// If we started at the best bet,
+			{							// let's start all over again.
+				maj = l_memRoot;
+				startedBet = 0;
+				continue;
+			}
 
-#ifdef USE_CASE1 // CASE 1:  There is not enough space in this major block.
-    if (diff < (size + sizeof(liballoc_minor))) {	
-        // Another major block next to this one?
-        if (major->next) {
-            major = major->next;		// Hop to that one.
-            continue;
-        }
+			// Create a new major block next to this one and...
+			maj->next = allocate_new_page( size );	// next one will be okay.
+			if ( maj->next == NULL ) break;			// no more memory.
+			maj->next->prev = maj;
+			maj = maj->next;
 
-        if (startedBet == 1) {		// If we started at the best bet,
-            // let's start all over again.
-            major = l_memRoot;
-            startedBet = 0;
-
-            continue;
-        }
-
-        major->next = allocate_new_page(size);
-        if (!major->next) break;
-
-        major->next->prev = major;
-        major = major->next;
-
-        // .. fall through to CASE 2 ..
-    }
+			// .. fall through to CASE 2 ..
+		}
 
 #endif
 
-#ifdef USE_CASE2 // CASE 2: It's a brand new block.
-    if (major->first == nullptr) {
-        major->first = (liballoc_minor*)((uintptr_t)major + sizeof(liballoc_major));
+#ifdef USE_CASE2
+		
+		// CASE 2: It's a brand new block.
+		if ( maj->first == NULL )
+		{
+			maj->first = (struct liballoc_minor*)((uintptr_t)maj + sizeof(struct liballoc_major) );
 
-        major->first->magic = LIBALLOC_MAGIC;
-        major->first->prev = nullptr;
-        major->first->next = nullptr;
-        major->first->block = major;
-        major->first->size = size;
-        major->first->req_size = req_size;
-        major->usage += size + sizeof(liballoc_minor);
+			
+			maj->first->magic 		= LIBALLOC_MAGIC;
+			maj->first->prev 		= NULL;
+			maj->first->next 		= NULL;
+			maj->first->block 		= maj;
+			maj->first->size 		= size;
+			maj->first->req_size 	= req_size;
+			maj->usage 	+= size + sizeof( struct liballoc_minor );
 
-        l_inuse += size;
 
-        p = (void*)((uintptr_t)(major->first) + sizeof(liballoc_minor));
-        ALIGN(p);
+			l_inuse += size;
+			
+			
+			p = (void*)((uintptr_t)(maj->first) + sizeof( struct liballoc_minor ));
 
-        liballoc_unlock();
-        return p;
-    }
+			ALIGN( p );
+			
+			#ifdef DEBUG
+			printf( "CASE 2: returning %x\n", p); 
+			FLUSH();
+			#endif
+			liballoc_unlock();		// release the lock
+			return p;
+		}
 
 #endif
 				
-#ifdef USE_CASE3 // CASE 3: Block in use and enough space at the start of the block.
-    diff = (uintptr_t)(major->first);
+#ifdef USE_CASE3
 
-    diff -= (uintptr_t)major;
-    diff -= sizeof(liballoc_major);
+		// CASE 3: Block in use and enough space at the start of the block.
+		diff =  (uintptr_t)(maj->first);
+		diff -= (uintptr_t)maj;
+		diff -= sizeof(struct liballoc_major);
 
-    if (diff >= (size + sizeof(liballoc_minor))) {
-        // Yes, space in front. Squeeze in.
-        major->first->prev = (liballoc_minor*)((uintptr_t)major + sizeof(liballoc_major));
-        major->first->prev->next = major->first;
-        major->first = major->first->prev;
+		if ( diff >= (size + sizeof(struct liballoc_minor)) )
+		{
+			// Yes, space in front. Squeeze in.
+			maj->first->prev = (struct liballoc_minor*)((uintptr_t)maj + sizeof(struct liballoc_major) );
+			maj->first->prev->next = maj->first;
+			maj->first = maj->first->prev;
+				
+			maj->first->magic 	= LIBALLOC_MAGIC;
+			maj->first->prev 	= NULL;
+			maj->first->block 	= maj;
+			maj->first->size 	= size;
+			maj->first->req_size 	= req_size;
+			maj->usage 			+= size + sizeof( struct liballoc_minor );
 
-        major->first->magic = LIBALLOC_MAGIC;
-        major->first->prev = nullptr;
-        major->first->next = nullptr;
-        major->first->block = major;
-        major->first->size = size;
-        major->first->req_size = req_size;
-        major->usage += size + sizeof(liballoc_minor);
+			l_inuse += size;
 
-        l_inuse += size + sizeof(liballoc_minor);
+			p = (void*)((uintptr_t)(maj->first) + sizeof( struct liballoc_minor ));
+			ALIGN( p );
 
-        p = (void*)((uintptr_t)(major->first) + sizeof(liballoc_minor));
-        ALIGN(p);
+			#ifdef DEBUG
+			printf( "CASE 3: returning %x\n", p); 
+			FLUSH();
+			#endif
+			liballoc_unlock();		// release the lock
+			return p;
+		}
+		
+#endif
 
-        liballoc_unlock();
-        return p;
-    }
+
+#ifdef USE_CASE4
+
+		// CASE 4: There is enough space in this block. But is it contiguous?
+		min = maj->first;
+		
+			// Looping within the block now...
+		while ( min != NULL )
+		{
+				// CASE 4.1: End of minors in a block. Space from last and end?
+				if ( min->next == NULL )
+				{
+					// the rest of this block is free...  is it big enough?
+					diff = (uintptr_t)(maj) + maj->size;
+					diff -= (uintptr_t)min;
+					diff -= sizeof( struct liballoc_minor );
+					diff -= min->size; 
+						// minus already existing usage..
+
+					if ( diff >= (size + sizeof( struct liballoc_minor )) )
+					{
+						// yay....
+						min->next = (struct liballoc_minor*)((uintptr_t)min + sizeof( struct liballoc_minor ) + min->size);
+						min->next->prev = min;
+						min = min->next;
+						min->next = NULL;
+						min->magic = LIBALLOC_MAGIC;
+						min->block = maj;
+						min->size = size;
+						min->req_size = req_size;
+						maj->usage += size + sizeof( struct liballoc_minor );
+
+						l_inuse += size;
+						
+						p = (void*)((uintptr_t)min + sizeof( struct liballoc_minor ));
+						ALIGN( p );
+
+						#ifdef DEBUG
+						printf( "CASE 4.1: returning %x\n", p); 
+						FLUSH();
+						#endif
+						liballoc_unlock();		// release the lock
+						return p;
+					}
+				}
+
+
+
+				// CASE 4.2: Is there space between two minors?
+				if ( min->next != NULL )
+				{
+					// is the difference between here and next big enough?
+					diff  = (uintptr_t)(min->next);
+					diff -= (uintptr_t)min;
+					diff -= sizeof( struct liballoc_minor );
+					diff -= min->size;
+										// minus our existing usage.
+
+					if ( diff >= (size + sizeof( struct liballoc_minor )) )
+					{
+						// yay......
+						new_min = (struct liballoc_minor*)((uintptr_t)min + sizeof( struct liballoc_minor ) + min->size);
+
+						new_min->magic = LIBALLOC_MAGIC;
+						new_min->next = min->next;
+						new_min->prev = min;
+						new_min->size = size;
+						new_min->req_size = req_size;
+						new_min->block = maj;
+						min->next->prev = new_min;
+						min->next = new_min;
+						maj->usage += size + sizeof( struct liballoc_minor );
+						
+						l_inuse += size;
+						
+						p = (void*)((uintptr_t)new_min + sizeof( struct liballoc_minor ));
+						ALIGN( p );
+
+
+						#ifdef DEBUG
+						printf( "CASE 4.2: returning %x\n", p); 
+						FLUSH();
+						#endif
+						
+						liballoc_unlock();		// release the lock
+						return p;
+					}
+				}	// min->next != NULL
+
+				min = min->next;
+		} // while min != NULL ...
+
 
 #endif
 
-#ifdef USE_CASE4 // CASE 4: There is enough space in this block. But is it contiguous?
-    liballoc_minor* min = major->first;
-    while (min != nullptr) {
-        // CASE 4.1: End of minors in a block. Space from last and end?
-        if (min->next == nullptr) {
-            // the rest of this block is free...  is it big enough?
-            diff = (uintptr_t)(major) + major->size;
-            diff -= (uintptr_t)min;
-            diff -= sizeof(liballoc_minor);
-            diff -= min->size;
+#ifdef USE_CASE5
 
-            if (diff >= (size + sizeof(liballoc_minor))) {
-                // yay....
-                min->next = (liballoc_minor*)((uintptr_t)min + sizeof(liballoc_minor) + min->size);
-                min->next->prev = min;
+		// CASE 5: Block full! Ensure next block and loop.
+		if ( maj->next == NULL ) 
+		{
+			#ifdef DEBUG
+			printf( "CASE 5: block full\n");
+			FLUSH();
+			#endif
 
-                auto* next = min->next;
-                next->next = nullptr;
-                next->magic = LIBALLOC_MAGIC;
-                next->block = major;
-                next->size = size;
-                next->req_size = req_size;
-                major->usage += size + sizeof(liballoc_minor);
+			if ( startedBet == 1 )
+			{
+				maj = l_memRoot;
+				startedBet = 0;
+				continue;
+			}
+				
+			// we've run out. we need more...
+			maj->next = allocate_new_page( size );		// next one guaranteed to be okay
+			if ( maj->next == NULL ) break;			//  uh oh,  no more memory.....
+			maj->next->prev = maj;
 
-                l_inuse += size;
-
-                p = (void*)((uintptr_t)next + sizeof(liballoc_minor));
-                ALIGN(p);
-
-                liballoc_unlock();
-                return p;
-            }
-        }
-
-        if (min->next != nullptr) {
-            // CASE 4.2: Is there space between two minors?
-            diff = (uintptr_t)(min->next);
-            diff -= (uintptr_t)min;
-            diff -= sizeof(liballoc_minor);
-            diff -= min->size;
-
-            if (diff >= (size + sizeof(liballoc_minor))) {
-                // yay......
-                auto* new_min = (liballoc_minor*)((uintptr_t)min + sizeof(liballoc_minor) + min->size);
-
-                new_min->magic = LIBALLOC_MAGIC;
-                new_min->next = min->next;
-                new_min->prev = min;
-                new_min->size = size;
-                new_min->req_size = req_size;
-                new_min->block = major;
-                min->next->prev = new_min;
-                min->next = new_min;
-                major->usage += size + sizeof(liballoc_minor);
-                
-                l_inuse += size;
-                
-                p = (void*)((uintptr_t)new_min + sizeof(liballoc_minor));
-                ALIGN(p);
-                
-                liballoc_unlock();		// release the lock
-                return p;
-            }
-        }
-
-        min = min->next;
-    }
+		}
 
 #endif
 
-#ifdef USE_CASE5 // CASE 5: Block full! Ensure next block and loop.
-    if (!major->next) {
-        if (startedBet == 1) {
-            major = l_memRoot;
-            startedBet = 0;
-            continue;
-        }
+		maj = maj->next;
+	} // while (maj != NULL)
 
-        // we've run out. we need more...
-        major->next = allocate_new_page(size);
-        if (!major->next) break; // uh oh,  no more memory.....
 
-        major->next->prev = major;
-    }
-
-#endif
-
-		major = major->next;
-	} // while (major)
-
+	
 	liballoc_unlock();		// release the lock
-	return nullptr;
+
+	#ifdef DEBUG
+	printf( "All cases exhausted. No memory available.\n");
+	FLUSH();
+	#endif
+	#if defined DEBUG || defined INFO
+	printf( "liballoc: WARNING: PREFIX(malloc)( %i ) returning NULL.\n", size);
+	liballoc_dump();
+	FLUSH();
+	#endif
+	return NULL;
 }
 
 
-void PREFIX(free)(void *ptr) {
-    if (!ptr) {
-        l_warningCount += 1;
-        return;
-    }
 
-	UNALIGN(ptr);
 
-	auto* minor = (liballoc_minor*)((uintptr_t)ptr - sizeof(liballoc_minor));
-    if (minor->magic != LIBALLOC_MAGIC) {
-        l_errorCount += 1;
-        return;
-    }
 
-	liballoc_lock();
 
-	l_inuse -= minor->size;
-	liballoc_major* major = minor->block;
 
-	major->usage -= (minor->size + sizeof(liballoc_minor));
-	minor->magic  = LIBALLOC_DEAD;	
 
-	if (minor->next) minor->next->prev = minor->prev;
-	if (minor->prev) minor->prev->next = minor->next;
-	if (!minor->prev) major->first = minor->next;
 
-	if (!major->first) {
-		if (l_memRoot == major) l_memRoot = major->next;
-		if (l_bestBet == major) l_bestBet = nullptr;
-		if (major->prev) major->prev->next = major->next;
-		if (major->next) major->next->prev = major->prev;
+void PREFIX(free)(void *ptr)
+{
+	struct liballoc_minor *min;
+	struct liballoc_major *maj;
 
-		l_allocated -= major->size;
-		liballoc_free(major, major->pages);
-	} else if (l_bestBet != nullptr) {
-		int bestSize = l_bestBet->size - l_bestBet->usage;
-		int majSize = major->size - major->usage;
+	if ( ptr == NULL ) 
+	{
+		l_warningCount += 1;
+		#if defined DEBUG || defined INFO
+		printf( "liballoc: WARNING: PREFIX(free)( NULL ) called from %x\n",
+							__builtin_return_address(0) );
+		FLUSH();
+		#endif
+		return;
+	}
 
-		if (majSize > bestSize) l_bestBet = major;
+	UNALIGN( ptr );
+
+	liballoc_lock();		// lockit
+
+
+	min = (struct liballoc_minor*)((uintptr_t)ptr - sizeof( struct liballoc_minor ));
+
+	
+	if ( min->magic != LIBALLOC_MAGIC ) 
+	{
+		l_errorCount += 1;
+
+		// Check for overrun errors. For all bytes of LIBALLOC_MAGIC 
+		if ( 
+			((min->magic & 0xFFFFFF) == (LIBALLOC_MAGIC & 0xFFFFFF)) || 
+			((min->magic & 0xFFFF) == (LIBALLOC_MAGIC & 0xFFFF)) || 
+			((min->magic & 0xFF) == (LIBALLOC_MAGIC & 0xFF)) 
+		   )
+		{
+			l_possibleOverruns += 1;
+			#if defined DEBUG || defined INFO
+			printf( "liballoc: ERROR: Possible 1-3 byte overrun for magic %x != %x\n",
+								min->magic,
+								LIBALLOC_MAGIC );
+			FLUSH();
+			#endif
+		}
+						
+						
+		if ( min->magic == LIBALLOC_DEAD )
+		{
+			#if defined DEBUG || defined INFO
+			printf( "liballoc: ERROR: multiple PREFIX(free)() attempt on %x from %x.\n", 
+									ptr,
+									__builtin_return_address(0) );
+			FLUSH();
+			#endif
+		}
+		else
+		{
+			#if defined DEBUG || defined INFO
+			printf( "liballoc: ERROR: Bad PREFIX(free)( %x ) called from %x\n",
+								ptr,
+								__builtin_return_address(0) );
+			FLUSH();
+			#endif
+		}
+			
+		// being lied to...
+		liballoc_unlock();		// release the lock
+		return;
+	}
+
+	#ifdef DEBUG
+	printf( "liballoc: %x PREFIX(free)( %x ): ", 
+				__builtin_return_address( 0 ),
+				ptr );
+	FLUSH();
+	#endif
+	
+
+		maj = min->block;
+
+		l_inuse -= min->size;
+
+		maj->usage -= (min->size + sizeof( struct liballoc_minor ));
+		min->magic  = LIBALLOC_DEAD;		// No mojo.
+
+		if ( min->next != NULL ) min->next->prev = min->prev;
+		if ( min->prev != NULL ) min->prev->next = min->next;
+
+		if ( min->prev == NULL ) maj->first = min->next;	
+							// Might empty the block. This was the first
+							// minor.
+
+
+	// We need to clean up after the majors now....
+
+	if ( maj->first == NULL )	// Block completely unused.
+	{
+		if ( l_memRoot == maj ) l_memRoot = maj->next;
+		if ( l_bestBet == maj ) l_bestBet = NULL;
+		if ( maj->prev != NULL ) maj->prev->next = maj->next;
+		if ( maj->next != NULL ) maj->next->prev = maj->prev;
+		l_allocated -= maj->size;
+
+		liballoc_free( maj, maj->pages );
+	}
+	else
+	{
+		if ( l_bestBet != NULL )
+		{
+			int bestSize = l_bestBet->size  - l_bestBet->usage;
+			int majSize = maj->size - maj->usage;
+
+			if ( majSize > bestSize ) l_bestBet = maj;
+		}
+
 	}
 	
-	liballoc_unlock();
+
+	#ifdef DEBUG
+	printf( "OK\n");
+	FLUSH();
+	#endif
+	
+	liballoc_unlock();		// release the lock
 }
 
 
-void* PREFIX(calloc)(size_t nobj, size_t size) {
-	size_t sz = nobj * size;
-	void* p = PREFIX(malloc)(sz);
 
-	liballoc_memset(p, 0, sz);
-	return p;
+
+
+void* PREFIX(calloc)(size_t nobj, size_t size)
+{
+       int real_size;
+       void *p;
+
+       real_size = nobj * size;
+       
+       p = PREFIX(malloc)( real_size );
+
+       liballoc_memset( p, 0, real_size );
+
+       return p;
 }
 
 
-void* PREFIX(realloc)(void* p, size_t size) {
+
+void*   PREFIX(realloc)(void *p, size_t size)
+{
+	void *ptr;
+	struct liballoc_minor *min;
+	unsigned int real_size;
+	
 	// Honour the case of size == 0 => free old and return NULL
-	if (size == 0) {
-		PREFIX(free)(p);
-		return nullptr;
+	if ( size == 0 )
+	{
+		PREFIX(free)( p );
+		return NULL;
 	}
 
-	if (!p) {
-		return PREFIX(malloc)(size);
-	}
+	// In the case of a NULL pointer, return a simple malloc.
+	if ( p == NULL ) return PREFIX(malloc)( size );
 
 	// Unalign the pointer if required.
-	void* ptr = p;
+	ptr = p;
 	UNALIGN(ptr);
 
-	liballoc_lock();
-	auto* minor = (liballoc_minor*)((uintptr_t)ptr - sizeof(liballoc_minor));
-	if (minor->magic != LIBALLOC_MAGIC) {
-		l_errorCount += 1;
-		liballoc_unlock();
+	liballoc_lock();		// lockit
 
-		return nullptr;
-	}
+		min = (struct liballoc_minor*)((uintptr_t)ptr - sizeof( struct liballoc_minor ));
 
-	size_t sz = minor->req_size;
-	if (sz >= size) {
-		minor->req_size = size;
-		liballoc_unlock();
+		// Ensure it is a valid structure.
+		if ( min->magic != LIBALLOC_MAGIC ) 
+		{
+			l_errorCount += 1;
+	
+			// Check for overrun errors. For all bytes of LIBALLOC_MAGIC 
+			if ( 
+				((min->magic & 0xFFFFFF) == (LIBALLOC_MAGIC & 0xFFFFFF)) || 
+				((min->magic & 0xFFFF) == (LIBALLOC_MAGIC & 0xFFFF)) || 
+				((min->magic & 0xFF) == (LIBALLOC_MAGIC & 0xFF)) 
+			   )
+			{
+				l_possibleOverruns += 1;
+				#if defined DEBUG || defined INFO
+				printf( "liballoc: ERROR: Possible 1-3 byte overrun for magic %x != %x\n",
+									min->magic,
+									LIBALLOC_MAGIC );
+				FLUSH();
+				#endif
+			}
+							
+							
+			if ( min->magic == LIBALLOC_DEAD )
+			{
+				#if defined DEBUG || defined INFO
+				printf( "liballoc: ERROR: multiple PREFIX(free)() attempt on %x from %x.\n", 
+										ptr,
+										__builtin_return_address(0) );
+				FLUSH();
+				#endif
+			}
+			else
+			{
+				#if defined DEBUG || defined INFO
+				printf( "liballoc: ERROR: Bad PREFIX(free)( %x ) called from %x\n",
+									ptr,
+									__builtin_return_address(0) );
+				FLUSH();
+				#endif
+			}
+			
+			// being lied to...
+			liballoc_unlock();		// release the lock
+			return NULL;
+		}	
+		
+		// Definitely a memory block.
+		
+		real_size = min->req_size;
 
-		return p;
-	}
+		if ( real_size >= size ) 
+		{
+			min->req_size = size;
+			liballoc_unlock();
+			return p;
+		}
 
 	liballoc_unlock();
 
 	// If we got here then we're reallocating to a block bigger than us.
-	ptr = PREFIX(malloc)( size );	// We need to allocate new memory
-
-	liballoc_memcpy( ptr, p, sz);
-	PREFIX(free)(p);
+	ptr = PREFIX(malloc)( size );					// We need to allocate new memory
+	liballoc_memcpy( ptr, p, real_size );
+	PREFIX(free)( p );
 
 	return ptr;
 }

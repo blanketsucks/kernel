@@ -41,7 +41,7 @@ class QemuArgs(NamedTuple):
     ovmf: str
 
     netdev: str = 'user,id=net0,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888'
-    devices: List[str] = ['ac97', 'e1000,netdev=net0', 'ahci,id=ahci', 'ide-hd,bus=ahci.0,drive=map']
+    devices: List[str] = ['ac97', 'e1000,netdev=net0', 'ahci,id=ahci', 'ide-hd,bus=ahci.0,drive=map', 'virtio-gpu-pci']
 
     def build_disk_image_argument(self) -> List[str]:
         return ['-drive', self.disk_image.build(), '-drive', 'if=none,id=map,format=raw,file=kernel.map']
@@ -71,6 +71,10 @@ class QemuArgs(NamedTuple):
             *self.build_network_argument()
         ]
 
+        if self.usb:
+            args.append('-usb')
+            args.extend(['-device', 'usb-audio,bus=usb-bus.0'])
+
         for device in self.devices:
             args.extend(['-device', device])
 
@@ -78,12 +82,10 @@ class QemuArgs(NamedTuple):
             args.extend(['-kernel', self.kernel])
         elif self.use_loader:
             args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
+            args.extend(['-append', 'root=/dev/hda2'])
 
         if self.uefi:
             args.extend(['-bios', self.ovmf])
-
-        if self.usb:
-            args.append('-usb')
 
         return args
 
@@ -91,7 +93,7 @@ def main():
     parser = argparse.ArgumentParser(description='Run kernel in QEMU.')
 
     parser.add_argument('--kernel', type=str, default=DEFAULT_KERNEL_LOCATION, help='Path to kernel image.')
-    parser.add_argument('--x86_64', action='store_true', help='Run kernel in x86_64 mode.')
+    parser.add_argument('--x86_64', action='store_false', help='Run kernel in x86_64 mode.')
 
     parser.add_argument('--qemu', type=str, default=None, help='Path to QEMU executable.')
     parser.add_argument('--disk-image', type=str, default=DEFAULT_DISK_IMAGE, help='Path to disk image.')

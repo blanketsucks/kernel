@@ -1,8 +1,8 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/pci.h>
-#include <kernel/arch/pic.h>
+#include <kernel/pci/pci.h>
+#include <kernel/arch/irq.h>
 #include <kernel/devices/storage/controller.h>
 #include <kernel/devices/storage/ahci/ahci.h>
 #include <kernel/devices/storage/ahci/ports.h>
@@ -14,8 +14,7 @@ namespace kernel {
 
 class AHCIController : public StorageController, public IRQHandler {
 public:
-    static AHCIController* create();
-    static AHCIController* create(pci::Device);
+    static RefPtr<AHCIController> create(pci::Device);
 
     void set_pending_port(u32 port) {
         m_pending_ports |= (1 << port);
@@ -44,7 +43,7 @@ private:
         }
     }
     
-    void handle_interrupt(arch::InterruptRegisters*) override;
+    void handle_irq() override;
 
     ahci::HBAMemory* m_hba;
     Array<RefPtr<AHCIPort>, 32> m_ports;

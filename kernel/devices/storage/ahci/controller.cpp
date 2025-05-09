@@ -17,31 +17,16 @@ static HashMap<u32, StringView> VERSIONS = {
     { AHCI_1_31, "1.31" },
 };
 
-AHCIController* AHCIController::create(pci::Device device) {
+RefPtr<AHCIController> AHCIController::create(pci::Device device) {
     if (!device.is_sata_controller()) {
         return nullptr;
     }
 
-    return new AHCIController(device.address);
-}
-
-AHCIController* AHCIController::create() {
-    pci::Address address;
-    pci::enumerate([&address](pci::Device device) {
-        if (device.is_sata_controller()) {
-            address = device.address;
-        }
-    });
-
-    if (address.is_null()) {
-        return nullptr;
-    }
-
-    return new AHCIController(address);
+    return RefPtr<AHCIController>(new AHCIController(device.address()));
 }
 
 AHCIController::AHCIController(pci::Address address) : IRQHandler(address.interrupt_line()) {
-    m_hba = reinterpret_cast<HBAMemory*>(MM->map_physical_region(reinterpret_cast<void*>(address.bar5()), PAGE_SIZE * 2));
+    m_hba = reinterpret_cast<HBAMemory*>(MM->map_physical_region(reinterpret_cast<void*>(address.bar(5)), PAGE_SIZE * 2));
     
     m_hba->global_host_control = GlobalHostControl::HR; // Initiate a reset
     while (m_hba->global_host_control & GlobalHostControl::HR) {}
@@ -63,11 +48,12 @@ AHCIController::AHCIController(pci::Address address) : IRQHandler(address.interr
     u32 pi = m_hba->ports_implemented;
     m_ports.fill({});
 
-    dbgln("SATA Controller ({}:{}:{}):", address.bus, address.device, address.function);
+    dbgln("SATA Controller ({}:{}:{}):", address.bus(), address.device(), address.function());
     dbgln(" - Version: {}", VERSIONS.get(m_hba->version).value_or("Unknown"));
     dbgln(" - Supports 64-bit: {}", supports_64bit);
     dbgln(" - Supports BIOS Handoff: {}", supports_bios_handoff);
 
+    this->enable_irq();
     for (size_t index = 0; index < 32; index++) {
         if (!(pi & (1 << index))) {
             continue;
@@ -82,7 +68,7 @@ AHCIController::AHCIController(pci::Address address) : IRQHandler(address.interr
     dbgln();
 }
 
-void AHCIController::handle_interrupt(arch::InterruptRegisters*) {
+void AHCIController::handle_irq() {
     auto& pending = m_hba->interrupt_status;
     for (size_t index = 0; index < 32; index++) {
         if (!(pending & (1 << index))) {

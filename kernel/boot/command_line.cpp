@@ -1,10 +1,15 @@
 #include <kernel/boot/command_line.h>
+#include <std/format.h>
 
 namespace kernel {
 
 CommandLine s_instance;
 
 void CommandLine::init() {
+    if (g_boot_info->cmdline == nullptr) {
+        return;
+    }
+
     s_instance.parse(g_boot_info->cmdline);
 }
 
@@ -21,7 +26,7 @@ void CommandLine::parse(StringView cmdline) {
             end++;
         }
 
-        StringView arg = cmdline.substr(start, end - start);
+        StringView arg = cmdline.substr(start, end);
         size_t equal = arg.find('=');
 
         if (equal != StringView::npos) {

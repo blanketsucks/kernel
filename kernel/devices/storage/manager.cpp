@@ -1,6 +1,6 @@
 #include <kernel/devices/storage/manager.h>
 #include <kernel/boot/command_line.h>
-#include <kernel/pci.h>
+#include <kernel/pci/pci.h>
 
 #include <kernel/devices/storage/ahci/controller.h>
 #include <kernel/devices/storage/ide/controller.h>
@@ -35,12 +35,12 @@ u32 StorageManager::generate_partition_minor() {
 
 void StorageManager::enumerate_controllers() {
     pci::enumerate([&](pci::Device device) {
-        if (device.class_id != pci::DeviceClass::MassStorageController) {
+        if (device.class_id() != pci::DeviceClass::MassStorageController) {
             return;
         }
 
         RefPtr<StorageController> controller;
-        switch (device.subclass_id) {
+        switch (device.subclass_id()) {
             case pci::DeviceSubclass::SATAController:
                 // TODO: Check prog_if
                 controller = AHCIController::create(device);
@@ -82,7 +82,7 @@ void StorageManager::enumerate_device_partitions(StorageDevice* device) {
 StorageManager::BootDevice StorageManager::parse_boot_device(StringView device) {
     // TODO: Find a better, cleaner way to format the boot device to make parsing easier
     //       Something like "ide:0:0" to indicate the first IDE device, or "ahci:0:0" for the first AHCI device
-    //       and "ide:0:1" for the first partition on the first IDE device, etc.
+    //       and "ide:0:1" for the first partition on the first IDE device, and so on.
     if (device.startswith("/dev/")) {
         device = device.substr(5);
     }

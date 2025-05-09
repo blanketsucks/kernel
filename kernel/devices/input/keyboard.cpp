@@ -42,9 +42,7 @@ static bool s_shift = false;
 static bool s_ctrl  = false;
 static bool s_alt   = false;
 
-void KeyboardDevice::handle_interrupt(arch::InterruptRegisters*) {
-    pic::eoi(1);
-
+void KeyboardDevice::handle_irq() {
     u8 scancode = io::read<u8>(0x60);
     u8 modifiers = None;
 
@@ -110,6 +108,7 @@ void KeyboardDevice::init() {
     auto* device = new KeyboardDevice();
     device->m_key_buffer.reserve(MAX_KEY_BUFFER_SIZE);
 
+    device->enable_irq();
     s_instance = device;
 }
 

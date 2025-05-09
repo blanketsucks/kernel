@@ -3,47 +3,9 @@
 #include <kernel/arch/io.h>
 #include <kernel/vga.h>
 
-namespace kernel {
-
-IRQHandler::IRQHandler(u8 irq) : m_irq(irq) {
-    pic::enable(irq);
-    pic::set_irq_handler(irq, this);
-}
-
-void IRQHandler::enable_irq_handler() {
-    pic::set_irq_handler(m_irq, this);
-}
-
-void IRQHandler::disable_irq_handler() {
-    pic::set_irq_handler(m_irq, nullptr); // A bit jank but whatever
-}
-
-void IRQHandler::eoi() {
-    pic::eoi(m_irq);
-    m_did_eoi = true;
-}
-
-namespace pic {
-
-static IRQHandler* s_irq_handlers[16] = {};
+namespace kernel::pic {
 
 extern "C" void* _irq_stub_table[];
-
-extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
-    u8 irq = regs->intno - 32;
-    IRQHandler* handler = s_irq_handlers[irq];
-
-    if (!handler) {
-        return eoi(irq);
-    }
-
-    handler->handle_interrupt(regs);
-    if (handler->did_eoi()) {
-        return;
-    }
-
-    eoi(irq);
-}
 
 void eoi(u8 irq) {
     if (irq >= 8) {
@@ -52,10 +14,6 @@ void eoi(u8 irq) {
     }
 
     io::write(MASTER_COMMAND, EOF);
-}
-
-void set_irq_handler(u8 irq, IRQHandler* handler) {
-    s_irq_handlers[irq] = handler;
 }
 
 void set_irq_handler(u8 irq, uintptr_t handler) {
@@ -145,8 +103,6 @@ void enable(u8 irq) {
 
     io::write(port, value);
     asm volatile("sti");
-}
-
 }
 
 }

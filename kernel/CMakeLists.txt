@@ -52,6 +52,7 @@ target_compile_options(
     kernel.bin
     PRIVATE
     -nostdlib -nostdinc++ -ffreestanding -fno-exceptions -fno-rtti -g
+    -Wno-unknown-warning-option -Wnull-dereference -Wunused-result
 )
 
 target_link_options(

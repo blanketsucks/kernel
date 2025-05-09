@@ -280,7 +280,9 @@ private:
 
 template<typename T, typename Hash>
 void HashTable<T, Hash>::set(T&& value) {
-    if (!m_capacity) this->rehash(1);
+    if (!m_capacity) {
+        this->rehash(1);
+    }
 
     auto& bucket = this->lookup(value);
     for (auto& entry : bucket) {

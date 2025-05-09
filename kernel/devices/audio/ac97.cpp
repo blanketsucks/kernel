@@ -13,11 +13,11 @@ AC97Device* AC97Device::create() {
     pci::Address address = {};
     pci::enumerate([&address](pci::Device device) {
         if (device.is_audio_device()) {
-            address = device.address;
+            address = device.address();
         }
     });
 
-    if (!address.value) {
+    if (!address.value()) {
         return nullptr;
     }
 
@@ -25,8 +25,8 @@ AC97Device* AC97Device::create() {
 }
 
 AC97Device::AC97Device(pci::Address address) : CharacterDevice(DeviceMajor::Audio, 0), IRQHandler(address.interrupt_line()) {
-    m_audio_mixer = address.bar0() & ~1;
-    m_audio_bus = address.bar1() & ~1;
+    m_audio_mixer = address.bar(0) & ~1;
+    m_audio_bus = address.bar(1) & ~1;
 
     m_audio_output = m_audio_bus.offset(PCMOut);
 
@@ -62,8 +62,9 @@ AC97Device::AC97Device(pci::Address address) : CharacterDevice(DeviceMajor::Audi
     }
 
     m_audio_mixer.write<u16>(ExtendedCapabilities, extended_capabilities);
+    this->enable_irq();
     
-    dbgln("AC97 Device ({}:{}:{}):", address.bus, address.device, address.function);
+    dbgln("AC97 Device ({}:{}:{}):", address.bus(), address.device(), address.function());
     dbgln(" - Channels: {}", m_channels);
     dbgln(" - Sample Rate: {} Hz", m_sample_rate);
     dbgln(" - Variable Sample Rate: {}", m_variable_rate);
@@ -81,7 +82,7 @@ void AC97Device::reset() {
     m_current_descriptor = 0;
 }
 
-void AC97Device::handle_interrupt(arch::InterruptRegisters*) {
+void AC97Device::handle_irq() {
     TransferStatusInfo status = m_audio_output.read<u16>(TransferStatus);
     if (!status.ioc) {
         return;
@@ -119,8 +120,6 @@ ssize_t AC97Device::write(const void* buffer, size_t count, size_t) {
 }
 
 void AC97Device::write_single(const void* buffer, size_t count, size_t offset) {
-    this->enable_irq_handler();
-
     {
         arch::InterruptDisabler disabler;
         do {

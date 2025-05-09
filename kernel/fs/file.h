@@ -24,10 +24,12 @@ public:
 
     virtual size_t size() const = 0;
 
+    virtual void close() { }
+
     virtual ErrorOr<void*> mmap(Process&, size_t, int) { return Error(ENODEV); }
     virtual ErrorOr<int> ioctl(unsigned, unsigned) { return Error(ENOTTY); }
 
-    virtual ssize_t readdir(void* buffer, size_t size) { return -ENOTDIR; }
+    virtual ssize_t readdir(void*, size_t) { return -ENOTDIR; }
 };
 
 class InodeFile : public File {

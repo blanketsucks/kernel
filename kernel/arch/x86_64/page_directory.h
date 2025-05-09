@@ -156,28 +156,28 @@ private:
 
 struct PageTable {
     PageTableEntry* entries;
-    static u32 index(VirtualAddress address) { return (address >> 12) & 0x1FF; }
+    static constexpr u32 index(VirtualAddress address) { return (address >> 12) & 0x1FF; }
 };
 
 struct PageDirectoryTable {
     using Next = PageTable;
 
     PageDirectoryEntry* entries;
-    static u32 index(VirtualAddress address) { return (address >> 21) & 0x1FF; }
+    static constexpr u32 index(VirtualAddress address) { return (address >> 21) & 0x1FF; }
 };
 
 struct PageDirectoryPointerTable {
     using Next = PageDirectoryTable;
 
     PageDirectoryTableEntry* entries;
-    static u32 index(VirtualAddress address) { return (address >> 30) & 0x1FF; }
+    static constexpr u32 index(VirtualAddress address) { return (address >> 30) & 0x1FF; }
 };
 
 struct PML4 {
     using Next = PageDirectoryPointerTable;
 
     PML4Entry* entries;
-    static u32 index(VirtualAddress address) { return (address >> 39) & 0x1FF; }
+    static constexpr u32 index(VirtualAddress address) { return (address >> 39) & 0x1FF; }
 };
 
 class PageDirectory {
@@ -220,6 +220,7 @@ private:
     Type m_type;
 };
 
-template<> PageTableEntry* PageDirectory::walk_page_table(PageDirectoryTable, VirtualAddress, bool create, bool user);
+template<>
+PageTableEntry* PageDirectory::walk_page_table(PageDirectoryTable, VirtualAddress, bool create, bool user);
 
 }

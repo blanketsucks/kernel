@@ -16,7 +16,8 @@ class Scheduler {
 public:
     static void init();
 
-    static void invoke_async() {}
+    static void invoke_async();
+    static bool is_invoked_async();
 
     static void lock();
     static void unlock();
@@ -29,6 +30,8 @@ public:
 
     static Process* current_process();
     static Thread* current_thread();
+
+    static Process* get_process(pid_t id);
 
     static void set_current_thread(Thread*);
 

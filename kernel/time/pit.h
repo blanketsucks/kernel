@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/arch/pic.h>
+#include <kernel/arch/irq.h>
 
 namespace kernel::pit {
 
@@ -15,7 +15,7 @@ class PIT : public IRQHandler {
 public:
     PIT() : IRQHandler(0) {}
 
-    void handle_interrupt(arch::InterruptRegisters*);
+    void handle_irq() override;
 };
 
 void init();

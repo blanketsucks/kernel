@@ -48,7 +48,9 @@ RefPtr<Inode> PTSInode::lookup(StringView name) const {
     }
 
     u32 index = std::strntoul(name.data(), name.size(), nullptr, 10);
-    if (index >= s_ptys.size()) {
+
+    auto iterator = s_ptys.find(index);
+    if (iterator == s_ptys.end()) {
         return nullptr;
     }
 
@@ -64,7 +66,7 @@ RefPtr<Inode> PTSFS::inode(ino_t id) {
         return m_root;
     }
 
-    auto* device = Device::get_device(169, id - 2);
+    auto device = Device::get_device(DeviceMajor::MasterPTY, id - 2);
     if (!device) {
         return nullptr;
     }

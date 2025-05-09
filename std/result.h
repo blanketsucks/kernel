@@ -73,11 +73,11 @@ private:
 class Error {
 public:
     Error() : m_msg("Unknown error"), m_errno(0) {}
-    Error(int errno) : m_msg(nullptr), m_errno(errno) {}
+    Error(int err) : m_msg(nullptr), m_errno(err) {}
     Error(const char* message) : m_msg(message) {}
 
     const char* message() const { return m_msg; }
-    int errno() const { return m_errno; }
+    int err() const { return m_errno; }
 
 private:
     const char* m_msg;

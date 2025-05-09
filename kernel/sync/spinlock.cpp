@@ -1,20 +1,23 @@
 #include <kernel/sync/spinlock.h>
+#include <kernel/arch/processor.h>
 
 namespace kernel {
 
-// FIXME: Implement
 bool SpinLock::is_locked() {
-    return false;
+    return m_lock.load(std::MemoryOrder::Relaxed) != 0;
 }
 
-void SpinLock::acquire() {
-    while (this->is_locked()) {
-        __builtin_ia32_pause();
+void SpinLock::lock() {
+    asm volatile("cli");
+    while (m_lock.exchange(1, std::MemoryOrder::Acquire) != 0) {
+        asm volatile("pause");
     }
 }
 
-void SpinLock::release() {
-    
+void SpinLock::unlock() {
+    m_lock.store(0, std::MemoryOrder::Relaxed);
+    asm volatile("sti");
 }
+
 
 }

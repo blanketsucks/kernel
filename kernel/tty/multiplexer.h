@@ -10,6 +10,7 @@ public:
     PTYMultiplexer();
 
     static PTYMultiplexer* instance();
+    static PTYMultiplexer* create();
 
     RefPtr<fs::FileDescriptor> open(int options) override;
 

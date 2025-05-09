@@ -1,8 +1,8 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/arch/pic.h>
-#include <kernel/pci.h>
+#include <kernel/arch/irq.h>
+#include <kernel/pci/pci.h>
 
 #include <kernel/net/mac.h>
 #include <kernel/net/adapter.h>
@@ -180,7 +180,6 @@ public:
     static constexpr u16 DEVICE_ID = 0x100E;
 
     static constexpr size_t BUFFER_SIZE = 8192;
-    static constexpr size_t PAGE_BUFFER_SIZE = BUFFER_SIZE / PAGE_SIZE;
 
     static constexpr size_t NUM_RX_DESCRIPTORS = 32;
     static constexpr size_t NUM_TX_DESCRIPTORS = 8;
@@ -208,7 +207,7 @@ private:
     void write(u16 address, u32 value);
     u32 read(u16 address);
 
-    void handle_interrupt(arch::InterruptRegisters*) override;
+    void handle_irq() override;
 
     void receive();
 

@@ -9,23 +9,21 @@
 namespace kernel::net {
 
 RefPtr<NetworkAdapter> E1000NetworkAdapter::create(pci::Device device) {
-    if (device.vendor_id != VENDOR_ID || device.id != DEVICE_ID) {
+    if (device.vendor_id() != VENDOR_ID || device.device_id() != DEVICE_ID) {
         return nullptr;
     }
 
-    return RefPtr<NetworkAdapter>(new E1000NetworkAdapter(device.address));
+    return RefPtr<NetworkAdapter>(new E1000NetworkAdapter(device.address()));
 }
 
 E1000NetworkAdapter::E1000NetworkAdapter(pci::Address address) : IRQHandler(address.interrupt_line()), m_address(address) {
-    this->disable_irq_handler();
-
     address.set_bus_master(true);
     switch (address.bar_type(0)) {
         case pci::BARType::IO:
-            m_io_port = address.bar0() & ~1;
+            m_io_port = address.bar(0) & ~1;
             break;
         default: {
-            PhysicalAddress bar0 = address.bar0() & ~3;
+            PhysicalAddress bar0 = address.bar(0) & ~3;
             size_t size = address.bar_size(0);
 
             m_memory = reinterpret_cast<u8*>(MM->map_physical_region(reinterpret_cast<void*>(bar0), size));
@@ -42,7 +40,7 @@ E1000NetworkAdapter::E1000NetworkAdapter(pci::Address address) : IRQHandler(addr
     this->setup_link();
     this->enable_interrupts();
 
-    dbgln("E1000NetworkAdapter ({}:{}:{}):", address.bus, address.device, address.function);
+    dbgln("E1000NetworkAdapter ({}:{}:{}):", address.bus(), address.device(), address.function());
     dbgln(" - Has EEPROM: {}", m_has_eeprom);
     dbgln(" - MAC Address: {}", mac_address());
     dbgln();
@@ -69,16 +67,16 @@ void E1000NetworkAdapter::setup_link() {
 }
 
 void E1000NetworkAdapter::enable_interrupts() {
-    this->enable_irq_handler();
-
     write(InterruptThrottle, 5580);
     write(InterruptMask, LCS | RXO | RXT0);
     
     read(InterruptCause);
     m_address.set_interrupt_line(true);   
+
+    this->enable_irq();
 }
 
-void E1000NetworkAdapter::handle_interrupt(arch::InterruptRegisters*) {
+void E1000NetworkAdapter::handle_irq() {
     u32 status = read(InterruptCause);
     if (!status) {
         return;
@@ -96,6 +94,8 @@ void E1000NetworkAdapter::handle_interrupt(arch::InterruptRegisters*) {
     if (status & RXT0) {
         this->receive();
     }
+
+    write(InterruptCause, 0xffffffff);
 }
 
 void E1000NetworkAdapter::detect_eeprom() {
@@ -222,7 +222,7 @@ void E1000NetworkAdapter::tx_init() {
 }
 
 void E1000NetworkAdapter::send(u8 const* data, size_t size) {
-    this->disable_irq_handler();
+    this->disable_irq();
 
     size_t current = read(TxDescriptorTail);
     auto& descriptor = m_tx_descriptors[current];
@@ -233,7 +233,7 @@ void E1000NetworkAdapter::send(u8 const* data, size_t size) {
     descriptor.cmd = EOP | IFCS | RS;
     descriptor.status = 0;
 
-    this->enable_irq_handler();
+    this->enable_irq();
     write(TxDescriptorTail, (current + 1) % NUM_TX_DESCRIPTORS);
 
     while (true) {

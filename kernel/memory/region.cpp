@@ -3,6 +3,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/panic.h>
 #include <kernel/posix/sys/mman.h>
+#include <kernel/arch/interrupts.h>
 
 #include <std/format.h>
 
@@ -22,29 +23,21 @@ RegionAllocator::RegionAllocator(const Range& range, arch::PageDirectory* page_d
     m_head = new Region(range);
 }
 
-RegionAllocator RegionAllocator::clone_with_page_directory(arch::PageDirectory* page_directory) const {
-    RegionAllocator allocator = {};
+RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) const {
+    // TODO: Use a lock instead
+    arch::InterruptDisabler disabler;
 
-    allocator.m_page_directory = page_directory;
-    allocator.m_head = nullptr;
-
-    Region* prev = nullptr;
+    auto allocator = RegionAllocator::create(m_range, page_directory);
     this->for_each_region([&](Region* region) {
-        if (!region->used()) {
-            if (!prev) {
-                prev = allocator.m_head = region->clone();
-            } else {
-                prev = allocator.insert_region_before(prev, region->clone());
-            }
-
+        auto* r = allocator->allocate_at(region->base(), region->size(), region->prot());
+        if (!r) {
             return;
         }
 
-        this->map_into(page_directory, region);
-        if (!prev) {
-            prev = allocator.m_head = region->clone();
-        } else {
-            prev = allocator.insert_region_before(prev, region->clone());
+        r->m_used = region->used();
+
+        if (region->used()) {
+            this->map_into(page_directory, region);
         }
     });
 
@@ -53,6 +46,7 @@ RegionAllocator RegionAllocator::clone_with_page_directory(arch::PageDirectory* 
 
 void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* region) const {
     size_t pages = region->size() / PAGE_SIZE;
+
     for (size_t i = 0; i < pages; i++) {
         VirtualAddress address = region->base() + i * PAGE_SIZE;
         auto* entry = m_page_directory->get_page_table_entry(address);
@@ -60,15 +54,15 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
         if (!entry) {
             continue;
         }
-
+        
         PhysicalAddress dst = entry->get_physical_address();
         if (!region->is_shared()) {
             void* frame = MM->allocate_page_frame();
             MM->copy_physical_memory(frame, reinterpret_cast<void*>(dst), PAGE_SIZE);
-    
+            
             dst = reinterpret_cast<PhysicalAddress>(frame);
         }
-
+        
         page_directory->map(address, dst, entry->flags());
     }
 }
@@ -140,17 +134,18 @@ Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int pr
         region->m_used = true;
         region->m_prot = prot;
 
-        region->set_size(size);
-        region->set_base(address);
+        region->set_range({ address, size });
 
         m_usage += size;
         return region;
     }
 
+
     return nullptr;
 }
 
 Region* RegionAllocator::find_region(VirtualAddress address, bool contains) const {
+
     auto* region = m_head;
     while (region) {
         if (contains && region->contains(address)) {
@@ -167,6 +162,7 @@ Region* RegionAllocator::find_region(VirtualAddress address, bool contains) cons
 
 Region* RegionAllocator::find_free_region(size_t size) {
     auto* region = m_head;
+
     while (region) {
         if (region->used() || region->size() < size) {
             region = region->next;
@@ -176,9 +172,7 @@ Region* RegionAllocator::find_free_region(size_t size) {
         }
 
         auto* new_region = new Region({ region->base(), size });
-
-        region->set_base(region->base() + size);
-        region->set_size(region->size() - size);
+        region->set_range({ region->base() + size, region->size() - size });
 
         this->insert_region_before(region, new_region);
         return new_region;
@@ -189,8 +183,8 @@ Region* RegionAllocator::find_free_region(size_t size) {
 
 Region* RegionAllocator::allocate(size_t size, int prot) {
     ASSERT(size % PAGE_SIZE == 0, "size must be page aligned");
-    auto* region = this->find_free_region(size);
 
+    auto* region = this->find_free_region(size);
     if (!region) {
         return nullptr;
     }

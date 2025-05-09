@@ -51,6 +51,14 @@ void FileDescriptor::seek(off_t offset, int whence) {
     }
 }
 
+void FileDescriptor::close() {
+    if (!m_file) {
+        return;
+    }
+    
+    return m_file->close();
+}
+
 ErrorOr<void*> FileDescriptor::mmap(Process& process, size_t size, int prot) {
     return m_file->mmap(process, size, prot);
 }
@@ -58,7 +66,7 @@ ErrorOr<void*> FileDescriptor::mmap(Process& process, size_t size, int prot) {
 int FileDescriptor::ioctl(unsigned request, unsigned arg) {
     auto result = m_file->ioctl(request, arg);
     if (result.is_err()) {
-        return -result.error().errno();
+        return -result.error().err();
     }
 
     return 0;

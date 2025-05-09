@@ -8,6 +8,10 @@
 #include <std/string.h>
 #include <std/memory.h>
 
+namespace kernel {
+    class Device;
+}
+
 namespace kernel::fs {
 
 class FileDescriptor {
@@ -31,13 +35,15 @@ public:
     off_t offset() const { return m_offset; }
     int options() const { return m_options; }
 
+    bool is_readable() const;
+    bool is_writable() const;
+    
     size_t read(void* buffer, size_t size);
     size_t write(const void* buffer, size_t size);
 
-    bool is_readable() const;
-    bool is_writable() const;
-
     void seek(off_t offset, int whence);
+
+    void close();
 
     ErrorOr<void*> mmap(Process& process, size_t size, int prot);
     int ioctl(unsigned request, unsigned arg);

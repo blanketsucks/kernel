@@ -2,9 +2,11 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/process/syscalls.h>
+#include <kernel/process/blocker.h>
 #include <kernel/arch/cpu.h>
 #include <kernel/posix/unistd.h>
 #include <kernel/posix/sys/mman.h>
+#include <kernel/posix/sys/wait.h>
 #include <kernel/serial.h>
 
 #include <std/format.h>
@@ -23,11 +25,19 @@ Process* Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedI
 }
 
 Process::Process(
-    pid_t id, String name, bool kernel, void (*entry)(), RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty
-) : m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_cwd(cwd), m_arguments(move(arguments)) {
+    pid_t id, String name, bool kernel, void (*entry)(), RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty, Process* parent
+) : m_state(Alive), m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_cwd(cwd), m_arguments(move(arguments)) {
     if (!kernel) {
         m_page_directory = arch::PageDirectory::create_user_page_directory();
-        m_allocator = memory::RegionAllocator({ PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) }, m_page_directory);
+        // m_allocator.with([&](auto& allocator) {
+        //     allocator = memory::RegionAllocator({ PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) }, m_page_directory);
+        // });
+
+        if (!parent) {
+            m_allocator = memory::RegionAllocator::create(
+                { PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) }, m_page_directory
+            );
+        }
     } else {
         m_page_directory = arch::PageDirectory::kernel_page_directory();
         
@@ -82,8 +92,15 @@ void Process::create_user_entry(ELF elf) {
 }
 
 Process* Process::fork(arch::Registers& registers) {
-    auto* process = new Process(generate_id(), m_name, false, nullptr, m_cwd, m_arguments, m_tty);
-    process->m_allocator = m_allocator.clone_with_page_directory(process->m_page_directory);
+    auto* process = new Process(generate_id(), m_name, false, nullptr, nullptr, {}, m_tty);
+
+    process->m_parent_id = m_id;
+    process->m_allocator = m_allocator->clone(process->page_directory());
+
+    process->m_file_descriptors.resize(m_file_descriptors.size());
+    for (size_t i = 0; i < m_file_descriptors.size(); i++) {
+        process->m_file_descriptors[i] = m_file_descriptors[i];
+    }
 
     auto* thread = new Thread(process, registers);
     process->add_thread(thread);
@@ -126,7 +143,7 @@ void* Process::allocate(size_t size, PageFlags flags) {
         return MM->allocate_kernel_region(size);
     }
 
-    return MM->allocate(m_allocator, size, flags | PageFlags::User);
+    return MM->allocate(*m_allocator, size, flags | PageFlags::User);
 }
 
 void* Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags) {
@@ -134,12 +151,16 @@ void* Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags)
         return MM->allocate_kernel_region(size);
     }
 
-    return MM->allocate_at(m_allocator, address, size, flags | PageFlags::User);
+    return MM->allocate_at(*m_allocator, address, size, flags | PageFlags::User);
 }
 
 void* Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
     ASSERT(address % PAGE_SIZE == 0, "Physical address must be page aligned.");
-    auto* region = m_allocator.allocate(size, prot);
+    // auto* region = m_allocator.with([size](auto& allocator) {
+    //     return allocator.allocate(size, PROT_READ | PROT_WRITE);
+    // });
+
+    auto* region = m_allocator->allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
         return nullptr;
     }
@@ -156,6 +177,20 @@ void* Process::allocate_with_physical_region(PhysicalAddress address, size_t siz
     return reinterpret_cast<void*>(region->base());
 }
 
+void* Process::allocate_file_backed_region(fs::File* file, size_t size) {
+    ASSERT(size % PAGE_SIZE == 0, "size must be page aligned");
+    // auto* region = m_allocator.with([file, size](auto& allocator) {
+    //     return allocator.create_file_backed_region(file, size);
+    // });
+
+    auto* region = m_allocator->create_file_backed_region(file, size);
+    if (!region) {
+        return nullptr;
+    }
+
+    return reinterpret_cast<void*>(region->base());
+}
+
 void Process::notify_exit(Thread* thread) {
     this->remove_thread(thread);
 }
@@ -165,7 +200,11 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
     memory::PageFault fault = regs->errno;
     bool is_null_pointer_dereference = address < PAGE_SIZE;
 
-    auto* region = m_allocator.find_region(address, true);
+    // auto* region = m_allocator.with([&](auto& allocator) {
+    //     return allocator.find_region(address, true);
+    // });
+
+    auto* region = m_allocator->find_region(address, true);
     if (!region || !region->is_file_backed() || !region->used()) {
         if (is_null_pointer_dereference) {
             dbgln("\033[1;31mNull pointer dereference (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
@@ -176,13 +215,15 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
 
         dbgln("Process memory regions:");
-        m_allocator.for_each_region([](memory::Region* region) {
+        m_allocator->for_each_region([](memory::Region* region) {
             if (!region->used()) {
                 return;
             }
 
             dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
         });
+
+        kernel::print_stack_trace();
 
         this->kill();
     }
@@ -203,11 +244,18 @@ void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
     dbgln("\033[1;31mGeneral protection fault at IP={:#p}:\033[0m", regs->ip());
     dbgln("  \033[1;31mError code: {:#x}\033[0m", regs->errno);
 
+    kernel::print_stack_trace();
+
     this->kill();
 }
 
 memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
-    auto* region = m_allocator.find_region(reinterpret_cast<VirtualAddress>(ptr), true);
+    // auto* region = m_allocator.with([&](auto& allocator) { 
+    //     return allocator.find_region(reinterpret_cast<VirtualAddress>(ptr), true);
+    // });
+
+    auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(ptr), true);
+
     if (!region) {
         dbgln("Invalid memory access at {:#}. Killing.", ptr);
         this->kill();
@@ -275,11 +323,17 @@ RefPtr<fs::FileDescriptor> Process::get_file_descriptor(int fd) {
 }
 
 void Process::kill() {
-    m_state = Dead;
     for (auto& [_, thread] : m_threads) {
         thread->kill();
     }
-
+    
+    for (auto& fd : m_file_descriptors) {
+        if (fd) {
+            fd->close();
+        }
+    }
+    
+    m_state = Dead;
     Scheduler::yield();
 }
 
@@ -287,6 +341,8 @@ void Process::sys$exit(int status) {
     dbgln("Process exited with status {}.", status);
 
     m_exit_status = status;
+    WaitBlocker::try_wake_all(this, status);
+
     this->kill();
 }
 
@@ -296,7 +352,7 @@ int Process::sys$open(const char* pathname, int flags, mode_t mode) {
 
     auto result = vfs->open(path, flags, mode, m_cwd);
     if (result.is_err()) {
-        return -result.error().errno();
+        return -result.error().err();
     }
 
     auto fd = result.value();
@@ -308,6 +364,11 @@ int Process::sys$open(const char* pathname, int flags, mode_t mode) {
 int Process::sys$close(int fd) {
     if (fd < 0 || static_cast<size_t>(fd) >= m_file_descriptors.size()) {
         return -EBADF;
+    }
+
+    auto& file = m_file_descriptors[fd];
+    if (file) {
+        file->close();
     }
 
     m_file_descriptors[fd] = nullptr;
@@ -419,9 +480,13 @@ void* Process::sys$mmap(void*, size_t size, int prot, int flags, int fileno, off
         address = result.value();
     }
 
-    auto* region = m_allocator.find_region(address);
-    region->set_prot(prot);
+    // auto* region = m_allocator.with([address](auto& allocator) {
+    //     return allocator.find_region(reinterpret_cast<VirtualAddress>(address), true);
+    // });
 
+    auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
+    
+    region->set_prot(prot);
     if (flags & MAP_SHARED) {
         region->set_shared(true);
     }
@@ -455,7 +520,7 @@ int Process::sys$chdir(const char* pathname) {
     auto result = vfs->resolve(path, m_cwd);
 
     if (result.is_err()) {
-        return -result.error().errno();
+        return -result.error().err();
     }
 
     m_cwd = result.value();
@@ -483,7 +548,7 @@ int Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
 int Process::sys$fork(arch::Registers& registers) {
     auto* process = this->fork(registers);
     Scheduler::add_process(process);
-
+    
     return process->id();
 }
 
@@ -492,7 +557,7 @@ int Process::exec(StringView path, ProcessArguments arguments) {
     auto result = vfs->open(path, O_RDONLY, 0, m_cwd);
 
     if (result.is_err()) {
-        return -result.error().errno();
+        return -result.error().err();
     }
 
     auto file = result.value();
@@ -501,9 +566,16 @@ int Process::exec(StringView path, ProcessArguments arguments) {
     auto* process = new Process(m_id, path, false, nullptr, m_cwd, move(arguments), m_tty);
     process->create_user_entry(elf);
 
+    process->m_file_descriptors.resize(m_file_descriptors.size());
+    for (size_t i = 0; i < m_file_descriptors.size(); i++) {
+        process->m_file_descriptors[i] = m_file_descriptors[i];
+    }
+
     process->m_parent_id = m_parent_id;
 
+    m_id = -1; // FIXME: Actually replace the current process rather than making a new one
     Scheduler::add_process(process);
+
     this->kill();
 
     return -1;
@@ -515,6 +587,15 @@ int Process::sys$execve(const char* pathname, char* const argv[], char* const en
 
     if (!argv) {
         args.argv = { path, nullptr };
+    } else {
+        size_t count = 0;
+        while (argv[count]) {
+            count++;
+        }
+
+        for (size_t i = 0; i < count; i++) {
+            args.argv.append(this->validate_string(argv[i]));
+        }
     }
 
     if (!envp) {
@@ -522,6 +603,34 @@ int Process::sys$execve(const char* pathname, char* const argv[], char* const en
     }
 
     return this->exec(path, args);
+}
+
+int Process::sys$waitpid(pid_t pid, int* status, int options) {
+    this->validate_write(status, sizeof(int));
+
+    if (options & WNOHANG) {
+        auto* process = Scheduler::get_process(pid);
+        if (!process) {
+            return -ECHILD;
+        } else if (process->parent_id() != this->id()) {
+            return -ECHILD;
+        }
+
+        if (process->state() == Dead) {
+            *status = __WIFEXITED | process->exit_status();
+            return pid;
+        }
+
+        return 0;
+    }
+
+    auto* thread = Scheduler::current_thread();
+    auto* blocker = WaitBlocker::create(thread, pid);
+
+    thread->block(blocker);
+    *status = blocker->status();
+
+    return pid;
 }
 
 FlatPtr Process::handle_syscall(arch::Registers* registers) {
@@ -591,6 +700,9 @@ FlatPtr Process::handle_syscall(arch::Registers* registers) {
         case SYS_YIELD: {
             Scheduler::yield();
             return 0;
+        }
+        case SYS_WAITPID: {
+            return this->sys$waitpid(arg1, reinterpret_cast<int*>(arg2), arg3);
         }
         default:
             dbgln("Unknown syscall: {}", syscall);

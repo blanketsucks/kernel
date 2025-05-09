@@ -29,14 +29,20 @@ struct MemoryMap {
 } PACKED;
 
 struct FramebufferInfo {
-    u64 width;
-    u64 height;
-    u64 pitch;
+    u32 width;
+    u32 height;
+    u32 pitch;
     u16 bpp;
-    void* address;
+    u8 red_mask_size;
+    u8 red_mask_shift;
+    u8 green_mask_size;
+    u8 green_mask_shift;
+    u8 blue_mask_size;
+    u8 blue_mask_shift;
+    PhysicalAddress address;
 
     u64 edid_size;
-    void* edid;
+    PhysicalAddress edid;
 } PACKED;
 
 struct BootInfo {

@@ -29,6 +29,7 @@ enum {
 
     SYS_FORK,
     SYS_EXECVE,
+    SYS_WAITPID,
 
     SYS_YIELD,
 };

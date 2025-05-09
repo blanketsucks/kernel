@@ -121,9 +121,12 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
         buffer.append("[Kernel]: ");
     } else {
         auto* process = thread->process();
-        auto& name = process->name();
-
-        buffer.appendf("[%.*s (PID %u)]: ", (int)name.size(), name.data(), process->id());
+        if (process) {
+            auto& name = process->name();
+            buffer.appendf("[%.*s (PID %u)]: ", (int)name.size(), name.data(), process->id());
+        } else {
+            buffer.append("[Kernel]: ");
+        }
     }
 #endif
 
@@ -150,6 +153,16 @@ void dbgln() {
 #ifdef __KERNEL__
     kernel::serial::putc('\n');
 #else
+    write(1, "\n", 1);
+#endif
+}
+
+void dbgln(StringView str) {
+#ifdef __KERNEL__
+    kernel::serial::write(str.data(), str.size());
+    kernel::serial::putc('\n');
+#else
+    write(1, str.data(), str.size());
     write(1, "\n", 1);
 #endif
 }

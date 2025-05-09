@@ -39,8 +39,12 @@ void MouseDevice::update_mouse_state() {
     m_state_buffer.push(state);
 }
 
-void MouseDevice::handle_interrupt(arch::InterruptRegisters*) {
+void MouseDevice::handle_irq() {
     u8 status = io::read<u8>(MOUSE_STATUS);
+    if (!(status & MOUSE_B_BIT)) {
+        return; // No data available
+    }
+
     while (status & MOUSE_B_BIT) {
         if (!(status & MOUSE_F_BIT)) {
             status = io::read<u8>(MOUSE_STATUS);
@@ -144,6 +148,8 @@ void MouseDevice::init() {
     if (device_id == 0x03) {
         device->m_has_scroll_wheel = true;
     }
+
+    device->enable_irq();
 }
 
 u8 MouseDevice::get_device_id() {

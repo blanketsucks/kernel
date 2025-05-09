@@ -15,13 +15,9 @@ int main() {
     if (pid == 0) {
         dbgln("Child writing to memory...");
         *ptr = true;
-
-        sched_yield();
     } else {
         dbgln("Parent waiting for child to write to memory...");
-        while (*ptr == false) {
-            sched_yield();
-        }
+        while (*ptr == false) {}
 
         dbgln("Child wrote to memory, exiting...");
     }

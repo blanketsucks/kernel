@@ -1,5 +1,3 @@
-%include "kernel/arch/common.inc"
-
 KERNEL_CODE_SELECTOR equ 0x28
 KERNEL_DATA_SELECTOR equ 0x30
 

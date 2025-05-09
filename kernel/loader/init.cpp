@@ -163,6 +163,8 @@ extern "C" void init(multiboot_info* info) {
     boot_info.kernel_physical_base = kernel_physical_base;
     boot_info.kernel_size = kernel_virtual_end - kernel_virtual_base;
     boot_info.pml4t = boot_pml4t;
+    boot_info.hhdm = 0xffff800000000000;
+    boot_info.cmdline = reinterpret_cast<char*>(info->cmdline + boot_info.hhdm);
 
     std::memset(mmap_entries, 0, sizeof(MemoryMapEntry) * 256);
 

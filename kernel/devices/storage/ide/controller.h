@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/pci.h>
+#include <kernel/pci/pci.h>
 #include <kernel/devices/storage/controller.h>
 #include <kernel/devices/storage/ide/pata.h>
 
@@ -10,8 +10,7 @@ namespace kernel {
 
 class IDEController : public StorageController {
 public:
-    static RefPtr<IDEController> create();
-    static RefPtr<IDEController> create(pci::Device address);
+    static RefPtr<IDEController> create(pci::Device);
 
     RefPtr<StorageDevice> device(size_t index) const override;
     RefPtr<StorageDevice> device(ata::Channel channel, ata::Drive drive) const;

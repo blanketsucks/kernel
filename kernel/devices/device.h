@@ -48,8 +48,7 @@ public:
         return { (id >> 8) & 0xFFF, (id & 0xFF) | ((id >> 12) & ~0xFF) };
     }
 
-    static Device* get_device(u32 major, u32 minor);
-    static HashMap<u32, Device*> const& devices();
+    static RefPtr<Device> get_device(DeviceMajor major, u32 minor);
 
     virtual RefPtr<fs::FileDescriptor> open(int options);
 
@@ -60,6 +59,9 @@ public:
 
     virtual bool is_character_device() const { return false; }
     virtual bool is_block_device() const { return false; }
+
+protected:
+    RefPtr<Device> as_ref() const;
 
 private:
     DeviceMajor m_major = DeviceMajor::Generic;

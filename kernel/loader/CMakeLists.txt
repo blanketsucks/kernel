@@ -24,7 +24,7 @@ target_compile_options(
 target_compile_definitions(loader.bin PRIVATE __KERNEL_LOADER__)
 
 target_link_options(loader.bin PRIVATE
-    -T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld -nostdlib
+    -T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld -nostdlib -no-pie -fno-pic
 )
 
 add_custom_command(

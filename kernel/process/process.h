@@ -7,6 +7,7 @@
 #include <kernel/arch/page_directory.h>
 #include <kernel/tty/tty.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/sync/resource.h>
 
 #include <std/hash_map.h>
 #include <std/string.h>
@@ -29,7 +30,7 @@ struct ProcessArguments {
 class Process {
 public:
     enum State {
-        Alive,
+        Alive = 1,
         Dead
     };
 
@@ -45,7 +46,6 @@ public:
 
     bool is_kernel() const { return m_kernel; }
 
-    memory::RegionAllocator& region_allocator() { return m_allocator; }
     arch::PageDirectory* page_directory() const { return m_page_directory; }
 
     TTY* tty() const { return m_tty; }
@@ -76,6 +76,7 @@ public:
     void* allocate_at(VirtualAddress address, size_t size, PageFlags flags);
 
     void* allocate_with_physical_region(PhysicalAddress, size_t size, int prot);
+    void* allocate_file_backed_region(fs::File* file, size_t size);
 
     void validate_read(const void* ptr, size_t size);
     void validate_write(const void* ptr, size_t size);
@@ -98,6 +99,7 @@ public:
     int sys$ioctl(int fd, unsigned request, unsigned arg);
     int sys$fork(arch::Registers&);
     int sys$execve(const char* pathname, char* const argv[], char* const envp[]);
+    int sys$waitpid(pid_t pid, int* status, int options);
     
 private:
     friend class Scheduler;
@@ -112,7 +114,8 @@ private:
         void (*entry)(), 
         RefPtr<fs::ResolvedInode> cwd = nullptr,
         ProcessArguments arguments = {},
-        TTY* tty = nullptr
+        TTY* tty = nullptr,
+        Process* parent = nullptr
     );
 
     void notify_exit(Thread*);
@@ -134,7 +137,7 @@ private:
     bool m_kernel = false;
 
     arch::PageDirectory* m_page_directory = nullptr;
-    memory::RegionAllocator m_allocator;
+    RefPtr<memory::RegionAllocator> m_allocator;
 
     TTY* m_tty = nullptr;
     

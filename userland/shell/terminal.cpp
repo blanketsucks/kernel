@@ -2,8 +2,13 @@
 #include <std/format.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 namespace shell {
+
+void _free(void* ptr, size_t) {
+    free(ptr);
+}
 
 Command parse_shell_command(String line) {
     Vector<String> args;
@@ -43,30 +48,48 @@ Command parse_shell_command(String line) {
     return { move(name), move(args) };
 }
 
-char** Command::argv() const {
-    char** argv = new char*[args.size() + 2];
-    for (size_t i = 0; i < args.size(); i++) {
-        auto& argument = args[i];
+Command::Command(String name, Vector<String> args) : m_name(move(name)), m_args(move(args)) {
+    m_pathname = new char[m_name.size() + 1];
+    memcpy(m_pathname, m_name.data(), m_name.size());
+    m_pathname[m_name.size()] = '\0';
+}
 
-        char* buffer = new char[args[i].size() + 1];
+char** Command::argv() const {
+    char** argv = new char*[m_args.size() + 2];
+    for (size_t i = 0; i < m_args.size(); i++) {
+        auto& argument = m_args[i];
+
+        char* buffer = new char[m_args[i].size() + 1];
         memcpy(buffer, argument.data(), argument.size());
 
         buffer[argument.size()] = '\0';
         argv[i + 1] = buffer;
     }
 
-    argv[0] = const_cast<char*>(name.data());
-    argv[args.size() + 1] = nullptr;
+    argv[0] = m_pathname;
+    argv[m_args.size() + 1] = nullptr;
 
     return argv;
 }
 
-size_t Command::argc() const { return args.size() + 1; }
-
 Terminal::Terminal(
-    u32 width, u32 height,
-    gfx::RenderContext& context, RefPtr<gfx::Font> font
-) : on_line_flush(nullptr), m_width(width), m_height(height), m_render_context(context), m_font(font) {
+    u32 width, u32 height, gfx::RenderContext& context, u8* font, size_t font_width, size_t font_height
+) : on_line_flush(nullptr), m_width(width), m_height(height), m_render_context(context) {
+    m_context = flanterm_fb_init(
+        malloc, _free,
+        context.framebuffer().buffer(), width, height, context.framebuffer().width() * sizeof(u32),
+        8, 16,
+        8, 8,
+        8, 0,
+        nullptr,
+        nullptr, nullptr,
+        nullptr, nullptr,
+        nullptr, nullptr,
+        font, font_width, font_height, 1,
+        0, 0,
+        0
+    );
+
     this->add_line({});
 }
 
@@ -80,73 +103,48 @@ String Terminal::cwd() {
 Line& Terminal::current_line() { return m_lines[m_current_line]; }
 Line const& Terminal::current_line() const { return m_lines[m_current_line]; }
 
-void Terminal::add_line(String text) {
+void Terminal::add_line(String text, bool newline_before) {
     String line = format("{} $ {}", cwd(), text);
     size_t prompt_length = line.size() - text.size();
 
-    m_lines.append({ move(line), true, false, prompt_length });
-}
-
-void Terminal::add_line_without_prompt(String text) {
-    m_lines.append({ move(text), true, false, 0 });
-}
-
-void Terminal::render(int size) {
-    auto box = m_font->measure(current_line().text, size);
-    int y = box.y;
-
-    int width = m_render_context.framebuffer().width();
-    for (auto& line : m_lines) {
-        if (line.text.empty()) {
-            y += box.height;
-            continue;
-        }
-
-        auto bbox = m_font->measure(line.text, size);
-        if (!bbox.height) {
-            bbox.height = box.height;
-        }
-
-        if (line.dirty) {
-            // Clear out the whole line only if we backspaced
-            if (line.did_backspace) {
-                gfx::Rect rect = { 0, y - box.y, width, bbox.height };
-                rect.draw(m_render_context, 0x000000);
-
-                line.did_backspace = false;
-            }
-
-            m_font->render(m_render_context, { 0, y }, 0xFFFFFFFF, line.text, size);
-            line.dirty = false;
-        }
-
-        y += bbox.height;
-        box = bbox;
+    if (newline_before) {
+        flanterm_write(m_context, "\n", 1);
     }
+
+    flanterm_write(m_context, line.data(), line.size());
+    m_lines.append({ move(line), prompt_length });
+}
+
+void Terminal::write(StringView text) {
+    flanterm_write(m_context, text.data(), text.size());
+}
+
+void Terminal::writeln(StringView text) {
+    write(text);
+    flanterm_write(m_context, "\n", 1);
 }
 
 void Terminal::on_char(char c) {
     auto& line = current_line();
     if (c == '\n') {
-        this->on_line_flush(line.text.substr(line.prompt_length));
+        flanterm_write(m_context, "\n", 1);
 
+        this->on_line_flush(line.text.substr(line.prompt));
         this->add_line({});
+
         m_current_line++;
-        
-        line.dirty = false;
         return;
     } else if (c == '\b') {
-        if (line.text.size() <= line.prompt_length) {
+        if (line.text.size() <= line.prompt) {
             return;
         }
 
-        line.did_backspace = true;
         line.text.pop();
+        flanterm_write(m_context, "\b \b", 3);
     } else {
         line.text.append(c);
+        flanterm_write(m_context, &c, 1);
     }
-
-    line.dirty = true;
 }
 
 void Terminal::clear() {

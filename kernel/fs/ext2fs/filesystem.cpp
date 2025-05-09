@@ -138,7 +138,7 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
     u32 offset = (index * sizeof(ext2fs::Inode)) % block_size;
     memcpy(&result, buffer + offset, sizeof(ext2fs::Inode));
     
-    auto entry = new InodeEntry(this, result, inode);
+    auto entry = RefPtr<InodeEntry>(new InodeEntry(this, result, inode));
     m_inodes.set(inode, entry);
 
     return entry;

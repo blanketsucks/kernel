@@ -37,6 +37,11 @@ static volatile limine_rsdp_request rsdp_request = {
     .revision = 0
 };
 
+static volatile limine_framebuffer_request framebuffer_request = {
+    .id = LIMINE_FRAMEBUFFER_REQUEST,
+    .revision = 0
+};
+
 extern "C" void main(BootInfo const&);
 
 extern "C" void _early_main() {
@@ -76,6 +81,24 @@ extern "C" void _early_main() {
 
     boot_info.mmap.count = entries.size();
     boot_info.mmap.entries = entries.data();
+
+    if (framebuffer_request.response->framebuffer_count > 0) {
+        auto* fb = framebuffer_request.response->framebuffers[0];
+
+        boot_info.framebuffer.width = fb->width;
+        boot_info.framebuffer.height = fb->height;
+        boot_info.framebuffer.pitch = fb->pitch;
+        boot_info.framebuffer.bpp = fb->bpp;
+        boot_info.framebuffer.red_mask_size = fb->red_mask_size;
+        boot_info.framebuffer.red_mask_shift = fb->red_mask_shift;
+        boot_info.framebuffer.green_mask_size = fb->green_mask_size;
+        boot_info.framebuffer.green_mask_shift = fb->green_mask_shift;
+        boot_info.framebuffer.blue_mask_size = fb->blue_mask_size;
+        boot_info.framebuffer.blue_mask_shift = fb->blue_mask_shift;
+        boot_info.framebuffer.address = reinterpret_cast<PhysicalAddress>(fb->address) - boot_info.hhdm;
+        boot_info.framebuffer.edid_size = fb->edid_size;
+        boot_info.framebuffer.edid = reinterpret_cast<PhysicalAddress>(fb->edid) - boot_info.hhdm;
+    }
 
     main(boot_info);
     __builtin_unreachable();

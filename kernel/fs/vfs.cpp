@@ -1,3 +1,4 @@
+#include "kernel/posix/fcntl.h"
 #include <kernel/fs/vfs.h>
 
 #include <kernel/devices/device.h>
@@ -65,13 +66,14 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
             path = path.substr(index + 1);
         }
 
+        
         if (component == ".") {
             continue;
         } else if (component == "..") {
             if (current->parent()) {
                 current = current->parent();
             }
-
+            
             continue;
         }
         
@@ -109,10 +111,12 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t, 
 
     if (inode.is_directory() && (options & O_DIRECTORY) == 0) {
         return Error(EISDIR);
+    } else if (!inode.is_directory() && (options & O_DIRECTORY)) {
+        return Error(ENOTDIR);
     }
-
+    
     if (inode.is_device()) {
-        auto device = Device::get_device(inode.major(), inode.minor());
+        auto device = Device::get_device(static_cast<DeviceMajor>(inode.major()), inode.minor());
         if (!device) {
             return Error(ENODEV);
         }

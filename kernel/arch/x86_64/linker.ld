@@ -1,5 +1,5 @@
 OUTPUT_FORMAT(elf64-x86-64)
-ENTRY(_early_main)
+ENTRY(main)
 
 PHDRS {
     text    PT_LOAD    FLAGS((1 << 0) | (1 << 2)); /* Execute + Read */

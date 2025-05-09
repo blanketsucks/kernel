@@ -3,8 +3,8 @@
 #include <kernel/process/blocker.h>
 #include <kernel/devices/storage/device.h>
 #include <kernel/devices/storage/ata.h>
-#include <kernel/arch/pic.h>
-#include <kernel/pci.h>
+#include <kernel/arch/irq.h>
+#include <kernel/pci/pci.h>
 #include <kernel/arch/io.h>
 
 namespace kernel {
@@ -52,7 +52,7 @@ public:
 private:
     PATADevice(ata::Channel channel, ata::Drive drive, pci::Address address);
 
-    void handle_interrupt(arch::InterruptRegisters*) override;
+    void handle_irq() override;
 
     ata::Channel m_channel;
     ata::Drive m_drive;

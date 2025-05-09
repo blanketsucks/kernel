@@ -27,7 +27,7 @@ int main() {
         return 1;
     }
 
-    stat st;
+    struct stat st;
     fstat(audio, &st);
 
     char* buffer = new char[st.st_size];
