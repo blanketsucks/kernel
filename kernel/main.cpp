@@ -49,6 +49,7 @@
 #include <kernel/arch/pic.h>
 #include <kernel/boot/command_line.h>
 #include <kernel/boot/boot_info.h>
+#include <kernel/arch/apic.h>
 
 #include <kernel/tty/virtual.h>
 #include <kernel/tty/multiplexer.h>
@@ -56,6 +57,10 @@
 #include <kernel/net/manager.h>
 
 #include <kernel/usb/uhci/controller.h>
+#include <kernel/usb/pipe.h>
+#include <kernel/usb/device.h>
+#include <kernel/usb/usb.h>
+
 #include <kernel/virtio/virtio.h>
 #include <kernel/virtio/device.h>
 
@@ -105,22 +110,16 @@ void stage2() {
     
     AC97Device::create();
 
-    auto result = VirtIOGPUDevice::create();
-    if (!result.is_err()) {
-        auto* device = result.release_value();
-        auto result = device->test();
-        if (result.is_err()) {
-            dbgln("Failed to test VirtIO GPU device: {}", result.error().err());
-        }
-    }
+    VirtIOGPUDevice::create();
     
     if (g_boot_info->framebuffer.address) {
         GenericVideoDevice::create_from_boot();
     } else {
         BochsVGADevice::create(1280, 720);
     }
-    
+
     usb::UHCIController::create();
+
     NetworkManager::initialize();
 
     StorageManager::initialize();
