@@ -20,12 +20,12 @@ namespace std {
 template<typename T, typename E>
 class Result {
 public:
-    Result(const T& value) : m_value(value), m_error(), has_value(true) {}
-    Result(T&& value) : m_value(move(value)), m_error(), has_value(true) {}
+    Result(const T& value) : m_value(value), m_error(), m_has_value(true) {}
+    Result(T&& value) : m_value(move(value)), m_error(), m_has_value(true) {}
 
-    Result(const E& error) : m_value(), m_error(error), has_value(false) {}
+    Result(const E& error) : m_value(), m_error(error), m_has_value(false) {}
 
-    bool is_ok() const { return has_value; }
+    bool is_ok() const { return m_has_value; }
     bool is_err() const { return !is_ok(); }
 
     const T& value() const { return m_value; }
@@ -48,7 +48,7 @@ private:
     T m_value;
     E m_error;
 
-    bool has_value;
+    bool m_has_value;
 };
 
 template<typename E>
@@ -65,6 +65,7 @@ public:
 
     const E& error() const { return m_error; }
     E& error() { return m_error; }
+    
 private:
     E m_error;
     bool has_err;
