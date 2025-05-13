@@ -45,6 +45,7 @@ private:
 
     u8* m_command_buffer = nullptr;
     u32 m_resource_id = 1;
+    u32 m_num_scanouts = 0;
 
     virtio::Configuration* m_device_config = nullptr;
 };

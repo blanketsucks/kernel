@@ -50,6 +50,7 @@ ErrorOr<void> VirtIOGPUDevice::initialize() {
     m_command_buffer = reinterpret_cast<u8*>(MM->allocate_kernel_region(10 * PAGE_SIZE));
     m_device_config = get_config(Configuration::Device);
 
+    m_num_scanouts = m_device_config->read<u32>(GPUDeviceConfig::Scanouts);
     return {};
 }
 
@@ -62,6 +63,8 @@ void VirtIOGPUDevice::populate_header(GPUControlHeader& header, GPUControlType t
 }
 
 ErrorOr<void> VirtIOGPUDevice::test() {
+    dbgln();
+    
     {
         auto buffer = this->get_command_buffer();
 
@@ -128,7 +131,6 @@ void VirtIOGPUDevice::send_command(size_t request, size_t response) {
     chain.submit();
     this->notify(0);
 
-
     while (!queue.has_available_data()) {}
     queue.drain();
 }
@@ -156,7 +158,7 @@ ErrorOr<u32> VirtIOGPUDevice::create_resource_2d(GPUFormat format, u32 width, u3
     this->send_command(sizeof(GPUResourceCreate2D), sizeof(GPUControlHeader));
     
     auto* response = buffer.read<GPUControlHeader>();
-    if (response->type != GPUControlType::RespOkNoData) {
+    if (response->type != GPUControlType::RespOKNoData) {
         dbgln("create_resource_2d: Failed with response type {:#x}", response->type);
         return Error(EIO);
     }
@@ -187,7 +189,7 @@ ErrorOr<void> VirtIOGPUDevice::attach_resource_backing(u32 resource_id, Physical
     this->send_command(header_size, sizeof(GPUControlHeader));
 
     auto* response = buffer.read<GPUControlHeader>();
-    if (response->type != GPUControlType::RespOkNoData) {
+    if (response->type != GPUControlType::RespOKNoData) {
         dbgln("attach_resource_backing: Failed with response type {:#x}", response->type);
         return Error(EIO);
     }
@@ -208,7 +210,7 @@ ErrorOr<void> VirtIOGPUDevice::set_resource_scanout(u32 scanout_id, u32 resource
     this->send_command(sizeof(GPUSetScanout), sizeof(GPUControlHeader));
 
     auto* response = buffer.read<GPUControlHeader>();
-    if (response->type != GPUControlType::RespOkNoData) {
+    if (response->type != GPUControlType::RespOKNoData) {
         dbgln("set_resource_scanout: Failed with response type {:#x}", response->type);
         return Error(EIO);
     }
@@ -229,7 +231,7 @@ ErrorOr<void> VirtIOGPUDevice::transfer_to_host_2d(u32 resource_id, GPURect rect
     this->send_command(sizeof(GPUTransferToHost2D), sizeof(GPUControlHeader));
 
     auto* response = buffer.read<GPUControlHeader>();
-    if (response->type != GPUControlType::RespOkNoData) {
+    if (response->type != GPUControlType::RespOKNoData) {
         dbgln("transfer_to_host_2d: Failed with response type {:#x}", response->type);
         return Error(EIO);
     }
@@ -249,7 +251,7 @@ ErrorOr<void> VirtIOGPUDevice::resource_flush(u32 resource_id, GPURect rect) {
     this->send_command(sizeof(GPUResourceFlush), sizeof(GPUControlHeader));
 
     auto* response = buffer.read<GPUControlHeader>();
-    if (response->type != GPUControlType::RespOkNoData) {
+    if (response->type != GPUControlType::RespOKNoData) {
         dbgln("resource_flush: Failed with response type {:#x}", response->type);
         return Error(EIO);
     }

@@ -33,11 +33,11 @@ enum GPUControlType : u32 {
     MoveCursor,
 
     /* success responses */
-    RespOkNoData = 0x1100,
-    RespOkDisplayInfo,
-    RespOkCapsetInfo,
-    RespOkCapset,
-    RespOkEDID,
+    RespOKNoData = 0x1100,
+    RespOKDisplayInfo,
+    RespOKCapsetInfo,
+    RespOKCapset,
+    RespOKEDID,
 
     /* error responses */
     RespErrUnspec = 0x1200,
