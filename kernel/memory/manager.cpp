@@ -119,7 +119,8 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
 }
 
 void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags) {
-    ScopedSpinLock lock(m_lock);
+    // FIXME: Acquiring the lock *sometimes* hangs when trying to allocate the DMA region for the control USB pipe.
+    // ScopedSpinLock lock(m_lock);
 
     size = std::align_up(size, PAGE_SIZE);
     auto* region = allocator.allocate(size, PROT_READ | PROT_WRITE);
