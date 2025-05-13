@@ -37,11 +37,12 @@ class QemuArgs(NamedTuple):
     uefi: bool
     usb: bool
     use_loader: bool
+    virtio_gpu: bool
 
     ovmf: str
 
     netdev: str = 'user,id=net0,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888'
-    devices: List[str] = ['ac97', 'e1000,netdev=net0', 'ahci,id=ahci', 'ide-hd,bus=ahci.0,drive=map', 'virtio-gpu-pci']
+    devices: List[str] = ['ac97', 'e1000,netdev=net0', 'ahci,id=ahci', 'ide-hd,bus=ahci.0,drive=map']
 
     def build_disk_image_argument(self) -> List[str]:
         return ['-drive', self.disk_image.build(), '-drive', 'if=none,id=map,format=raw,file=kernel.map']
@@ -73,7 +74,10 @@ class QemuArgs(NamedTuple):
 
         if self.usb:
             args.append('-usb')
-            args.extend(['-device', 'usb-audio,bus=usb-bus.0'])
+            args.extend(['-device', 'usb-audio,bus=usb-bus.0,id=foobar'])
+
+        if self.virtio_gpu:
+            args.extend(['-device', 'virtio-gpu-pci'])
 
         for device in self.devices:
             args.extend(['-device', device])
@@ -100,8 +104,9 @@ def main():
     parser.add_argument('--memory', type=int, default=256, help='Amount of memory to allocate to QEMU (in MB).')
     parser.add_argument('--debug', action='store_true', help='Run QEMU in debug mode and listen to GDB connections.')
     parser.add_argument('--with-monitor', action='store_true', help='Run QEMU with a monitor (useful for debugging).')
-    parser.add_argument('--with-loader', action='store_true', help='Run the kernel with a WIP loader.')
+    parser.add_argument('--with-loader', action='store_true', help='Run the kernel with the 64-bit loader.')
     parser.add_argument('--usb', action='store_true', help='Enable USB support.')
+    parser.add_argument('--disable-virtio-gpu', action='store_true', help='Disable VirtIO GPU support.')
     
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
     action = parser.add_argument('--ovmf', type=str, default=None, help='Path to OVMF firmware')
@@ -130,6 +135,7 @@ def main():
         serial=True,
         usb=args.usb,
         use_loader=args.with_loader,
+        virtio_gpu=not args.disable_virtio_gpu,
     )
 
     if not args.qemu:
