@@ -11,6 +11,11 @@ namespace kernel {
 
 class VirtIOGPUDevice : public virtio::Device, public BlockDevice {
 public:
+    struct Scanout {
+        u32 id = 0;
+        virtio::GPURect rect = {};
+    };
+
     static ErrorOr<VirtIOGPUDevice*> create();
     
     bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
@@ -32,6 +37,9 @@ private:
         return m_resource_id++;
     }
 
+    ErrorOr<virtio::GPUDisplayInfo*> get_display_info();
+    ErrorOr<virtio::GPUGetEDIDResponse*> get_edid(u32 scanout_id); 
+
     ErrorOr<u32> create_resource_2d(virtio::GPUFormat format, u32 width, u32 height);
     ErrorOr<void> attach_resource_backing(u32 resource_id, PhysicalAddress address, size_t size);
     ErrorOr<void> set_resource_scanout(u32 scanout_id, u32 resource_id, virtio::GPURect rect);
@@ -45,9 +53,11 @@ private:
 
     u8* m_command_buffer = nullptr;
     u32 m_resource_id = 1;
-    u32 m_num_scanouts = 0;
-
+    
     virtio::Configuration* m_device_config = nullptr;
+    
+    u32 m_num_scanouts = 0;
+    Array<Scanout, VIRTIO_GPU_MAX_SCANOUTS> m_scanouts;
 };
 
 }

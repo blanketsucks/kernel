@@ -27,7 +27,9 @@ ErrorOr<VirtIOGPUDevice*> VirtIOGPUDevice::create() {
     }
 
     auto* device = new VirtIOGPUDevice(pci_device);
+
     TRY(device->initialize());
+    TRY(device->test());
 
     return device;
 }
@@ -51,6 +53,19 @@ ErrorOr<void> VirtIOGPUDevice::initialize() {
     m_device_config = get_config(Configuration::Device);
 
     m_num_scanouts = m_device_config->read<u32>(GPUDeviceConfig::Scanouts);
+
+    GPUDisplayInfo* display_info = TRY(this->get_display_info());
+    for (u32 i = 0; i < m_num_scanouts; i++) {
+        auto& mode = display_info->modes[i];
+        m_scanouts[i] = { i, mode.rect };
+    }
+
+    dbgln();
+    dbgln("GPU VirtIO Device:");
+    dbgln(" - Number of scanouts: {}", m_num_scanouts);
+    dbgln(" - Supports VirGL: {}", bool(features & VIRTIO_GPU_F_VIRGL));
+    dbgln(" - Supports EDID: {}", bool(features & VIRTIO_GPU_F_EDID));
+
     return {};
 }
 
@@ -63,43 +78,9 @@ void VirtIOGPUDevice::populate_header(GPUControlHeader& header, GPUControlType t
 }
 
 ErrorOr<void> VirtIOGPUDevice::test() {
-    dbgln();
-    
-    {
-        auto buffer = this->get_command_buffer();
-
-        auto* header = buffer.read<GPUControlHeader>();
-
-        header->type = GPUControlType::GetDisplayInfo;
-        header->flags = 0;
-        header->fence_id = 0;
-        header->ctx_id = 0;
-        header->padding = 0;
-
-        this->send_command(sizeof(GPUControlHeader), sizeof(GPUDisplayInfo));
-        auto* display_info = buffer.read<GPUDisplayInfo>();
-
-        for (auto& mode : display_info->modes) {
-            if (!mode.enabled) {
-                continue;
-            }
-
-            dbgln(" - {}x{} @ {}Hz", mode.rect.height, mode.rect.width, mode.flags);
-        }
-    }
-
     if (accepted_features() & VIRTIO_GPU_F_EDID) {
-        auto buffer = this->get_command_buffer();
-
-        auto* request = buffer.read<GPUGetEDID>();
-        this->populate_header(request->header, GPUControlType::GetEDID);
-
-        request->scanout = 0;
-        this->send_command(sizeof(GPUGetEDID), sizeof(GPUGetEDIDResponse));
-
-        auto* response = buffer.read<GPUGetEDIDResponse>();
-
-        dbgln(" - EDID size: {:#x}", response->header.type);
+        GPUGetEDIDResponse* response = TRY(this->get_edid(0));
+        dbgln(" - EDID size: {:#x}", response->size);
     }
 
     auto* fb = (u32*)MM->allocate_kernel_region(768 * 1024 * 4);
@@ -142,6 +123,41 @@ void VirtIOGPUDevice::handle_config_change() {
     if (events & 0x01) {
         m_device_config->write<u32>(GPUDeviceConfig::EventsClear, 0x01);
     }
+}
+
+ErrorOr<GPUDisplayInfo*> VirtIOGPUDevice::get_display_info() {
+    auto buffer = this->get_command_buffer();
+
+    auto* request = buffer.read<GPUControlHeader>();
+    this->populate_header(*request, GPUControlType::GetDisplayInfo);
+
+    this->send_command(sizeof(GPUControlHeader), sizeof(GPUDisplayInfo));
+
+    auto* response = buffer.read<GPUDisplayInfo>();
+    if (response->header.type != GPUControlType::RespOKDisplayInfo) {
+        dbgln("get_display_info: Failed with response type {:#x}", response->header.type);
+        return Error(EIO);
+    }
+
+    return response;
+}
+
+ErrorOr<GPUGetEDIDResponse*> VirtIOGPUDevice::get_edid(u32 scanout_id) {
+    auto buffer = this->get_command_buffer();
+
+    auto* request = buffer.read<GPUGetEDID>();
+    this->populate_header(request->header, GPUControlType::GetEDID);
+
+    request->scanout = scanout_id;
+    this->send_command(sizeof(GPUGetEDID), sizeof(GPUGetEDIDResponse));
+
+    auto* response = buffer.read<GPUGetEDIDResponse>();
+    if (response->header.type != GPUControlType::RespOKEDID) {
+        dbgln("get_edid: Failed with response type {:#x}", response->header.type);
+        return Error(EIO);
+    }
+
+    return response;
 }
 
 ErrorOr<u32> VirtIOGPUDevice::create_resource_2d(GPUFormat format, u32 width, u32 height) {
