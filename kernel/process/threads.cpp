@@ -188,6 +188,11 @@ void Thread::unblock() {
     m_state = Running;
     
     Scheduler::queue(this);
+}   
+
+void Thread::sleep(i32 seconds) {
+    auto* blocker = new SleepBlocker(rtc::now() + seconds);
+    this->block(blocker);
 }
 
 void Thread::enqueue(Thread* thread) {

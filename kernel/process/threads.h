@@ -60,6 +60,8 @@ public:
     
     void set_blocker(Blocker* blocker) { m_blocker = blocker; }
 
+    void sleep(i32 seconds);
+
     void block(Blocker*);
     void unblock();
 
