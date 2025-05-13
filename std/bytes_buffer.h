@@ -9,6 +9,8 @@ public:
     BytesBuffer() = default;
     BytesBuffer(void* buffer, size_t size) : m_buffer(reinterpret_cast<u8*>(buffer)), m_size(size) {}
 
+    u8* buffer() const { return m_buffer; }
+
     size_t size() const { return m_size; }
     size_t offset() const { return m_offset; }
 
