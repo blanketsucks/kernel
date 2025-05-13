@@ -11,6 +11,8 @@
 
 namespace kernel {
 
+static constexpr bool NET_DEBUG = false;
+
 void handle_packet(net::NetworkAdapter& adapter, u8* data, size_t size);
 
 void handle_arp_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size);
@@ -60,9 +62,11 @@ void NetworkManager::enumerate() {
 }
 
 void NetworkManager::spawn() {
-    auto* process = Process::create_kernel_process("Network Task", task);
-    m_thread = process->get_main_thread();
+    auto* process = Process::create_kernel_process("Network Task", [this]() {
+        this->task();
+    });
 
+    m_thread = process->get_main_thread();
     Scheduler::add_process(process);
 }
 
@@ -86,10 +90,6 @@ void NetworkManager::add_adapter(RefPtr<net::NetworkAdapter> adapter) {
 }
 
 void NetworkManager::task() {
-    s_instance.main();
-}
-
-void NetworkManager::main() {
     while (true) {
         m_blocker.set_value(false);
         m_blocker.wait();
@@ -106,7 +106,7 @@ void NetworkManager::main() {
 void handle_packet(net::NetworkAdapter& adapter, u8* data, size_t size) {
     auto* frame = reinterpret_cast<net::EthernetFrame*>(data);
 
-if constexpr (false) {
+if constexpr (NET_DEBUG) {
     dbgln("Ethernet packet (size={}):", size);
     dbgln(" - Source: {}", frame->source);
     dbgln(" - Destination: {}", frame->destination);
@@ -146,7 +146,7 @@ void handle_arp_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, 
 void handle_ipv4_packet(net::NetworkAdapter& adapter, net::EthernetFrame* frame, size_t size) {
     auto* ipv4 = reinterpret_cast<net::IPv4Packet*>(frame->payload);
 
-if constexpr (false) {
+if constexpr (NET_DEBUG) {
     dbgln("IPv4 packet (size={}):", size);
     dbgln(" - Version: {}", ipv4->version);
     dbgln(" - IHL: {}", ipv4->ihl);
@@ -180,6 +180,7 @@ void handle_ipv6_packet(net::NetworkAdapter&, net::EthernetFrame*, size_t) {}
 void handle_tcp_packet(net::NetworkAdapter&, net::IPv4Packet* packet, size_t size) {
     auto* tcp = reinterpret_cast<net::TCPPacket*>(packet);
 
+if constexpr (NET_DEBUG) {
     dbgln("TCP Packet (size={})", size);
     dbgln(" - Source port: {}", tcp->source_port);
     dbgln(" - Destination port: {}", tcp->destination_port);
@@ -192,14 +193,19 @@ void handle_tcp_packet(net::NetworkAdapter&, net::IPv4Packet* packet, size_t siz
     dbgln(" - Urgent pointer: {}", tcp->urgent_pointer);
 }
 
+}
+
 void handle_udp_packet(net::NetworkAdapter&, net::IPv4Packet* packet, size_t size) {
     auto* udp = reinterpret_cast<net::UDPPacket*>(packet->payload);
 
+if constexpr (NET_DEBUG) {
     dbgln("UDP packet (size={}):", size);
     dbgln(" - Source port: {}", udp->source_port);
     dbgln(" - Destination port: {}", udp->destination_port);
     dbgln(" - Length: {}", udp->length);
     dbgln(" - Checksum: {}", udp->checksum);
+}
+
 }
 
 void handle_icmp_packet(net::NetworkAdapter&, net::IPv4Packet*, size_t) {}

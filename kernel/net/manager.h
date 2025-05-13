@@ -31,8 +31,7 @@ private:
     void enumerate();
     void spawn();
 
-    void main();
-    static void task();
+    void task();
 
     Vector<RefPtr<net::NetworkAdapter>> m_adapters;
     RefPtr<net::NetworkAdapter> m_loopback_adapter;
