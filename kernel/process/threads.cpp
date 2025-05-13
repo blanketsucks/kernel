@@ -130,9 +130,16 @@ void Thread::setup_thread_arguments() {
     VirtualAddress envp_address = m_user_stack.value();
     size_t argc = m_arguments.argv.size();
 
+#ifdef __x86_64__
+    m_registers.rdi = argc;
+    m_registers.rsi = argv_address;
+    m_registers.rdx = envp_address;
+#else
     m_user_stack.push<FlatPtr>(envp_address);
     m_user_stack.push<FlatPtr>(argv_address);
     m_user_stack.push<FlatPtr>(argc);
+#endif
+
     m_user_stack.push<FlatPtr>(0xdeadbeef); // _start return address
 
     arch::PageDirectory::kernel_page_directory()->switch_to();
