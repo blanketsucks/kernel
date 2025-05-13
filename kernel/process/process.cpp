@@ -13,19 +13,27 @@
 
 namespace kernel {
 
-Process* Process::create_kernel_process(String name, void (*entry)()) {
-    return new Process(generate_id(), move(name), true, entry);
+Process* Process::create_kernel_process(String name, void (*entry)(void*), void* data) {
+    return new Process(generate_id(), move(name), true, entry, data);
 }
 
 Process* Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty) {
-    auto* process = new Process(generate_id(), move(name), false, nullptr, cwd, move(arguments), tty);
+    auto* process = new Process(generate_id(), move(name), false, nullptr, nullptr, cwd, move(arguments), tty);
     process->create_user_entry(elf);
 
     return process;
 }
 
 Process::Process(
-    pid_t id, String name, bool kernel, void (*entry)(), RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty, Process* parent
+    pid_t id,
+    String name,
+    bool kernel,
+    void (*entry)(void*),
+    void* entry_data,
+    RefPtr<fs::ResolvedInode> cwd,
+    ProcessArguments arguments,
+    TTY* tty,
+    Process* parent
 ) : m_state(Alive), m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_cwd(cwd), m_arguments(move(arguments)) {
     if (!kernel) {
         m_page_directory = arch::PageDirectory::create_user_page_directory();
@@ -36,8 +44,8 @@ Process::Process(
         }
     } else {
         m_page_directory = arch::PageDirectory::kernel_page_directory();
-        
-        auto thread = Thread::create(m_id, "main", this, entry, m_arguments);
+
+        auto thread = Thread::create(m_id, "main", this, entry, entry_data, m_arguments);
         this->add_thread(thread);
     }
 
@@ -81,14 +89,14 @@ void Process::create_user_entry(ELF elf) {
         file.read(temp.ptr() + (ph.p_vaddr - address), ph.p_filesz);
     }
 
-    auto entry = reinterpret_cast<void(*)()>(elf.entry());
+    auto entry = reinterpret_cast<void(*)(void*)>(elf.entry());
     
-    auto* thread = Thread::create(m_id, "main", this, entry, m_arguments);
+    auto* thread = Thread::create(m_id, "main", this, entry, nullptr, m_arguments);
     this->add_thread(thread);
 }
 
 Process* Process::fork(arch::Registers& registers) {
-    auto* process = new Process(generate_id(), m_name, false, nullptr, nullptr, {}, m_tty);
+    auto* process = new Process(generate_id(), m_name, false, nullptr, nullptr, nullptr, {}, m_tty);
 
     process->m_parent_id = m_id;
     process->m_allocator = m_allocator->clone(process->page_directory());
@@ -126,8 +134,8 @@ Thread* Process::get_main_thread() const {
     return this->get_thread(m_id);
 }
 
-Thread* Process::spawn(String name, void (*entry)()) {
-    auto thread = Thread::create(generate_id(), move(name), this, entry, m_arguments);
+Thread* Process::spawn(String name, void (*entry)(void*), void* data) {
+    auto thread = Thread::create(generate_id(), move(name), this, entry, data, m_arguments);
     this->add_thread(thread);
 
     Scheduler::queue(thread);
@@ -546,7 +554,7 @@ int Process::exec(StringView path, ProcessArguments arguments) {
     auto file = result.value();
     auto elf = ELF(file);
 
-    auto* process = new Process(m_id, path, false, nullptr, m_cwd, move(arguments), m_tty);
+    auto* process = new Process(m_id, path, false, nullptr, nullptr, m_cwd, move(arguments), m_tty);
     process->create_user_entry(elf);
 
     process->m_file_descriptors.resize(m_file_descriptors.size());

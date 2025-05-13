@@ -34,7 +34,29 @@ public:
         Dead
     };
 
-    static Process* create_kernel_process(String name, void (*entry)());
+    template<typename F>
+    static void kernel_process_entry(void* data) {
+        F* entry = reinterpret_cast<F*>(data);
+        (*entry)();
+        delete entry;
+    }
+
+    static void kernel_process_entry(void* data) {
+        auto* entry = reinterpret_cast<void(*)()>(data);
+        (*entry)();
+    }
+
+    template<typename F>
+    static Process* create_kernel_process(String name, F entry) {
+        F* data = new F(move(entry));
+        return create_kernel_process(move(name), kernel_process_entry<F>, data);
+    }
+
+    static Process* create_kernel_process(String name, void (*entry)()) {
+        return create_kernel_process(move(name), kernel_process_entry, reinterpret_cast<void*>(entry));
+    }
+    
+    static Process* create_kernel_process(String name, void (*entry)(void*), void* data = nullptr);
     static Process* create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments, TTY* = nullptr);
 
     State state() const { return m_state; }
@@ -61,7 +83,7 @@ public:
     Thread* get_thread(pid_t id) const;
     Thread* get_main_thread() const;
 
-    Thread* spawn(String name, void (*entry)());
+    Thread* spawn(String name, void (*entry)(void*), void* data = nullptr);
 
     Process* fork(arch::Registers&);
 
@@ -111,7 +133,8 @@ private:
         pid_t id, 
         String name, 
         bool kernel, 
-        void (*entry)(), 
+        void (*entry)(void*),
+        void* entry_data = nullptr,
         RefPtr<fs::ResolvedInode> cwd = nullptr,
         ProcessArguments arguments = {},
         TTY* tty = nullptr,

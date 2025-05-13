@@ -26,10 +26,10 @@ public:
         Dead
     };
 
-    using Entry = void (*)();
+    using Entry = void (*)(void*);
 
-    static Thread* create(u32 id, String name, Process*, Entry, ProcessArguments&);
-    static Thread* create(String name, Process*, Entry, ProcessArguments&);
+    static Thread* create(u32 id, String name, Process*, Entry, void* entry_data, ProcessArguments&);
+    static Thread* create(String name, Process*, Entry, void* entry_data, ProcessArguments&);
 
     pid_t id() const { return m_id; }
     pid_t pid() const;
@@ -72,7 +72,7 @@ private:
     friend class Process;
     friend class Scheduler;
 
-    Thread(String name, Process*, pid_t id, Entry, ProcessArguments&);
+    Thread(String name, Process*, pid_t id, Entry, void* entry_data, ProcessArguments&);
     Thread(Process*, arch::Registers&);
 
     void create_stack();
@@ -89,6 +89,8 @@ private:
     bool m_should_unblock_next = false;
 
     Entry m_entry;
+    void* m_entry_data = nullptr;
+
     String m_name;
 
     Stack m_kernel_stack;

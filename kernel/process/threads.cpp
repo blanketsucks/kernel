@@ -2,21 +2,22 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
 #include <kernel/process/blocker.h>
+#include <kernel/time/rtc.h>
 #include <std/format.h>
 
 namespace kernel {
 
-Thread* Thread::create(u32 id, String name, Process* process, Entry entry, ProcessArguments& arguments) {
-    return new Thread(move(name), process, id, entry, arguments);
+Thread* Thread::create(u32 id, String name, Process* process, Entry entry, void* entry_data, ProcessArguments& arguments) {
+    return new Thread(move(name), process, id, entry, entry_data, arguments);
 }
 
-Thread* Thread::create(String name, Process* process, Entry entry, ProcessArguments& arguments) {
-    return new Thread(move(name), process, generate_id(), entry, arguments);
+Thread* Thread::create(String name, Process* process, Entry entry, void* entry_data, ProcessArguments& arguments) {
+    return new Thread(move(name), process, generate_id(), entry, entry_data, arguments);
 }
 
 Thread::Thread(
-    String name, Process* process, pid_t id, Entry entry, ProcessArguments& arguments
-) : m_id(id), m_state(Running), m_entry(entry), m_name(move(name)), m_process(process), m_arguments(arguments) {
+    String name, Process* process, pid_t id, Entry entry, void* entry_data, ProcessArguments& arguments
+) : m_id(id), m_state(Running), m_entry(entry), m_entry_data(entry_data), m_name(move(name)), m_process(process), m_arguments(arguments) {
     this->create_stack();
 }
 
@@ -63,6 +64,8 @@ void Thread::create_stack() {
 
         m_registers.cs = arch::KERNEL_CODE_SELECTOR;
         m_registers.ss = arch::KERNEL_DATA_SELECTOR;
+
+        m_registers.set_entry_data(reinterpret_cast<FlatPtr>(m_entry_data));
     }
 
     FlatPtr kernel_stack_top = m_kernel_stack.top();

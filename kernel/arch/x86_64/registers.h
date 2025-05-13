@@ -45,6 +45,10 @@ struct ThreadRegisters {
     void set_ip(FlatPtr ip) { rip = ip; }
     void set_bp(FlatPtr bp) { rbp = bp; }
 
+    void set_entry_data(FlatPtr data) {
+        rdi = data;
+    }
+
     FlatPtr flags() const { return rflags; }
     FlatPtr ip() const { return rip; }
     FlatPtr sp() const { return rsp; }
