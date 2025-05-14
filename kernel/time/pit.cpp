@@ -6,26 +6,15 @@
 
 namespace kernel {
 
-static PIT* s_pit = nullptr;
-
-void PIT::init() {
-    if (s_pit) {
-        return;
-    }
-
-    s_pit = new PIT();
-
-    s_pit->set_frequency(DEFAULT_FREQUENCY);
-    s_pit->enable_irq();
+RefPtr<PIT> PIT::create() {
+    return RefPtr<PIT>(new PIT);
 }
 
-PIT* PIT::instance() {
-    return s_pit;
-}
+PIT::PIT() : Timer(0) {
+    io::write<u8>(COMMAND, Access::Channel0 | Access::LowHighByte | Access::SquareWave);
+    this->set_frequency(DEFAULT_FREQUENCY);
 
-void PIT::handle_irq() {
-    m_ticks++;
-    TimeManager::tick();
+    this->enable_irq();
 }
 
 void PIT::set_frequency(u32 frequency) {
@@ -34,10 +23,10 @@ void PIT::set_frequency(u32 frequency) {
     u8 low = divisor & 0xFF;
     u8 high = (divisor >> 8) & 0xFF;
 
-    io::write<u8>(COMMAND, 0x36);
-
     io::write<u8>(CHANNEL0, low);
     io::write<u8>(CHANNEL0, high);
+
+    m_frequency = frequency;
 }
 
 }
