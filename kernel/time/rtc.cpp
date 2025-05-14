@@ -98,4 +98,8 @@ void init() {
     s_boot_time = now();
 }
 
+time_t boot_time() {
+    return s_boot_time;
+}
+
 }
