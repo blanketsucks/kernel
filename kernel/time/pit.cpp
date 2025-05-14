@@ -6,24 +6,31 @@
 
 #include <std/format.h>
 
-namespace kernel::pit {
+namespace kernel {
 
-u32 s_ticks = 0;
-PIT* s_pit = nullptr;
+static PIT* s_pit = nullptr;
 
-void PIT::handle_irq() {
-    s_ticks++;
-    Scheduler::invoke_async();
-}
+void PIT::init() {
+    if (s_pit) {
+        return;
+    }
 
-void init() {
-    set_frequency(DEFAULT_FREQUENCY);
     s_pit = new PIT();
 
+    s_pit->set_frequency(DEFAULT_FREQUENCY);
     s_pit->enable_irq();
 }
 
-void set_frequency(u32 frequency) {
+PIT* PIT::instance() {
+    return s_pit;
+}
+
+void PIT::handle_irq() {
+    m_ticks++;
+    Scheduler::invoke_async();
+}
+
+void PIT::set_frequency(u32 frequency) {
     u32 divisor = INPUT_CLOCK / frequency;
 
     u8 low = divisor & 0xFF;
@@ -33,10 +40,6 @@ void set_frequency(u32 frequency) {
 
     io::write<u8>(CHANNEL0, low);
     io::write<u8>(CHANNEL0, high);
-}
-
-u32 ticks() {
-    return s_ticks;
 }
 
 }

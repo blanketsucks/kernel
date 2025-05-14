@@ -78,7 +78,9 @@ extern "C" void main(BootInfo const& boot_info) {
     Processor::init();
 
     pic::init();
-    pit::init();
+
+    PIT::init();
+    rtc::init();
 
     KeyboardDevice::init();
     MouseDevice::init();
