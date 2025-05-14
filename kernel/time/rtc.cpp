@@ -79,7 +79,7 @@ time_t now() {
     u32 year, month, day, hour, minute, second;
     read_time_registers(year, month, day, hour, minute, second);
 
-    time_t result = second + (minute * 60) + (hour * 3600) + ((day - 1) * 86400);
+    time_t result = second + (minute * 60) + (hour * 3600) + (day * 86400);
     for (u32 i = 0; i < month - 1; i++) {
         result += DAYS_IN_MONTH[i] * 86400;
     }
