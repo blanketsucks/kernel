@@ -1,6 +1,7 @@
 #include <kernel/arch/processor.h>
 #include <kernel/arch/registers.h>
 #include <kernel/process/threads.h>
+#include <kernel/arch/cpu.h>
 
 namespace kernel {
 
@@ -80,6 +81,11 @@ String Processor::features_string() const {
     }
 
     return features;
+}
+
+InterruptState Processor::interrupt_state() const {
+    arch::Flags flags(arch::cpu_flags());
+    return (flags.if_) ? InterruptState::Enabled : InterruptState::Disabled;
 }
 
 }

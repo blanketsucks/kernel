@@ -7,6 +7,11 @@
 
 namespace kernel {
 
+enum class InterruptState {
+    Disabled = 0,
+    Enabled = 1,
+};
+
 class Processor {
 public:
     static void init();
@@ -33,6 +38,8 @@ public:
     String const& brand() const { return m_brand; }
 
     String features_string() const;
+
+    InterruptState interrupt_state() const;
 
 private:
     void preinit();
