@@ -1,16 +1,17 @@
 #include <kernel/time/hpet/timer.h>
 #include <kernel/time/hpet/hpet.h>
 #include <kernel/time/manager.h>
+#include <kernel/arch/processor.h>
 
 #include <std/format.h>
 
 namespace kernel {
 
-OwnPtr<HPETTimer> HPETTimer::create(HPET* hpet, u8 irq, u8 id) {
-    return OwnPtr<HPETTimer>(new HPETTimer(hpet, irq, id));
+RefPtr<HPETTimer> HPETTimer::create(HPET* hpet, u8 irq, u8 id) {
+    return RefPtr<HPETTimer>(new HPETTimer(hpet, irq, id));
 }
 
-HPETTimer::HPETTimer(HPET* hpet, u8 irq, u8 id) : IRQHandler(irq), m_hpet(hpet), m_id(id), m_configuration(hpet->timer_configuration_for(id)) {
+HPETTimer::HPETTimer(HPET* hpet, u8 irq, u8 id) : Timer(irq), m_hpet(hpet), m_id(id), m_configuration(hpet->timer_configuration_for(id)) {
     TimerConfigurationAndCapabilities configuration(m_configuration->configuration_and_capabilities);
 
     m_64_bit_capable = configuration.size_capable;
@@ -26,11 +27,10 @@ HPETTimer::HPETTimer(HPET* hpet, u8 irq, u8 id) : IRQHandler(irq), m_hpet(hpet),
 }
 
 void HPETTimer::handle_irq() {
+    Timer::handle_irq();
     if (!m_is_periodic) {
         this->update();
     }
-
-    TimeManager::tick();
 }
 
 void HPETTimer::enable() {

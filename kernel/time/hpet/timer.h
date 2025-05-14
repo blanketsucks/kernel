@@ -2,19 +2,21 @@
 
 #include <kernel/common.h>
 #include <kernel/time/hpet/defs.h>
+#include <kernel/time/timer.h>
 #include <kernel/arch/irq.h>
 
 #include <std/memory.h>
+#include <std/function.h>
 
 namespace kernel {
 
 class HPET;
 
-static constexpr size_t DEFAULT_HPET_TIMER_FREQUENCY = 100; // 100 Hz
+static constexpr size_t DEFAULT_HPET_TIMER_FREQUENCY = 1; // 100 Hz
 
-class HPETTimer : public IRQHandler {
+class HPETTimer : public Timer {
 public:
-    static OwnPtr<HPETTimer> create(HPET*, u8 irq, u8 id);
+    static RefPtr<HPETTimer> create(HPET*, u8 irq, u8 id);
 
     u8 id() const { return m_id; }
 
