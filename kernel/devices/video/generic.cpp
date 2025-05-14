@@ -32,7 +32,7 @@ ErrorOr<void*> GenericVideoDevice::mmap(Process& process, size_t size, int prot)
 }
 
 ErrorOr<int> GenericVideoDevice::ioctl(unsigned request, unsigned arg) {
-    auto* process = Scheduler::current_process();
+    auto* process = Process::current();
     switch (request) {
         case FB_GET_RESOLUTION: {
             auto* resolution = reinterpret_cast<FrameBufferResolution*>(arg);

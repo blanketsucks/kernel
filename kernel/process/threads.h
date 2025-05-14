@@ -31,6 +31,8 @@ public:
     static Thread* create(u32 id, String name, Process*, Entry, void* entry_data, ProcessArguments&);
     static Thread* create(String name, Process*, Entry, void* entry_data, ProcessArguments&);
 
+    static Thread* current();
+
     pid_t id() const { return m_id; }
     pid_t pid() const;
 

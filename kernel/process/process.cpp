@@ -24,6 +24,10 @@ Process* Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedI
     return process;
 }
 
+Process* Process::current() {
+    return Scheduler::current_process();
+}
+
 Process::Process(
     pid_t id,
     String name,
@@ -615,7 +619,7 @@ int Process::sys$waitpid(pid_t pid, int* status, int options) {
         return 0;
     }
 
-    auto* thread = Scheduler::current_thread();
+    auto* thread = Thread::current();
     auto* blocker = WaitBlocker::create(thread, pid);
 
     thread->block(blocker);
@@ -625,7 +629,7 @@ int Process::sys$waitpid(pid_t pid, int* status, int options) {
 }
 
 FlatPtr Process::handle_syscall(arch::Registers* registers) {
-    Thread* thread = Scheduler::current_thread();
+    Thread* thread = Thread::current();
     FlatPtr syscall, arg1, arg2, arg3, arg4;
 
     registers->capture_syscall_arguments(syscall, arg1, arg2, arg3, arg4);

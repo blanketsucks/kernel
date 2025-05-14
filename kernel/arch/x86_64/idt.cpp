@@ -26,7 +26,7 @@ extern "C" void _interrupt_exception_handler(InterruptRegisters* regs) {
             memory::MemoryManager::page_fault_handler(regs);
             break;
         case Interrupt::GeneralProtectionFault: {
-            auto* process = Scheduler::current_process();
+            auto* process = Process::current();
             if (!process || process->is_kernel()) {
                 dbgln("\033[1;31mGeneral protection fault in kernel at IP={:#p}:\033[0m", regs->rip);
                 dbgln("  \033[1;31mError code: {:#x}\033[0m", regs->errno);

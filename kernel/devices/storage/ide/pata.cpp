@@ -126,7 +126,7 @@ void PATADevice::wait_while_busy() const {
 }
 
 void PATADevice::wait_for_irq() {
-    Thread* thread = Scheduler::current_thread();
+    Thread* thread = Thread::current();
     thread->block(&m_irq_blocker);
 }
 

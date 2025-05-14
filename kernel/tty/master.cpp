@@ -48,7 +48,7 @@ void PTYMaster::on_slave_write(const u8* buffer, size_t size) {
 }
 
 ErrorOr<int> PTYMaster::ioctl(unsigned request, unsigned arg) {
-    Process* process = Scheduler::current_process();
+    Process* process = Process::current();
     switch (request) {
         case TIOCGPTN: {
             process->validate_write(reinterpret_cast<int*>(arg), sizeof(int));

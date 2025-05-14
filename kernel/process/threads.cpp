@@ -15,6 +15,10 @@ Thread* Thread::create(String name, Process* process, Entry entry, void* entry_d
     return new Thread(move(name), process, generate_id(), entry, entry_data, arguments);
 }
 
+Thread* Thread::current() {
+    return Scheduler::current_thread();
+}
+
 Thread::Thread(
     String name, Process* process, pid_t id, Entry entry, void* entry_data, ProcessArguments& arguments
 ) : m_id(id), m_state(Running), m_entry(entry), m_entry_data(entry_data), m_name(move(name)), m_process(process), m_arguments(arguments) {

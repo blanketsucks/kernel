@@ -93,7 +93,7 @@ void UHCIController::spawn_poll_process() {
 }
 
 void UHCIController::poll_connected_ports() {
-    auto* thread = Scheduler::current_thread();
+    auto* thread = Thread::current();
 
     while (true) {
         for (size_t i = 0; i < 2; i++) {

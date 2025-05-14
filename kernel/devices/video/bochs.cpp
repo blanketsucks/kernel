@@ -111,7 +111,7 @@ void BochsVGADevice::set_pixel(i32 x, i32 y, u32 color) {
 }
 
 ErrorOr<int> BochsVGADevice::ioctl(unsigned request, unsigned arg) {
-    auto* process = Scheduler::current_process();
+    auto* process = Process::current();
     switch (request) {
         case FB_GET_RESOLUTION: {
             auto* resolution = reinterpret_cast<FrameBufferResolution*>(arg);

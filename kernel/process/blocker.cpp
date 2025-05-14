@@ -10,7 +10,7 @@ namespace kernel {
 static Vector<WaitBlocker*> s_wait_blockers;
 
 void Blocker::wait() {
-    auto* thread = Scheduler::current_thread();
+    auto* thread = Thread::current();
     thread->block(this);
 }
 

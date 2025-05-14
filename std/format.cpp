@@ -116,7 +116,7 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
     FormatBuffer buffer;
 
 #ifdef __KERNEL__
-    auto* thread = kernel::Scheduler::current_thread();
+    auto* thread = kernel::Thread::current();
     if (!thread) {
         buffer.append("[Kernel]: ");
     } else {

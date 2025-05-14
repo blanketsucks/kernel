@@ -11,7 +11,7 @@ namespace kernel {
 extern "C" void _syscall_interrupt_handler(arch::InterruptRegisters*);
 
 extern "C" void _syscall_handler(arch::Registers* regs) {
-    auto* process = Scheduler::current_process();
+    auto* process = Process::current();
     regs->eax = process->handle_syscall(regs);
 }
 

@@ -47,7 +47,7 @@ void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
     // No user process can ever allocate in the first page of memory so this is a safe assumption
     bool is_null_pointer_dereference = address < PAGE_SIZE;
 
-    auto* thread = Scheduler::current_thread();
+    auto* thread = Thread::current();
     if (!thread || thread->is_kernel()) {
         PageFault fault = regs->errno;
 

@@ -53,6 +53,8 @@ public:
     static Process* create_kernel_process(String name, void (*entry)(void*), void* data = nullptr);
     static Process* create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments, TTY* = nullptr);
 
+    static Process* current();
+
     State state() const { return m_state; }
 
     pid_t id() const { return m_id; }

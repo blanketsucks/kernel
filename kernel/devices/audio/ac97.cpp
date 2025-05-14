@@ -196,7 +196,7 @@ bool AC97Device::set_sample_rate(u16 sample_rate) {
 }
 
 ErrorOr<int> AC97Device::ioctl(unsigned request, unsigned arg) {
-    auto* process = Scheduler::current_process();
+    auto* process = Process::current();
     switch (request) {
         // FIXME: Support the rest (SOUNDCARD_SET_VOLUME, SOUNDCARD_GET_VOLUME)
         case SOUNDCARD_GET_CHANNELS: {

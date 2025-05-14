@@ -100,7 +100,7 @@ extern "C" void main(BootInfo const& boot_info) {
 }
 
 void stage2() {
-    auto* process = Scheduler::current_process();
+    auto* process = Process::current();
 
     dbgln("PCI Bus:");
     pci::enumerate([](pci::Device device) {
