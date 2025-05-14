@@ -1,8 +1,6 @@
 #include <kernel/time/pit.h>
 #include <kernel/arch/io.h>
-#include <kernel/serial.h>
-#include <kernel/arch/cpu.h>
-#include <kernel/process/scheduler.h>
+#include <kernel/time/manager.h>
 
 #include <std/format.h>
 
@@ -27,7 +25,7 @@ PIT* PIT::instance() {
 
 void PIT::handle_irq() {
     m_ticks++;
-    Scheduler::invoke_async();
+    TimeManager::tick();
 }
 
 void PIT::set_frequency(u32 frequency) {

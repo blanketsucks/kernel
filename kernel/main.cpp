@@ -19,6 +19,7 @@
 #include <kernel/time/rtc.h>
 #include <kernel/time/pit.h>
 #include <kernel/time/hpet/hpet.h>
+#include <kernel/time/manager.h>
 
 #include <kernel/memory/manager.h>
 #include <kernel/memory/liballoc.h>
@@ -79,8 +80,7 @@ extern "C" void main(BootInfo const& boot_info) {
 
     pic::init();
 
-    PIT::init();
-    rtc::init();
+    TimeManager::init();
 
     KeyboardDevice::init();
     MouseDevice::init();

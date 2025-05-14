@@ -1,5 +1,6 @@
 #include <kernel/time/hpet/timer.h>
 #include <kernel/time/hpet/hpet.h>
+#include <kernel/time/manager.h>
 
 #include <std/format.h>
 
@@ -25,10 +26,11 @@ HPETTimer::HPETTimer(HPET* hpet, u8 irq, u8 id) : IRQHandler(irq), m_hpet(hpet),
 }
 
 void HPETTimer::handle_irq() {
-    dbgln("HPET Timer {} IRQ @ {}", m_id, irq());
     if (!m_is_periodic) {
         this->update();
     }
+
+    TimeManager::tick();
 }
 
 void HPETTimer::enable() {
