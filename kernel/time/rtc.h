@@ -5,6 +5,9 @@
 
 namespace kernel::rtc {
 
+void init();
+time_t boot_time();
+
 time_t now();
 
 }

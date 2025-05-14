@@ -3,6 +3,8 @@
 
 namespace kernel::rtc {
 
+static time_t s_boot_time = 0;
+
 static const u32 DAYS_IN_MONTH[] = {
     31, // January
     28, // February
@@ -90,6 +92,10 @@ time_t now() {
 
     result += (year - 1970) * 31536000;
     return result;
+}
+
+void init() {
+    s_boot_time = now();
 }
 
 }
