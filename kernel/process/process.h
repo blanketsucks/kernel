@@ -12,12 +12,6 @@
 #include <std/hash_map.h>
 #include <std/string.h>
 
-#define VALIDATE_MEMORY_ACCESS(ptr, size, write)                            \
-    auto* thread = Scheduler::current_thread();                             \
-    if (thread) {                                                           \
-        thread->process().validate_pointer_access(ptr, size, write);        \
-    }
-
 namespace kernel {
 
 class Thread;
