@@ -10,7 +10,7 @@ namespace kernel {
 
 class HPET {
 public:
-    static void init();
+    static bool init();
     static HPET* instance();
 
     void enable();
@@ -27,7 +27,7 @@ public:
     u64 counter();
 
 private:
-    void initialize();
+    bool initialize();
 
     HPETRegisters* m_registers = nullptr;
 

@@ -12,18 +12,31 @@ HPET* HPET::instance() {
     return s_instance;
 }
 
-void HPET::init() {
+bool HPET::init() {
     if (s_instance) {
-        return;
+        return false;
     }
 
     auto* hpet = s_instance = new HPET;
-    hpet->initialize();
+    bool result = hpet->initialize();
+
+    if (!result) {
+        delete hpet;
+        s_instance = nullptr;
+
+        return false;
+    }
+
+    return true;
 }
 
-void HPET::initialize() {
+bool HPET::initialize() {
     auto* parser = acpi::Parser::instance();
     auto* hpet = parser->find_table<HPETTable>("HPET");
+
+    if (!hpet) {
+        return false;
+    }
 
     m_registers = reinterpret_cast<HPETRegisters*>(
         MM->map_physical_region(reinterpret_cast<void*>(hpet->address.address), sizeof(HPETRegisters))
@@ -59,6 +72,8 @@ void HPET::initialize() {
 
     dbgln();
     this->enable();
+
+    return true;
 }
 
 void HPET::enable() {
