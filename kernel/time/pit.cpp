@@ -13,7 +13,6 @@ PIT* s_pit = nullptr;
 
 void PIT::handle_irq() {
     s_ticks++;
-    // dbgln("Tick: {}", s_ticks);
     Scheduler::invoke_async();
 }
 

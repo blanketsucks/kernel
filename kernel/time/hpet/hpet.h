@@ -1,0 +1,41 @@
+#pragma once
+
+#include <kernel/common.h>
+#include <kernel/time/hpet/defs.h>
+#include <kernel/time/hpet/timer.h>
+
+#include <std/memory.h>
+
+namespace kernel {
+
+class HPET {
+public:
+    static void init();
+    static HPET* instance();
+
+    void enable();
+    void disable();
+
+    HPETRegisters* registers() const { return m_registers; }
+    TimerConfiguration* timer_configuration_for(u8 id) const;
+
+    u32 counter_clock_period() const { return m_counter_clock_period; }
+    size_t frequency() const { return 1e15 / m_counter_clock_period; }
+
+    u32 minimum_tick() const { return m_minimum_tick; }
+
+    u64 counter();
+
+private:
+    void initialize();
+
+    HPETRegisters* m_registers = nullptr;
+
+    u32 m_counter_clock_period;
+    u32 m_minimum_tick;
+
+    Vector<OwnPtr<HPETTimer>> m_timers;
+};
+
+
+}

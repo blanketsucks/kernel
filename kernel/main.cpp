@@ -18,6 +18,7 @@
 
 #include <kernel/time/rtc.h>
 #include <kernel/time/pit.h>
+#include <kernel/time/hpet/hpet.h>
 
 #include <kernel/memory/manager.h>
 #include <kernel/memory/liballoc.h>
@@ -105,6 +106,9 @@ void stage2() {
     });
     
     dbgln();
+
+    acpi::Parser::instance()->init();
+    HPET::init();
 
     CommandLine::init();
     
