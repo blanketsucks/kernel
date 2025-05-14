@@ -30,6 +30,9 @@ public:
 
     u64 counter();
 
+    // Return the time passed in ns since the last call to this function
+    u64 deltatime_ns(u64& seconds_since_boot, u64& current_ticks, bool update = true);
+
 private:
     bool initialize();
 

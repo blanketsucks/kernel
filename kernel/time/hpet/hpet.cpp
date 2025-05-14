@@ -100,4 +100,28 @@ u64 HPET::counter() {
     return m_registers->main_counter_value;
 }
 
+u64 HPET::deltatime_ns(u64& seconds_since_boot, u64& current_ticks, bool update) {
+    u64 counter = this->counter();
+
+    u64 delta = 0;
+    if (counter >= m_last_counter) {
+        delta = counter - m_last_counter;
+    } else {
+        // The counter has wrapped around
+        delta = (0xFFFFFFFFFFFFFFFF - m_last_counter) + counter;
+    }
+
+    u64 ticks = current_ticks + delta;
+    u64 frequency = this->frequency();
+    
+    seconds_since_boot += ticks / frequency;
+    current_ticks = ticks % frequency;
+    
+    if (update) {
+        m_last_counter = counter;
+    }
+
+    return delta * 1e9 / frequency;
+}
+
 }
