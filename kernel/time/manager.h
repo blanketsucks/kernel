@@ -7,6 +7,7 @@
 #include <kernel/sync/spinlock.h>
 
 #include <std/atomic.h>
+#include <std/time.h>
 
 namespace kernel {
 
@@ -16,14 +17,16 @@ public:
     static TimeManager* instance();
 
     static timespec ns_to_timespec(u64 ns) {
-        return { static_cast<time_t>(ns / 1e9), static_cast<long>(ns % (long)1e9) };
+        return { static_cast<time_t>(ns / 1'000'000'000), static_cast<long>(ns % 1'000'000'000) };
     }
+
+    static Duration query_time(clockid_t);
 
     static time_t boot_time();
     static void tick();
 
     u64 epoch_time();
-    u64 monotonic_time();
+    Duration monotonic_time();
 
 private:
     TimeManager() = default;
@@ -36,6 +39,8 @@ private:
     void timer_tick();
     void update_time();
 
+    RefPtr<Timer> m_system_timer;
+
     u64 m_ticks_per_second = 0;
     
     u64 m_seconds_since_boot = 0;
@@ -43,9 +48,10 @@ private:
 
     u64 m_epoch_time = 0; // in nanoseconds
 
-    RefPtr<Timer> m_system_timer;
-
-    SpinLock m_lock;
+    // TODO: Maybe use a lock instead in epoch_time() and monotonic_time(), but for some reason adding a lock
+    // makes the kernel go insane and crash.
+    std::Atomic<u32> m_timer_update1;
+    std::Atomic<u32> m_timer_update2;
 };
 
 }
