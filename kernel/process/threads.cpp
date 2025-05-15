@@ -2,7 +2,7 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
 #include <kernel/process/blocker.h>
-#include <kernel/time/rtc.h>
+#include <kernel/time/manager.h>
 #include <std/format.h>
 
 namespace kernel {
@@ -197,8 +197,8 @@ void Thread::unblock() {
     Scheduler::queue(this);
 }   
 
-void Thread::sleep(i32 seconds) {
-    auto* blocker = new SleepBlocker(rtc::now() + seconds);
+void Thread::sleep(clockid_t clock_id, const Duration& duration) {
+    auto* blocker = new SleepBlocker(duration, clock_id);
     this->block(blocker);
 }
 

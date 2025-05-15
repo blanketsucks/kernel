@@ -2,6 +2,9 @@
 
 #include <kernel/common.h>
 #include <kernel/posix/sys/types.h>
+#include <kernel/posix/time.h>
+
+#include <std/time.h>
 
 namespace kernel {
 
@@ -30,12 +33,13 @@ private:
 
 class SleepBlocker : public Blocker {
 public:
-    SleepBlocker(i32 wake_time) : m_wake_time(wake_time) {}
+    SleepBlocker(Duration duration, clockid_t clock_id);
 
     bool should_unblock() override;
 
 private:
-    i32 m_wake_time;
+    Duration m_deadline;
+    clockid_t m_clock_id;  
 };
 
 class WaitBlocker : public Blocker {

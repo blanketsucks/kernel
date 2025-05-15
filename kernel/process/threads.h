@@ -1,10 +1,13 @@
 #pragma once
 
 #include <kernel/posix/sys/types.h>
+#include <kernel/posix/time.h>
 #include <kernel/process/stack.h>
+
 
 #include <std/format.h>
 #include <std/string.h>
+#include <std/time.h>
 
 namespace kernel {
 
@@ -62,7 +65,10 @@ public:
     
     void set_blocker(Blocker* blocker) { m_blocker = blocker; }
 
-    void sleep(i32 seconds);
+    void sleep(clockid_t, const Duration& duration);
+    void sleep(const Duration& duration) {
+        this->sleep(CLOCK_MONOTONIC, duration);
+    }
 
     void block(Blocker*);
     void unblock();

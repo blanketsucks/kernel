@@ -3,7 +3,7 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
 #include <kernel/posix/sys/wait.h>
-#include <kernel/time/rtc.h>
+#include <kernel/time/manager.h>
 
 namespace kernel {
 
@@ -14,8 +14,19 @@ void Blocker::wait() {
     thread->block(this);
 }
 
+SleepBlocker::SleepBlocker(Duration duration, clockid_t clock_id) : m_clock_id(clock_id) {
+    m_deadline = TimeManager::query_time(clock_id) + duration;
+}
+
 bool SleepBlocker::should_unblock() {
-    return m_wake_time <= rtc::now();
+    Duration current = TimeManager::query_time(m_clock_id);
+    Duration remaining = m_deadline - current;
+
+    if (remaining <= Duration::zero()) {
+        return true;
+    }
+
+    return false;
 }
 
 WaitBlocker* WaitBlocker::create(Thread* thread, pid_t pid) {
