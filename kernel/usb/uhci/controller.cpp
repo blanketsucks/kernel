@@ -93,6 +93,8 @@ void UHCIController::spawn_poll_process() {
 }
 
 void UHCIController::poll_connected_ports() {
+    using namespace std::time_literals;
+
     auto* thread = Thread::current();
 
     while (true) {
@@ -107,7 +109,7 @@ void UHCIController::poll_connected_ports() {
             this->enable_port(i);
         }
 
-        thread->sleep(1);
+        thread->sleep(1_s);
     }
 }
 
