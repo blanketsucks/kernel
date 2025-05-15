@@ -24,3 +24,10 @@ struct timezone {
     int tz_minuteswest;
     int tz_dsttime;
 };
+
+typedef int clockid_t;
+
+enum {
+    CLOCK_REALTIME,
+    CLOCK_MONOTONIC,
+};
