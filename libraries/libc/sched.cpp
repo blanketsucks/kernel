@@ -5,8 +5,4 @@
 
 extern "C" {
 
-int sched_yield() {
-    return syscall(SYS_YIELD);
-}
-
 }
