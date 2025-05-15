@@ -23,8 +23,8 @@ public:
         return m_timers[id];
     }
 
-    u32 counter_clock_period() const { return m_counter_clock_period; }
-    size_t frequency() const { return 1e15 / m_counter_clock_period; }
+    u32 counter_clock_period() const { return m_counter_clock_period; } // In femtoseconds
+    u64 frequency() const { return 1'000'000'000'000'000ull / (u64)m_counter_clock_period; }
 
     u32 minimum_tick() const { return m_minimum_tick; }
 

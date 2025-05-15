@@ -50,8 +50,8 @@ bool HPET::initialize() {
     m_counter_clock_period = capabilities.counter_clock_period;
     m_minimum_tick = hpet->minimum_tick;
 
-    u64 frequency = 1e15 / m_counter_clock_period;
-    u32 mhz = frequency / 1e6;
+    u64 frequency = 1'000'000'000'000'000ull / (u64)m_counter_clock_period;
+    u32 mhz = frequency / 1'000'000;
 
     dbgln("HPET:");
     dbgln(" - Timer Count: {}", hpet->comparator_count);
@@ -112,7 +112,7 @@ u64 HPET::deltatime_ns(u64& seconds_since_boot, u64& current_ticks, bool update)
     }
 
     u64 ticks = current_ticks + delta;
-    u64 frequency = this->frequency();
+    auto frequency = this->frequency();
     
     seconds_since_boot += ticks / frequency;
     current_ticks = ticks % frequency;
@@ -121,7 +121,7 @@ u64 HPET::deltatime_ns(u64& seconds_since_boot, u64& current_ticks, bool update)
         m_last_counter = counter;
     }
 
-    return delta * 1e9 / frequency;
+    return (delta * 1'000'000'000ull) / frequency;
 }
 
 }
