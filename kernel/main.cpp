@@ -79,13 +79,14 @@ extern "C" void main(BootInfo const& boot_info) {
     Processor::init();
 
     pic::init();
-
-    TimeManager::init();
-
+    
     KeyboardDevice::init();
     MouseDevice::init();
     
     memory::MemoryManager::init();
+
+    acpi::Parser::instance()->init();
+    TimeManager::init();
 
     asm volatile("sti");
 
@@ -108,9 +109,6 @@ void stage2() {
     });
     
     dbgln();
-
-    acpi::Parser::instance()->init();
-    HPET::init();
 
     CommandLine::init();
     
