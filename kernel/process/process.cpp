@@ -336,33 +336,33 @@ void Process::kill() {
     Scheduler::yield();
 }
 
-void Process::sys$exit(int status) {
+ErrorOr<FlatPtr> Process::sys$exit(int status) {
     dbgln("Process exited with status {}.", status);
 
     m_exit_status = status;
     WaitBlocker::try_wake_all(this, status);
 
     this->kill();
+    return 0;
 }
 
-int Process::sys$open(const char* pathname, int flags, mode_t mode) {
+ErrorOr<FlatPtr> Process::sys$getpid() { return m_id; }
+ErrorOr<FlatPtr> Process::sys$getppid() { return m_parent_id; }
+ErrorOr<FlatPtr> Process::sys$gettid() { return Thread::current()->id(); }
+
+ErrorOr<FlatPtr> Process::sys$open(const char* pathname, int flags, mode_t mode) {
     StringView path = this->validate_string(pathname);
     auto vfs = fs::vfs();
 
-    auto result = vfs->open(path, flags, mode, m_cwd);
-    if (result.is_err()) {
-        return -result.error().err();
-    }
+    auto fd = TRY(vfs->open(path, flags, mode, m_cwd));
 
-    auto fd = result.value();
     m_file_descriptors.append(move(fd));
-
     return m_file_descriptors.size() - 1;
 }
 
-int Process::sys$close(int fd) {
+ErrorOr<FlatPtr> Process::sys$close(int fd) {
     if (fd < 0 || static_cast<size_t>(fd) >= m_file_descriptors.size()) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     auto& file = m_file_descriptors[fd];
@@ -374,27 +374,27 @@ int Process::sys$close(int fd) {
     return 0;
 }
 
-ssize_t Process::sys$read(int fd, void* buffer, size_t size) {
+ErrorOr<FlatPtr> Process::sys$read(int fd, void* buffer, size_t size) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     this->validate_read(buffer, size);
     return file->read(buffer, size);
 }
 
-ssize_t Process::sys$write(int fd, const void* buffer, size_t size) {
+ErrorOr<FlatPtr> Process::sys$write(int fd, const void* buffer, size_t size) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     this->validate_write(buffer, size);
     return file->write(buffer, size);
 }
 
-int Process::sys$fstat(int fd, stat* buffer) {
+ErrorOr<FlatPtr> Process::sys$fstat(int fd, stat* buffer) {
     auto file = this->get_file_descriptor(fd);
 
     this->validate_write(buffer, sizeof(stat));
@@ -403,20 +403,20 @@ int Process::sys$fstat(int fd, stat* buffer) {
     return 0;
 }
 
-off_t Process::sys$lseek(int fd, off_t offset, int whence) {
+ErrorOr<FlatPtr> Process::sys$lseek(int fd, off_t offset, int whence) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     file->seek(offset, whence);
     return file->offset();
 }
 
-int Process::sys$dup(int old_fd) {
+ErrorOr<FlatPtr> Process::sys$dup(int old_fd) {
     auto file = this->get_file_descriptor(old_fd);
     if (!file) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     int new_fd = -1;
@@ -437,18 +437,25 @@ int Process::sys$dup(int old_fd) {
     return new_fd;
 }
 
-int Process::sys$dup2(int old_fd, int new_fd) {
+ErrorOr<FlatPtr> Process::sys$dup2(int old_fd, int new_fd) {
     auto file = this->get_file_descriptor(old_fd);
 
     if (new_fd < 0 || static_cast<size_t>(new_fd) >= m_file_descriptors.size()) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     m_file_descriptors[new_fd] = file;
     return new_fd;
 }
 
-void* Process::sys$mmap(void*, size_t size, int prot, int flags, int fileno, off_t) {
+ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
+    this->validate_pointer_access(args, sizeof(mmap_args), false);
+
+    size_t size = args->size;
+    int prot = args->prot;
+    int flags = args->flags;
+    int fileno = args->fd;
+
     size = std::align_up(size, PAGE_SIZE);
 
     PageFlags pflags = PageFlags::None;
@@ -461,22 +468,21 @@ void* Process::sys$mmap(void*, size_t size, int prot, int flags, int fileno, off
     void* address = nullptr;
     if (flags & MAP_ANONYMOUS) {
         address = this->allocate(size, pflags);
+        if (!address) {
+            return Error(ENOMEM);
+        }
+
     } else {
         if (fileno < 0 || static_cast<size_t>(fileno) >= m_file_descriptors.size()) {
-            return MAP_FAILED;
+            return Error(EBADF);
         }
 
         auto& fd = m_file_descriptors[fileno];
         if (!fd) {
-            return MAP_FAILED;
+            return Error(EBADF);
         }
 
-        auto result = fd->mmap(*this, size, prot);
-        if (result.is_err()) {
-            return MAP_FAILED;
-        }
-
-        address = result.value();
+        address = TRY(fd->mmap(*this, size, prot));
     }
 
     auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
@@ -486,10 +492,10 @@ void* Process::sys$mmap(void*, size_t size, int prot, int flags, int fileno, off
         region->set_shared(true);
     }
 
-    return address;
+    return (FlatPtr)address;
 }
 
-int Process::sys$getcwd(char* buffer, size_t size) {
+ErrorOr<FlatPtr> Process::sys$getcwd(char* buffer, size_t size) {
     this->validate_write(buffer, size);
 
     auto cwd = m_cwd;
@@ -499,7 +505,7 @@ int Process::sys$getcwd(char* buffer, size_t size) {
 
     auto path = cwd->fullpath();
     if (path.size() > size) {
-        return -ERANGE;
+        return Error(ERANGE);
     }
 
     memcpy(buffer, path.data(), path.size());
@@ -508,7 +514,7 @@ int Process::sys$getcwd(char* buffer, size_t size) {
     return 0;
 }
 
-int Process::sys$chdir(const char* pathname) {
+ErrorOr<FlatPtr> Process::sys$chdir(const char* pathname) {
     StringView path = this->validate_string(pathname);
 
     auto vfs = fs::vfs();
@@ -522,7 +528,7 @@ int Process::sys$chdir(const char* pathname) {
     return 0;
 }
 
-ssize_t Process::sys$readdir(int fd, void* buffer, size_t size) {
+ErrorOr<FlatPtr> Process::sys$readdir(int fd, void* buffer, size_t size) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
         return -EBADF;
@@ -531,7 +537,7 @@ ssize_t Process::sys$readdir(int fd, void* buffer, size_t size) {
     return file->file()->readdir(buffer, size);
 }
 
-int Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
+ErrorOr<FlatPtr> Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
         return -EBADF;
@@ -540,22 +546,17 @@ int Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
     return file->ioctl(request, arg);
 }
 
-int Process::sys$fork(arch::Registers& registers) {
+ErrorOr<FlatPtr> Process::sys$fork(arch::Registers& registers) {
     auto* process = this->fork(registers);
     Scheduler::add_process(process);
     
     return process->id();
 }
 
-int Process::exec(StringView path, ProcessArguments arguments) {
+ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
     auto vfs = fs::vfs();
-    auto result = vfs->open(path, O_RDONLY, 0, m_cwd);
-
-    if (result.is_err()) {
-        return -result.error().err();
-    }
-
-    auto file = result.value();
+    
+    auto file = TRY(vfs->open(path, O_RDONLY, 0, m_cwd));
     auto elf = ELF(file);
 
     auto* process = new Process(m_id, path, false, nullptr, nullptr, m_cwd, move(arguments), m_tty);
@@ -572,11 +573,10 @@ int Process::exec(StringView path, ProcessArguments arguments) {
     Scheduler::add_process(process);
 
     this->kill();
-
     return -1;
 }
 
-int Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {
+ErrorOr<FlatPtr> Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {
     ProcessArguments args;
     StringView path = this->validate_string(pathname);
 
@@ -600,15 +600,15 @@ int Process::sys$execve(const char* pathname, char* const argv[], char* const en
     return this->exec(path, args);
 }
 
-int Process::sys$waitpid(pid_t pid, int* status, int options) {
+ErrorOr<FlatPtr> Process::sys$waitpid(pid_t pid, int* status, int options) {
     this->validate_write(status, sizeof(int));
 
     if (options & WNOHANG) {
         auto* process = Scheduler::get_process(pid);
         if (!process) {
-            return -ECHILD;
+            return Error(ECHILD);
         } else if (process->parent_id() != this->id()) {
-            return -ECHILD;
+            return Error(ECHILD);
         }
 
         if (process->state() == Dead) {
@@ -626,84 +626,6 @@ int Process::sys$waitpid(pid_t pid, int* status, int options) {
     *status = blocker->status();
 
     return pid;
-}
-
-FlatPtr Process::handle_syscall(arch::Registers* registers) {
-    Thread* thread = Thread::current();
-    FlatPtr syscall, arg1, arg2, arg3, arg4;
-
-    registers->capture_syscall_arguments(syscall, arg1, arg2, arg3, arg4);
-    switch (syscall) {
-        case SYS_EXIT: {
-            this->sys$exit(arg1);
-        }
-        case SYS_OPEN: {
-            return this->sys$open(reinterpret_cast<const char*>(arg1), arg2, arg3);
-        }
-        case SYS_CLOSE: {
-            return this->sys$close(arg1);
-        }
-        case SYS_READ: {
-            return this->sys$read(arg1, reinterpret_cast<void*>(arg2), arg3);
-        }
-        case SYS_WRITE: {
-            return this->sys$write(arg1, reinterpret_cast<const void*>(arg2), arg3);
-        }
-        case SYS_FSTAT: {
-            return this->sys$fstat(arg1, reinterpret_cast<stat*>(arg2));
-        }
-        case SYS_MMAP: {
-            auto* args = reinterpret_cast<mmap_args*>(arg1);
-            return reinterpret_cast<FlatPtr>(this->sys$mmap(args->addr, args->size, args->prot, args->flags, args->fd, args->offset));
-        }
-        case SYS_GETPID: {
-            return this->id();
-        }
-        case SYS_GETPPID: {
-            return this->parent_id();
-        }
-        case SYS_GETTID: {
-            return thread->id();
-        }
-        case SYS_DUP: {
-            return this->sys$dup(arg1);
-        }
-        case SYS_DUP2: {
-            return this->sys$dup2(arg1, arg2);
-        }
-        case SYS_GETCWD: {
-            return this->sys$getcwd(reinterpret_cast<char*>(arg1), arg2);
-        }
-        case SYS_CHDIR: {
-            return this->sys$chdir(reinterpret_cast<const char*>(arg1));
-        }
-        case SYS_IOCTL: {
-            return this->sys$ioctl(arg1, arg2, arg3);
-        }
-        case SYS_FORK: {
-            return this->sys$fork(*registers);
-        }
-        case SYS_EXECVE: {
-            return this->sys$execve(reinterpret_cast<const char*>(arg1), reinterpret_cast<char* const*>(arg2), reinterpret_cast<char* const*>(arg3));
-        }
-        case SYS_READDIR: {
-            return this->sys$readdir(arg1, reinterpret_cast<void*>(arg2), arg3);
-        }
-        case SYS_LSEEK: {
-            return this->sys$lseek(arg1, arg2, arg3);
-        }
-        case SYS_YIELD: {
-            Scheduler::yield();
-            return 0;
-        }
-        case SYS_WAITPID: {
-            return this->sys$waitpid(arg1, reinterpret_cast<int*>(arg2), arg3);
-        }
-        default:
-            dbgln("Unknown syscall: {}", syscall);
-    }
-
-    return 0;
 }
 
 }
