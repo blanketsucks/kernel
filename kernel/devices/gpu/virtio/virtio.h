@@ -9,11 +9,6 @@ namespace kernel::virtio {
 #define VIRTIO_GPU_F_VIRGL (1 << 0)
 #define VIRTIO_GPU_F_EDID  (1 << 1)
 
-enum GPUFeature : u32 {
-    VirGL = 0,
-    EDID = 1
-};
-
 enum GPUControlType : u32 {
     /* 2d commands */
     GetDisplayInfo = 0x0100,
