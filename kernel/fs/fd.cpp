@@ -5,9 +5,9 @@
 
 namespace kernel::fs {
 
-size_t FileDescriptor::read(void* buffer, size_t size) {
+ErrorOr<size_t> FileDescriptor::read(void* buffer, size_t size) {
     if (!this->is_readable()) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     size_t nread = m_file->read(buffer, size, m_offset);
@@ -16,9 +16,9 @@ size_t FileDescriptor::read(void* buffer, size_t size) {
     return nread;
 }
 
-size_t FileDescriptor::write(const void* buffer, size_t size) {
+ErrorOr<size_t> FileDescriptor::write(const void* buffer, size_t size) {
     if (!this->is_writable()) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     size_t nwritten = m_file->write(buffer, size, m_offset);
@@ -63,13 +63,8 @@ ErrorOr<void*> FileDescriptor::mmap(Process& process, size_t size, int prot) {
     return m_file->mmap(process, size, prot);
 }
 
-int FileDescriptor::ioctl(unsigned request, unsigned arg) {
-    auto result = m_file->ioctl(request, arg);
-    if (result.is_err()) {
-        return -result.error().err();
-    }
-
-    return 0;
+ErrorOr<int> FileDescriptor::ioctl(unsigned request, unsigned arg) {
+    return m_file->ioctl(request, arg);
 }
 
 }

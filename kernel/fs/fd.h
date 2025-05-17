@@ -38,15 +38,15 @@ public:
     bool is_readable() const;
     bool is_writable() const;
     
-    size_t read(void* buffer, size_t size);
-    size_t write(const void* buffer, size_t size);
+    ErrorOr<size_t> read(void* buffer, size_t size);
+    ErrorOr<size_t> write(const void* buffer, size_t size);
 
     void seek(off_t offset, int whence);
 
     void close();
 
     ErrorOr<void*> mmap(Process& process, size_t size, int prot);
-    int ioctl(unsigned request, unsigned arg);
+    ErrorOr<int> ioctl(unsigned request, unsigned arg);
 
 private:
     friend class Process;

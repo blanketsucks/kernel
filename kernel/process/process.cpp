@@ -519,20 +519,15 @@ ErrorOr<FlatPtr> Process::sys$chdir(const char* pathname) {
     StringView path = this->validate_string(pathname);
 
     auto vfs = fs::vfs();
-    auto result = vfs->resolve(path, m_cwd);
+    m_cwd = TRY(vfs->resolve(path, m_cwd));
 
-    if (result.is_err()) {
-        return -result.error().err();
-    }
-
-    m_cwd = result.value();
     return 0;
 }
 
 ErrorOr<FlatPtr> Process::sys$readdir(int fd, void* buffer, size_t size) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
     return file->file()->readdir(buffer, size);
@@ -541,10 +536,10 @@ ErrorOr<FlatPtr> Process::sys$readdir(int fd, void* buffer, size_t size) {
 ErrorOr<FlatPtr> Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
-        return -EBADF;
+        return Error(EBADF);
     }
 
-    return file->ioctl(request, arg);
+    return TRY(file->ioctl(request, arg));
 }
 
 ErrorOr<FlatPtr> Process::sys$fork(arch::Registers& registers) {
