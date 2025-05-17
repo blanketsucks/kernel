@@ -25,7 +25,7 @@ public:
     static time_t boot_time();
     static void tick();
 
-    u64 epoch_time();
+    Duration epoch_time();
     Duration monotonic_time();
 
 private:
@@ -46,7 +46,7 @@ private:
     u64 m_seconds_since_boot = 0;
     u64 m_ticks = 0;
 
-    u64 m_epoch_time = 0; // in nanoseconds
+    Duration m_epoch_time;
 
     // TODO: Maybe use a lock instead in epoch_time() and monotonic_time(), but for some reason adding a lock
     // makes the kernel go insane and crash.

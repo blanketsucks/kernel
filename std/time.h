@@ -2,6 +2,12 @@
 
 #include <std/types.h>
 
+#ifdef __KERNEL__
+    #include <kernel/posix/time.h>
+#else
+    #include <time.h>
+#endif
+
 namespace std {
 
 class Duration {
@@ -38,12 +44,21 @@ public:
         return Duration(seconds, static_cast<u32>(nanoseconds));
     }
 
+    static constexpr Duration from_timespec(const timespec& ts) {
+        return Duration(ts.tv_sec, static_cast<u32>(ts.tv_nsec));
+    }
+
     constexpr Duration operator+(const Duration& other) const {
         u32 nsecs = m_nanoseconds + other.m_nanoseconds;
         i64 secs = m_seconds + other.m_seconds + (nsecs / 1'000'000'000);
 
         nsecs %= 1'000'000'000;
         return Duration(secs, nsecs);
+    }
+
+    constexpr Duration operator+=(const Duration& other) {
+        *this = *this + other;
+        return *this;
     }
 
     constexpr Duration operator-(const Duration& other) const {

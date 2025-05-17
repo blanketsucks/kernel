@@ -24,7 +24,7 @@ TimeManager* TimeManager::instance() {
 void TimeManager::initialize() {
     rtc::init();
 
-    m_epoch_time = rtc::boot_time() * 1e9;
+    m_epoch_time = Duration::from_seconds(rtc::boot_time());
 
     // Fall back to the PIT if the HPET is not available
     if (!HPET::init()) {
@@ -55,8 +55,7 @@ void TimeManager::initialize_with_pit() {
 
 Duration TimeManager::query_time(clockid_t clock_id) {
     if (clock_id == CLOCK_REALTIME) {
-        // FIXME: Have the epoch_time as a duration itself.
-        return Duration::from_nanoseconds(s_instance->epoch_time());
+        return s_instance->epoch_time();
     } else if (clock_id == CLOCK_MONOTONIC) {
         return s_instance->monotonic_time();
     }
@@ -89,13 +88,13 @@ void TimeManager::update_time() {
     m_ticks = ticks;
     m_seconds_since_boot = seconds_since_boot;
 
-    m_epoch_time += delta;
+    m_epoch_time += Duration::from_nanoseconds(delta);
 
     m_timer_update1.store(iteration + 1, std::MemoryOrder::Release);
 }
 
-u64 TimeManager::epoch_time() {
-    u64 time = 0;
+Duration TimeManager::epoch_time() {
+    Duration time;
     u32 iteration;
 
     // We do this in order to avoid reading the time while it is being updated.
