@@ -229,16 +229,6 @@ void InodeEntry::read_blocks(size_t block, size_t count, u8* buffer) const {
     if (is_contiguous) {
         m_fs->read_blocks(start_block, contiguous_count, buffer);
     }
-
-    // for (size_t i = 0; i < count; i++) {
-    //     i32 block_pointer = this->get_block_pointer(block + i);
-    //     if (block_pointer == 0) {
-    //         continue;
-    //     }
-
-    //     m_fs->read_block(block_pointer, buffer);
-    //     buffer += m_fs->block_size();
-    // }
 }
 
 void InodeEntry::write_blocks(size_t block, size_t count, const u8* buffer) {
