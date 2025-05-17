@@ -96,7 +96,6 @@ void UHCIController::poll_connected_ports() {
     using namespace std::time_literals;
 
     auto* thread = Thread::current();
-
     while (true) {
         for (size_t i = 0; i < 2; i++) {
             u16 portsc = m_port.read<u16>(IORegister::PORTSC1 + i * 2);
