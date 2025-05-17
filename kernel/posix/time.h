@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <kernel/posix/sys/types.h>
 
+#define TIMER_ABSTIME 1
+
 struct timespec {
     time_t tv_sec;
     long tv_nsec;

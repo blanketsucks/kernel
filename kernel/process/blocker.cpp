@@ -14,8 +14,12 @@ void Blocker::wait() {
     thread->block(this);
 }
 
-SleepBlocker::SleepBlocker(Duration duration, clockid_t clock_id) : m_clock_id(clock_id) {
-    m_deadline = TimeManager::query_time(clock_id) + duration;
+SleepBlocker::SleepBlocker(Duration duration, clockid_t clock_id, bool is_absolute) : m_clock_id(clock_id) {
+    if (is_absolute) {
+        m_deadline = duration;
+    } else {
+        m_deadline = TimeManager::query_time(clock_id) + duration;
+    }
 }
 
 bool SleepBlocker::should_unblock() {

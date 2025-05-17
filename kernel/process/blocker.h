@@ -27,13 +27,14 @@ public:
     bool should_unblock() override { return m_value; }
 
     void set_value(bool value) { m_value = value; }
+    
 private:
     bool m_value;
 };
 
 class SleepBlocker : public Blocker {
 public:
-    SleepBlocker(Duration duration, clockid_t clock_id);
+    SleepBlocker(Duration duration, clockid_t clock_id, bool is_absolute = false);
 
     bool should_unblock() override;
 

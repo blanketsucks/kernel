@@ -102,9 +102,11 @@ public:
     ErrorOr<FlatPtr> exec(StringView path, ProcessArguments);
 
     ErrorOr<FlatPtr> sys$exit(int status);
+
     ErrorOr<FlatPtr> sys$getpid();
     ErrorOr<FlatPtr> sys$getppid();
     ErrorOr<FlatPtr> sys$gettid();
+
     ErrorOr<FlatPtr> sys$open(const char* path, int flags, mode_t mode);
     ErrorOr<FlatPtr> sys$close(int fd);
     ErrorOr<FlatPtr> sys$read(int fd, void* buffer, size_t size);
@@ -114,13 +116,20 @@ public:
     ErrorOr<FlatPtr> sys$fstat(int fd, stat* buffer);
     ErrorOr<FlatPtr> sys$dup(int old_fd);
     ErrorOr<FlatPtr> sys$dup2(int old_fd, int new_fd);
+    ErrorOr<FlatPtr> sys$ioctl(int fd, unsigned request, unsigned arg);
+
     ErrorOr<FlatPtr> sys$mmap(mmap_args*);
+
     ErrorOr<FlatPtr> sys$getcwd(char* buffer, size_t size);
     ErrorOr<FlatPtr> sys$chdir(const char* path);
-    ErrorOr<FlatPtr> sys$ioctl(int fd, unsigned request, unsigned arg);
+    
     ErrorOr<FlatPtr> sys$fork(arch::Registers&);
     ErrorOr<FlatPtr> sys$execve(const char* pathname, char* const argv[], char* const envp[]);
+    
     ErrorOr<FlatPtr> sys$waitpid(pid_t pid, int* status, int options);
+
+    ErrorOr<FlatPtr> sys$clock_gettime(clockid_t clock_id, timespec* ts);
+    ErrorOr<FlatPtr> sys$clock_nanosleep(clockid_t clock_id, int flags, const timespec* req, timespec* rem);
     
 private:
     friend class Scheduler;

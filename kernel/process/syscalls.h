@@ -20,7 +20,9 @@
     Op(SYS_IOCTL, ioctl)        \
     Op(SYS_FORK, fork)          \
     Op(SYS_EXECVE, execve)      \
-    Op(SYS_WAITPID, waitpid)
+    Op(SYS_WAITPID, waitpid)    \
+    Op(SYS_CLOCK_GETTIME, clock_gettime)     \
+    Op(SYS_CLOCK_NANOSLEEP, clock_nanosleep)
 
 
 enum {
