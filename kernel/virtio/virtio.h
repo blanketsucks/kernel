@@ -6,7 +6,7 @@ namespace kernel::virtio {
 
 #define VIRTIO_F_VERSION_1 ((u64)1 << 32)
 
-enum DeviceType : u8 {
+enum class DeviceType : u8 {
     Reserved = 0,
     NetworkCard = 1,
     BlockDevice = 2,
@@ -40,7 +40,7 @@ enum PCICapabilities {
 };
 
 constexpr u16 pci_device_type(DeviceType type) {
-    return type + 0x1040;
+    return to_underlying(type) + 0x1040;
 }
 
 constexpr DeviceType to_device_type(u16 device_id) {
