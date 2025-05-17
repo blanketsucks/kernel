@@ -19,6 +19,10 @@ size_t get_table_size(TableHeader* table) {
 
 static DMIParser s_instance;
 
+DMIParser* DMIParser::instance() {
+    return &s_instance;
+}
+
 void DMIParser::init() {
     if (m_initialized) {
         return;
