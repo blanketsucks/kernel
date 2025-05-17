@@ -1,5 +1,6 @@
 #include <kernel/devices/gpu/virtio/device.h>
 #include <kernel/devices/gpu/virtio/virtio.h>
+#include <kernel/devices/gpu/edid.h>
 #include <kernel/pci/pci.h>
 
 #include <std/format.h>
@@ -77,7 +78,22 @@ void VirtIOGPUDevice::populate_header(GPUControlHeader& header, GPUControlType t
 ErrorOr<void> VirtIOGPUDevice::test() {
     if (accepted_features() & VIRTIO_GPU_F_EDID) {
         GPUGetEDIDResponse* response = TRY(this->get_edid(0));
-        dbgln(" - EDID size: {:#x}", response->size);
+        EDID* edid = reinterpret_cast<EDID*>(response->edid);
+
+        for (auto& timing : edid->standard_timings) {
+            dbgln(" - Standard Timing: {} @ {}Hz", (timing.x_resolution + 31) * 8, timing.vertical_frequency + 60);
+        }
+
+        for (auto& timing : edid->timings) {
+            if (timing.monitor_descriptor.descriptor != 0) {
+                continue;
+            } else if (timing.monitor_descriptor.type != 0xfc) {
+                continue;
+            }
+
+            StringView text = { reinterpret_cast<const char*>(timing.monitor_descriptor.data), 13 };
+            dbgln(" - Monitor Descriptor: {}", text);
+        }
     }
 
     auto* fb = (u32*)MM->allocate_kernel_region(768 * 1024 * 4);
