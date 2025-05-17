@@ -3,20 +3,21 @@
 #include <kernel/virtio/virtio.h>
 #include <kernel/virtio/device.h>
 #include <kernel/devices/block_device.h>
-#include <kernel/devices/video/virtio/virtio.h>
+#include <kernel/devices/gpu/virtio/virtio.h>
+#include <kernel/devices/gpu/device.h>
 
 #include <std/bytes_buffer.h>
 
 namespace kernel {
 
-class VirtIOGPUDevice : public virtio::Device, public BlockDevice {
+class VirtIOGPUDevice : public virtio::Device, public GPUDevice {
 public:
     struct Scanout {
         u32 id = 0;
         virtio::GPURect rect = {};
     };
 
-    static ErrorOr<VirtIOGPUDevice*> create();
+    static RefPtr<GPUDevice> create(pci::Device);
     
     bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
     bool write_blocks(const void*, size_t, size_t) override { return -EINVAL; }

@@ -1,14 +1,15 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/devices/block_device.h>
+#include <kernel/devices/gpu/device.h>
+#include <std/format.h>
 
 namespace kernel {
 
-class GenericVideoDevice : public BlockDevice {
+class GenericGPUDevice : public GPUDevice {
 public:
-    static GenericVideoDevice* create_from_boot();
-    static GenericVideoDevice* create(PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp);
+    static RefPtr<GenericGPUDevice> create_from_boot();
+    static RefPtr<GenericGPUDevice> create(PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp);
 
     size_t max_io_block_count() const override { return 0; }
     bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
@@ -18,10 +19,9 @@ public:
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
 
 private:
-    GenericVideoDevice(
+    GenericGPUDevice(
         PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp
-    ) : BlockDevice(DeviceMajor::Video, 0, 0), 
-        m_framebuffer(framebuffer), m_width(width), m_height(height), m_pitch(pitch), m_bpp(bpp) {}
+    ) : m_framebuffer(framebuffer), m_width(width), m_height(height), m_pitch(pitch), m_bpp(bpp) {}
 
     PhysicalAddress m_framebuffer;
 

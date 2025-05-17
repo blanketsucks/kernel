@@ -22,7 +22,7 @@ enum class DeviceMajor : u32 {
     StoragePartition = 4,
     Input = 5,
     Audio = 6,
-    Video = 7,
+    GPU = 7,
 
     PTYMultiplexer = 99,
     MasterPTY = 100,

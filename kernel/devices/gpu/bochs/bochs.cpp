@@ -1,4 +1,4 @@
-#include <kernel/devices/video/bochs.h>
+#include <kernel/devices/gpu/bochs/bochs.h>
 #include <kernel/posix/sys/ioctl.h>
 #include <kernel/process/process.h>
 #include <kernel/memory/manager.h>
@@ -10,47 +10,35 @@
 
 namespace kernel {
 
-BochsVGADevice* BochsVGADevice::s_instance = nullptr;
-
-BochsVGADevice* BochsVGADevice::create(i32 width, i32 height) {
-    pci::Address address = {};
-    pci::enumerate([&address](pci::Device device) {
-        if (device.vendor_id() == VENDOR_ID && device.device_id() == DEVICE_ID) {
-            address = device.address();
-        }
-    });
-
-    if (!address.value()) {
+RefPtr<GPUDevice> BochsGPUDevice::create(pci::Device pci_device) {
+    if (pci_device.vendor_id() != VENDOR_ID || pci_device.device_id() != DEVICE_ID) {
         return nullptr;
     }
 
-    auto* device = new BochsVGADevice();
-    device->m_physical_address = address.bar(0) & 0xFFFFFFF0;
-
-    device->set_resolution(width, height, 32, false);
+    auto device = RefPtr<BochsGPUDevice>(new BochsGPUDevice(pci_device.address()));
+    device->set_resolution(1024, 768, 32, false);
     if (!device->map()) {
         return nullptr;
     }
 
-    s_instance = device;
     return device;
 }
 
-BochsVGADevice* BochsVGADevice::instance() {
-    return s_instance;
+BochsGPUDevice::BochsGPUDevice(pci::Address address) {
+    m_physical_address = address.bar(0) & 0xfffffff0;
 }
 
-void BochsVGADevice::write_register(u16 index, u16 value) {
+void BochsGPUDevice::write_register(u16 index, u16 value) {
     io::write<u16>(VBE_IOPORT_INDEX, index);
     io::write<u16>(VBE_IOPORT_DATA, value);
 }
 
-u16 BochsVGADevice::read_register(u16 index) {
+u16 BochsGPUDevice::read_register(u16 index) {
     io::write<u16>(VBE_IOPORT_INDEX, index);
     return io::read<u16>(VBE_IOPORT_DATA);
 }
 
-void BochsVGADevice::set_resolution(i32 width, i32 height, i32 bpp, bool map) {
+void BochsGPUDevice::set_resolution(i32 width, i32 height, i32 bpp, bool map) {
     if (width > MAX_RESOLUTION_WIDTH || height > MAX_RESOLUTION_HEIGHT) {
         return;
     }
@@ -73,7 +61,7 @@ void BochsVGADevice::set_resolution(i32 width, i32 height, i32 bpp, bool map) {
     }
 }
 
-bool BochsVGADevice::map() {
+bool BochsGPUDevice::map() {
     void* framebuffer = MM->map_physical_region(reinterpret_cast<void*>(m_physical_address), this->size());
     if (!framebuffer) {
         return false;
@@ -83,7 +71,7 @@ bool BochsVGADevice::map() {
     return true;
 }
 
-bool BochsVGADevice::remap() {
+bool BochsGPUDevice::remap() {
     // We just mark the old framebuffer as free for use and call map again.
     if (m_framebuffer) {
         auto& allocator = MM->kernel_region_allocator();
@@ -93,7 +81,7 @@ bool BochsVGADevice::remap() {
     return this->map();
 }
 
-ErrorOr<void*> BochsVGADevice::mmap(Process& process, size_t size, int prot) {
+ErrorOr<void*> BochsGPUDevice::mmap(Process& process, size_t size, int prot) {
     if (size < std::align_up(this->size(), PAGE_SIZE)) {
         return Error(EINVAL);
     }
@@ -102,7 +90,7 @@ ErrorOr<void*> BochsVGADevice::mmap(Process& process, size_t size, int prot) {
     return region;
 }
 
-void BochsVGADevice::set_pixel(i32 x, i32 y, u32 color) {
+void BochsGPUDevice::set_pixel(i32 x, i32 y, u32 color) {
     if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
         return;
     }
@@ -110,7 +98,7 @@ void BochsVGADevice::set_pixel(i32 x, i32 y, u32 color) {
     m_framebuffer[y * m_width + x] = color;
 }
 
-ErrorOr<int> BochsVGADevice::ioctl(unsigned request, unsigned arg) {
+ErrorOr<int> BochsGPUDevice::ioctl(unsigned request, unsigned arg) {
     auto* process = Process::current();
     switch (request) {
         case FB_GET_RESOLUTION: {

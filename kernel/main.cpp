@@ -28,9 +28,7 @@
 #include <kernel/devices/input/keyboard.h>
 #include <kernel/devices/input/mouse.h>
 #include <kernel/devices/audio/pcspeaker.h>
-#include <kernel/devices/video/bochs.h>
-#include <kernel/devices/video/virtio/device.h>
-#include <kernel/devices/video/generic.h>
+#include <kernel/devices/gpu/manager.h>
 #include <kernel/devices/storage/ide/controller.h>
 #include <kernel/devices/audio/ac97.h>
 #include <kernel/devices/storage/ahci/controller.h>
@@ -114,19 +112,12 @@ void stage2() {
     
     AC97Device::create();
 
-    VirtIOGPUDevice::create();
-    
-    if (g_boot_info->framebuffer.address) {
-        GenericVideoDevice::create_from_boot();
-    } else {
-        BochsVGADevice::create(1280, 720);
-    }
-
     usb::UHCIController::create();
 
+    GPUManager::initialize();
     NetworkManager::initialize();
-
     StorageManager::initialize();
+
     auto* disk = StorageManager::determine_boot_device();
 
     if (!disk) {

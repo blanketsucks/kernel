@@ -1,4 +1,4 @@
-#include <kernel/devices/video/generic.h>
+#include <kernel/devices/gpu/generic/generic.h>
 #include <kernel/boot/boot_info.h>
 #include <kernel/process/process.h>
 #include <kernel/process/scheduler.h>
@@ -6,8 +6,8 @@
 
 namespace kernel {
 
-GenericVideoDevice* GenericVideoDevice::create_from_boot() {
-    return GenericVideoDevice::create(
+RefPtr<GenericGPUDevice> GenericGPUDevice::create_from_boot() {
+    return GenericGPUDevice::create(
         reinterpret_cast<PhysicalAddress>(g_boot_info->framebuffer.address),
         g_boot_info->framebuffer.width,
         g_boot_info->framebuffer.height,
@@ -16,13 +16,13 @@ GenericVideoDevice* GenericVideoDevice::create_from_boot() {
     );
 }
 
-GenericVideoDevice* GenericVideoDevice::create(
+RefPtr<GenericGPUDevice> GenericGPUDevice::create(
     PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp
 ) {
-    return new GenericVideoDevice(framebuffer, width, height, pitch, bpp);
+    return RefPtr<GenericGPUDevice>(new GenericGPUDevice(framebuffer, width, height, pitch, bpp));
 }
 
-ErrorOr<void*> GenericVideoDevice::mmap(Process& process, size_t size, int prot) {
+ErrorOr<void*> GenericGPUDevice::mmap(Process& process, size_t size, int prot) {
     if (size < std::align_up(this->size(), PAGE_SIZE)) {
         return Error(EINVAL);
     }
@@ -31,7 +31,7 @@ ErrorOr<void*> GenericVideoDevice::mmap(Process& process, size_t size, int prot)
     return region;
 }
 
-ErrorOr<int> GenericVideoDevice::ioctl(unsigned request, unsigned arg) {
+ErrorOr<int> GenericGPUDevice::ioctl(unsigned request, unsigned arg) {
     auto* process = Process::current();
     switch (request) {
         case FB_GET_RESOLUTION: {

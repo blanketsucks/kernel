@@ -1,5 +1,5 @@
-#include <kernel/devices/video/virtio/device.h>
-#include <kernel/devices/video/virtio/virtio.h>
+#include <kernel/devices/gpu/virtio/device.h>
+#include <kernel/devices/gpu/virtio/virtio.h>
 #include <kernel/pci/pci.h>
 
 #include <std/format.h>
@@ -8,33 +8,30 @@ namespace kernel {
 
 using namespace virtio;
 
-ErrorOr<VirtIOGPUDevice*> VirtIOGPUDevice::create() {
-    pci::Device pci_device = {};
-    pci::enumerate([&pci_device](pci::Device device) {
-        if (!device.is_virtio_device()) {
-            return;
-        }
+RefPtr<GPUDevice> VirtIOGPUDevice::create(pci::Device pci_device) {
+    RefPtr<VirtIOGPUDevice> device = nullptr;
+    if (!pci_device.is_virtio_device()) {
+        return device;
+    } else if (pci_device.device_id() != virtio::pci_device_type(DeviceType::GPUDevice)) {
+        return device;
+    }
 
-        if (device.device_id() != virtio::pci_device_type(DeviceType::GPUDevice)) {
-            return;
-        }
+    device = RefPtr<VirtIOGPUDevice>(new VirtIOGPUDevice(pci_device));
 
-        pci_device = device;
-    });
-
-    if (!pci_device.address().value()) {
+    auto result = device->initialize();
+    if (result.is_err()) {
         return nullptr;
     }
 
-    auto* device = new VirtIOGPUDevice(pci_device);
-
-    TRY(device->initialize());
-    TRY(device->test());
+    result = device->test();
+    if (result.is_err()) {
+        return nullptr;
+    }
 
     return device;
 }
 
-VirtIOGPUDevice::VirtIOGPUDevice(pci::Device device) : virtio::Device(device), BlockDevice(DeviceMajor::Video, 1, 0) {}
+VirtIOGPUDevice::VirtIOGPUDevice(pci::Device device) : virtio::Device(device) {}
 
 ErrorOr<void> VirtIOGPUDevice::initialize() {
     TRY(this->setup_queues(2));

@@ -1,8 +1,10 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/devices/block_device.h>
+#include <kernel/devices/gpu/device.h>
 #include <kernel/posix/errno.h>
+#include <kernel/pci/pci.h>
+
 
 namespace kernel {
 
@@ -23,7 +25,7 @@ constexpr u16 VBE_DISABLED = 0x00;
 constexpr u16 VBE_ENABLED = 0x01;
 constexpr u16 VBE_LFB_ENABLED = 0x40;
 
-class BochsVGADevice : public BlockDevice {
+class BochsGPUDevice : public GPUDevice {
 public:
     enum Port : u16 {
         Index = 0x01CE,
@@ -46,10 +48,7 @@ public:
     static constexpr u16 VENDOR_ID = 0x1234;
     static constexpr u16 DEVICE_ID = 0x1111;
 
-    BochsVGADevice() : BlockDevice(DeviceMajor::Video, 0, 0) {}
-
-    static BochsVGADevice* create(i32 width, i32 height);
-    static BochsVGADevice* instance();
+    static RefPtr<GPUDevice> create(pci::Device);
 
     bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
     bool write_blocks(const void*, size_t, size_t) override { return -EINVAL; }
@@ -78,7 +77,7 @@ public:
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
     
 private:
-    static BochsVGADevice* s_instance;
+    BochsGPUDevice(pci::Address);
 
     PhysicalAddress m_physical_address;
     u32* m_framebuffer = nullptr;
