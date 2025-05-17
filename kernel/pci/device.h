@@ -65,6 +65,10 @@ public:
         return class_id() == DeviceClass::SerialBusController && subclass_id() == DeviceSubclass::USBController;
     }
 
+    bool is_display_controller() const {
+        return class_id() == DeviceClass::DisplayController;
+    }
+
     bool is_virtio_device() const {
         return vendor_id() == 0x1AF4;
     }
