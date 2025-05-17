@@ -10,11 +10,11 @@ struct stat InodeFile::stat() const {
     return m_inode->stat();
 }
 
-ssize_t InodeFile::read(void* buffer, size_t size, size_t offset) {
+ErrorOr<size_t> InodeFile::read(void* buffer, size_t size, size_t offset) {
     return m_inode->read(buffer, size, offset);
 }
 
-ssize_t InodeFile::write(const void* buffer, size_t size, size_t offset) {
+ErrorOr<size_t> InodeFile::write(const void* buffer, size_t size, size_t offset) {
     return m_inode->write(buffer, size, offset);
 }
 

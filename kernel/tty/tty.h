@@ -10,8 +10,8 @@ class TTY : public CharacterDevice {
 public:
     virtual ~TTY() = default;
 
-    ssize_t read(void* buffer, size_t size, size_t offset) override;
-    ssize_t write(const void* buffer, size_t size, size_t offset) override;
+    ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
+    ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
 
     void emit(u8 byte);
 

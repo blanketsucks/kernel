@@ -11,10 +11,6 @@ public:
     static RefPtr<GenericGPUDevice> create_from_boot();
     static RefPtr<GenericGPUDevice> create(PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp);
 
-    size_t max_io_block_count() const override { return 0; }
-    bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
-    bool write_blocks(const void*, size_t, size_t) override { return -EINVAL; }
-
     ErrorOr<void*> mmap(Process&, size_t size, int prot) override;
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
 

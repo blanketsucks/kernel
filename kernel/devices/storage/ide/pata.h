@@ -40,8 +40,8 @@ public:
 
     void prepare_for(ata::Command command, size_t lba, u16 sectors);
 
-    bool read_blocks(void* buffer, size_t count, size_t block) override;
-    bool write_blocks(const void* buffer, size_t count, size_t block) override;
+    ErrorOr<bool> read_blocks(void* buffer, size_t count, size_t block) override;
+    ErrorOr<bool> write_blocks(const void* buffer, size_t count, size_t block) override;
 
     void read_sectors(size_t lba, u8 sectors, u8* buffer);
     void write_sectors(size_t lba, u8 sectors, const u8* buffer);

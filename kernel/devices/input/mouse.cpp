@@ -162,7 +162,7 @@ void MouseDevice::set_sample_rate(u8 rate) {
     this->write(rate); this->read();
 }
 
-ssize_t MouseDevice::read(void* buffer, size_t size, size_t) {
+ErrorOr<size_t> MouseDevice::read(void* buffer, size_t size, size_t) {
     size_t i = 0;
     while (i < size && !m_state_buffer.empty()) {
         auto state = m_state_buffer.pop();
@@ -174,8 +174,8 @@ ssize_t MouseDevice::read(void* buffer, size_t size, size_t) {
     return i;
 }
 
-ssize_t MouseDevice::write(const void*, size_t, size_t) {
-    return 0;
+ErrorOr<size_t> MouseDevice::write(const void*, size_t, size_t) {
+    return Error(ENOTSUP);
 }
 
 }

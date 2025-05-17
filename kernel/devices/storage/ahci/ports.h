@@ -6,6 +6,7 @@
 #include <kernel/process/blocker.h>
 
 #include <std/memory.h>
+#include <std/result.h>
 
 namespace kernel {
 
@@ -40,8 +41,8 @@ public:
 
     int prepare_for(ata::Command, u64 lba, u16 sectors);
 
-    bool read_sectors(u64 lba, u16 count, u8* buffer);
-    bool write_sectors(u64 lba, u16 count, const u8* buffer);
+    ErrorOr<void> read_sectors(u64 lba, u16 count, u8* buffer);
+    ErrorOr<void> write_sectors(u64 lba, u16 count, const u8* buffer);
     
 private:
     friend AHCIController;

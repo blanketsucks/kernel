@@ -19,11 +19,6 @@ public:
 
     static RefPtr<GPUDevice> create(pci::Device);
     
-    bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
-    bool write_blocks(const void*, size_t, size_t) override { return -EINVAL; }
-
-    size_t max_io_block_count() const override { return 0; }
-
     ErrorOr<void> test();
 
 private:

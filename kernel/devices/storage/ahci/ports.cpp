@@ -233,10 +233,10 @@ int AHCIPort::prepare_for(ata::Command command, u64 lba, u16 sectors) {
     return slot;
 }
 
-bool AHCIPort::read_sectors(u64 lba, u16 sectors, u8* buffer) {
+ErrorOr<void> AHCIPort::read_sectors(u64 lba, u16 sectors, u8* buffer) {
     int slot = this->prepare_for(ata::ReadDMAExt, lba, sectors);
     if (slot < 0) {
-        return false;
+        return Error(EBUSY);
     }
 
     this->wait_while_busy();
@@ -245,14 +245,13 @@ bool AHCIPort::read_sectors(u64 lba, u16 sectors, u8* buffer) {
     // FIXME: Check for errors
     // FIXME: Don't hardcode the 512 sector size
     memcpy(buffer, m_prdt_buffer, sectors * 512);
-
-    return true;
+    return {};
 }
 
-bool AHCIPort::write_sectors(u64 lba, u16 sectors, const u8* buffer) {
+ErrorOr<void> AHCIPort::write_sectors(u64 lba, u16 sectors, const u8* buffer) {
     int slot = this->prepare_for(ata::WriteDMAExt, lba, sectors);
     if (slot < 0) {
-        return false;
+        return Error(EBUSY);
     }
 
     memcpy(m_prdt_buffer, buffer, sectors * SECTOR_SIZE);
@@ -261,7 +260,7 @@ bool AHCIPort::write_sectors(u64 lba, u16 sectors, const u8* buffer) {
     this->issue_command(slot);
 
     // FIXME: Check for errors
-    return true;
+    return {};
 }
 
 

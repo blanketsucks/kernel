@@ -24,13 +24,12 @@ size_t StorageDevicePartition::max_io_block_count() const {
     return m_device->max_io_block_count();
 }
 
-bool StorageDevicePartition::read_blocks(void* buffer, size_t count, size_t block) {
+ErrorOr<bool> StorageDevicePartition::read_blocks(void* buffer, size_t count, size_t block) {
     return m_device->read_blocks(buffer, count, block + m_partition.offset);
 }
 
-bool StorageDevicePartition::write_blocks(const void* buffer, size_t count, size_t block) {
+ErrorOr<bool> StorageDevicePartition::write_blocks(const void* buffer, size_t count, size_t block) {
     return m_device->write_blocks(buffer, count, block + m_partition.offset);
 }
-    
 
 }

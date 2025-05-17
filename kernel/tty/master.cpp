@@ -18,9 +18,9 @@ PTYMaster::~PTYMaster() {
     PTYMultiplexer::instance()->add_master_pts(m_pts);
 }
 
-ssize_t PTYMaster::read(void* buff, size_t size, size_t) {
+ErrorOr<size_t> PTYMaster::read(void* buff, size_t size, size_t) {
     if (!m_slave) {
-        return -1;
+        return Error(ENODEV);
     }
 
     u8* buffer = reinterpret_cast<u8*>(buff);
@@ -35,9 +35,9 @@ ssize_t PTYMaster::read(void* buff, size_t size, size_t) {
 
 void PTYMaster::close() {}
 
-ssize_t PTYMaster::write(const void* buffer, size_t size, size_t) {
+ErrorOr<size_t> PTYMaster::write(const void* buffer, size_t size, size_t) {
     if (!m_slave) {
-        return -1;
+        return Error(ENODEV);
     }
 
     return m_slave->on_master_write(reinterpret_cast<const u8*>(buffer), size);

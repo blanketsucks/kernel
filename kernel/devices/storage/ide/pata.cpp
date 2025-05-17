@@ -254,18 +254,18 @@ void PATADevice::write_sectors_with_dma(size_t, u8, const u8*) {
     return;
 }
 
-bool PATADevice::read_blocks(void* buffer, size_t count, size_t block) {
+ErrorOr<bool> PATADevice::read_blocks(void* buffer, size_t count, size_t block) {
     if (count > this->max_io_block_count()) {
-        return false;
+        return Error(EINVAL);
     }
 
     this->read_sectors_with_dma(block, count, reinterpret_cast<u8*>(buffer));
     return true;
 }
 
-bool PATADevice::write_blocks(const void* buffer, size_t count, size_t block) {
+ErrorOr<bool> PATADevice::write_blocks(const void* buffer, size_t count, size_t block) {
     if (count > this->max_io_block_count()) {
-        return false;
+        return Error(EINVAL);
     }
 
     this->write_sectors(block, count, reinterpret_cast<const u8*>(buffer));

@@ -84,7 +84,7 @@ void KeyboardDevice::handle_irq() {
     m_key_buffer.append(event);
 }
 
-ssize_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
+ErrorOr<size_t> KeyboardDevice::read(void* buffer, size_t size, size_t) {
     size_t i = 0;
     while (i < size) {
         if (m_key_buffer.empty()) {
@@ -100,8 +100,8 @@ ssize_t KeyboardDevice::read(void* buffer, size_t size, size_t) {
     return i;
 }
 
-ssize_t KeyboardDevice::write(const void*, size_t, size_t) {
-    return -ENOTSUP;
+ErrorOr<size_t> KeyboardDevice::write(const void*, size_t, size_t) {
+    return Error(ENOTSUP);
 }
 
 void KeyboardDevice::init() {

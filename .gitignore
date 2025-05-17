@@ -3,3 +3,4 @@
 
 build
 root
+scripts/resolve_address.py

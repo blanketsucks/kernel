@@ -101,11 +101,11 @@ void AC97Device::handle_irq() {
     m_irq_blocker.set_value(true);
 }
 
-ssize_t AC97Device::read(void*, size_t, size_t) {
-    return -ENOTSUP;
+ErrorOr<size_t> AC97Device::read(void*, size_t, size_t) {
+    return Error(ENOTSUP);
 }
 
-ssize_t AC97Device::write(const void* buffer, size_t count, size_t) {
+ErrorOr<size_t> AC97Device::write(const void* buffer, size_t count, size_t) {
     size_t offset = 0;
     ssize_t remaining = count;
 

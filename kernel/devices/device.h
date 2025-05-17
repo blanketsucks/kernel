@@ -52,8 +52,8 @@ public:
 
     virtual RefPtr<fs::FileDescriptor> open(int options);
 
-    virtual ssize_t read(void* buffer, size_t size, size_t offset) override = 0;
-    virtual ssize_t write(const void* buffer, size_t size, size_t offset) override = 0;
+    virtual ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override = 0;
+    virtual ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override = 0;
 
     size_t size() const override { return 0; }
 

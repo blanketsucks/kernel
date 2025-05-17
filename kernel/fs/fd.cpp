@@ -10,7 +10,7 @@ ErrorOr<size_t> FileDescriptor::read(void* buffer, size_t size) {
         return Error(EBADF);
     }
 
-    size_t nread = m_file->read(buffer, size, m_offset);
+    size_t nread = TRY(m_file->read(buffer, size, m_offset));
     m_offset += nread;
 
     return nread;
@@ -21,7 +21,7 @@ ErrorOr<size_t> FileDescriptor::write(const void* buffer, size_t size) {
         return Error(EBADF);
     }
 
-    size_t nwritten = m_file->write(buffer, size, m_offset);
+    size_t nwritten = TRY(m_file->write(buffer, size, m_offset));
     m_offset += nwritten;
 
     return nwritten;

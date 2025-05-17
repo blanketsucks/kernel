@@ -102,8 +102,8 @@ public:
 
     static AC97Device* create();
 
-    ssize_t read(void* buffer, size_t size, size_t offset) override;
-    ssize_t write(const void* buffer, size_t size, size_t offset) override;
+    ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
+    ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
 
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
 

@@ -60,8 +60,8 @@ public:
     static void init();
     static MouseDevice* instance();
 
-    ssize_t read(void* buffer, size_t size, size_t offset) override;
-    ssize_t write(const void* buffer, size_t size, size_t offset) override;
+    ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
+    ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
 
     bool has_scroll_wheel() const { return m_has_scroll_wheel; }
 

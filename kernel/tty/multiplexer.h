@@ -14,8 +14,8 @@ public:
 
     RefPtr<fs::FileDescriptor> open(int options) override;
 
-    ssize_t read(void*, size_t, size_t) override { return 0; }
-    ssize_t write(const void*, size_t, size_t) override { return 0; }
+    ErrorOr<size_t> read(void*, size_t, size_t) override { return 0; }
+    ErrorOr<size_t> write(const void*, size_t, size_t) override { return 0; }
 
     void add_master_pts(u32 pts);
 

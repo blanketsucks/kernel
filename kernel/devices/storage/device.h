@@ -19,8 +19,8 @@ public:
 
     virtual ~StorageDevice() = default;
 
-    virtual bool read_blocks(void* buffer, size_t count, size_t block) override = 0;
-    virtual bool write_blocks(const void* buffer, size_t count, size_t block) override = 0;
+    virtual ErrorOr<bool> read_blocks(void* buffer, size_t count, size_t block) override = 0;
+    virtual ErrorOr<bool> write_blocks(const void* buffer, size_t count, size_t block) override = 0;
 
     virtual Type type() const = 0;
 
@@ -42,8 +42,8 @@ public:
 
     size_t max_io_block_count() const override;
 
-    bool read_blocks(void* buffer, size_t count, size_t block) override;
-    bool write_blocks(const void* buffer, size_t count, size_t block) override;
+    ErrorOr<bool> read_blocks(void* buffer, size_t count, size_t block) override;
+    ErrorOr<bool> write_blocks(const void* buffer, size_t count, size_t block) override;
 
 private:
     StorageDevicePartition(StorageDevice* device, const PartitionEntry& partition);

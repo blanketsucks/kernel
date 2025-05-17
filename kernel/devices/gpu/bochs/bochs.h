@@ -50,9 +50,6 @@ public:
 
     static RefPtr<GPUDevice> create(pci::Device);
 
-    bool read_blocks(void*, size_t, size_t) override { return -EINVAL; }
-    bool write_blocks(const void*, size_t, size_t) override { return -EINVAL; }
-
     u32* framebuffer() const { return m_framebuffer; }
     u32 physical_address() const { return m_physical_address; }
 

@@ -4,7 +4,7 @@ namespace kernel {
 
 TTY::TTY(DeviceMajor major, u32 minor) : CharacterDevice(major, minor) {}
 
-ssize_t TTY::read(void* buff, size_t size, size_t) {
+ErrorOr<size_t> TTY::read(void* buff, size_t size, size_t) {
     u8* buffer = reinterpret_cast<u8*>(buff);
     size = std::min(size, m_input_buffer.size());
 
@@ -15,7 +15,7 @@ ssize_t TTY::read(void* buff, size_t size, size_t) {
     return size;
 }
 
-ssize_t TTY::write(const void* buffer, size_t size, size_t) {
+ErrorOr<size_t> TTY::write(const void* buffer, size_t size, size_t) {
     this->on_write(static_cast<const u8*>(buffer), size);
     return size;
 }
