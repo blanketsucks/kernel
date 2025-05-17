@@ -3,6 +3,7 @@
 #include <kernel/time/rtc.h>
 #include <kernel/time/pit.h>
 #include <kernel/process/scheduler.h>
+#include <kernel/acpi/acpi.h>
 
 namespace kernel {
 
@@ -25,6 +26,9 @@ void TimeManager::initialize() {
     rtc::init();
 
     m_epoch_time = Duration::from_seconds(rtc::boot_time());
+
+    auto* parser = acpi::Parser::instance();
+    parser->init();
 
     // Fall back to the PIT if the HPET is not available
     if (!HPET::init()) {
