@@ -13,14 +13,21 @@
 namespace kernel::acpi {
 
 static Parser s_parser;
+static bool s_initialized = false;
 
 Parser* Parser::instance() {
     return &s_parser;
 }
 
 void Parser::init() {
+    if (s_initialized) {
+        return;
+    }
+
     this->find_root_table();
     this->parse_acpi_tables();
+
+    s_initialized = true;
 }
 
 SDTHeader* Parser::map_acpi_table(PhysicalAddress addr) {
