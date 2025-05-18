@@ -3,8 +3,8 @@
 
 namespace kernel {
 
-RefPtr<ZeroDevice> ZeroDevice::create() {
-    return RefPtr<ZeroDevice>(new ZeroDevice());
+ZeroDevice* ZeroDevice::create() {
+    return new ZeroDevice();
 }
 
 ErrorOr<size_t> ZeroDevice::read(void* buffer, size_t size, size_t) {

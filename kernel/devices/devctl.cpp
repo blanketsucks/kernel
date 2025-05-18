@@ -2,8 +2,8 @@
 
 namespace kernel {
 
-RefPtr<DeviceControl> DeviceControl::create() {
-    return RefPtr<DeviceControl>(new DeviceControl());
+DeviceControl* DeviceControl::create() {
+    return new DeviceControl();
 }
 
 ErrorOr<size_t> DeviceControl::read(void* buffer, size_t size, size_t offset) {
