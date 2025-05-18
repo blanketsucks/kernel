@@ -8,6 +8,7 @@ mknod ./mnt/dev/input/keyboard c 5 1
 
 mknod ./mnt/dev/null c 1 1
 mknod ./mnt/dev/zero c 1 2
+mknod ./mnt/dev/devctl c 1 3
 
 mknod ./mnt/dev/ptmx c 99 0
 
