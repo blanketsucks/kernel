@@ -2,6 +2,10 @@
 
 namespace kernel {
 
+RefPtr<NullDevice> NullDevice::create() {
+    return RefPtr<NullDevice>(new NullDevice());
+}
+
 ErrorOr<size_t> NullDevice::read(void*, size_t, size_t) {
     return 0;
 }

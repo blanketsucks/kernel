@@ -7,10 +7,13 @@ namespace kernel {
 
 class NullDevice : public CharacterDevice {
 public:
-    NullDevice() : CharacterDevice(DeviceMajor::Generic, 1) {}
+    static RefPtr<NullDevice> create();
 
     ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
     ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
+
+private:
+    NullDevice() : CharacterDevice(DeviceMajor::Generic, 1) {}
 };
 
 }

@@ -3,6 +3,10 @@
 
 namespace kernel {
 
+RefPtr<ZeroDevice> ZeroDevice::create() {
+    return RefPtr<ZeroDevice>(new ZeroDevice());
+}
+
 ErrorOr<size_t> ZeroDevice::read(void* buffer, size_t size, size_t) {
     memset(buffer, 0, size);
     return size;
