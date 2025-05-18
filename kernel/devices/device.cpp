@@ -8,8 +8,12 @@ static Queue<DeviceEvent> s_event_queue;
 
 Device::Device(DeviceMajor major, u32 minor) : m_major(major), m_minor(minor) {
     s_devices.set(encode(to_underlying(major), minor), this);
+    Device::add_device_event(this);
+}
 
-    DeviceEvent event = { to_underlying(major), minor, DeviceEvent::Added, is_block_device() };
+void Device::add_device_event(Device* device) {
+    // FIXME: device->is_block_device() always returns false.
+    DeviceEvent event = { to_underlying(device->major()), device->minor(), DeviceEvent::Added, device->is_block_device() };
     s_event_queue.enqueue(event);
 }
 

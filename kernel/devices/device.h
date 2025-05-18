@@ -63,6 +63,7 @@ public:
 
     static RefPtr<Device> get_device(DeviceMajor major, u32 minor);
     static Queue<DeviceEvent>& event_queue();
+    static void add_device_event(Device*);
 
     virtual RefPtr<fs::FileDescriptor> open(int options);
 
