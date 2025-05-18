@@ -4,6 +4,7 @@
 
 #include <std/memory.h>
 #include <std/hash_map.h>
+#include <std/queue.h>
 
 namespace kernel::fs {
     class FileDescriptor;
@@ -28,7 +29,19 @@ enum class DeviceMajor : u32 {
     MasterPTY = 100,
     SlavePTY = 101,
     VirtualTTY = 102,
-};  
+};
+
+struct DeviceEvent {
+    enum : u8 {
+        Added = 0,
+        Removed = 1,
+    };
+
+    u32 major;
+    u32 minor;
+    u8 event_type;
+    bool is_block_device;
+}; 
 
 class Device : public fs::File {
 public:
@@ -49,6 +62,7 @@ public:
     }
 
     static RefPtr<Device> get_device(DeviceMajor major, u32 minor);
+    static Queue<DeviceEvent>& event_queue();
 
     virtual RefPtr<fs::FileDescriptor> open(int options);
 

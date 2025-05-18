@@ -4,9 +4,17 @@
 namespace kernel {
 
 static HashMap<u32, RefPtr<Device>> s_devices;
+static Queue<DeviceEvent> s_event_queue;
 
 Device::Device(DeviceMajor major, u32 minor) : m_major(major), m_minor(minor) {
     s_devices.set(encode(to_underlying(major), minor), this);
+
+    DeviceEvent event = { to_underlying(major), minor, DeviceEvent::Added, is_block_device() };
+    s_event_queue.enqueue(event);
+}
+
+Queue<DeviceEvent>& Device::event_queue() {
+    return s_event_queue;
 }
 
 RefPtr<Device> Device::get_device(DeviceMajor major, u32 minor) {
