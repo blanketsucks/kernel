@@ -51,7 +51,6 @@ char* ptsname(int fd) {
 }
 
 int ptsname_r(int fd, char* buffer, size_t size) {
-
     int pts = -1;
     if (ioctl(fd, TIOCGPTN, &pts) < 0) {
         return -1;

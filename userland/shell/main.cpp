@@ -107,7 +107,7 @@ static int term_cat(shell::Terminal& terminal, int argc, char** argv) {
 static void spawn(shell::Terminal& terminal, shell::Command const& command, char** argv) {
     int tty = posix_openpt(O_RDWR);
     char* name = ptsname(tty);
-    
+
     pid_t pid = fork();
     if (!pid) {
         int fd = open(name, O_RDWR);
