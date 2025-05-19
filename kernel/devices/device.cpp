@@ -1,20 +1,30 @@
 #include <kernel/devices/device.h>
 #include <kernel/fs/fd.h>
 
+#include <std/format.h>
+
 namespace kernel {
 
 static HashMap<u32, RefPtr<Device>> s_devices;
 static Queue<DeviceEvent> s_event_queue;
 
-Device::Device(DeviceMajor major, u32 minor) : m_major(major), m_minor(minor) {
-    s_devices.set(encode(to_underlying(major), minor), this);
-    Device::add_device_event(this);
+Device::Device(DeviceMajor major, u32 minor) : m_major(major), m_minor(minor) {}
+
+void Device::add_device_event(Device const& device, DeviceEvent::Type type) {
+    DeviceEvent event = { to_underlying(device.major()), device.minor(), type, device.is_block_device() };
+    s_event_queue.enqueue(event);
 }
 
-void Device::add_device_event(Device* device) {
-    // FIXME: device->is_block_device() always returns false.
-    DeviceEvent event = { to_underlying(device->major()), device->minor(), DeviceEvent::Added, device->is_block_device() };
-    s_event_queue.enqueue(event);
+void Device::after_device_creation(RefPtr<Device> device) {
+    add_device_event(*device, DeviceEvent::Added);
+    dev_t dev = encode(to_underlying(device->major()), device->minor());
+
+    if (s_devices.contains(dev)) {
+        dbgln("Device {}:{} already exists.", (int)device->major(), device->minor());
+        return;
+    }
+
+    s_devices.set(dev, device);
 }
 
 Queue<DeviceEvent>& Device::event_queue() {

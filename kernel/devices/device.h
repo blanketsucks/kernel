@@ -32,7 +32,7 @@ enum class DeviceMajor : u32 {
 };
 
 struct DeviceEvent {
-    enum : u8 {
+    enum Type : u8 {
         Added = 0,
         Removed = 1,
     };
@@ -57,13 +57,28 @@ public:
         return (minor & 0xFF) | (major << 8) | ((minor & ~0xFF) << 12);
     }
 
+    static constexpr u32 encode(DeviceID id) {
+        return encode(id.major, id.minor);
+    }
+
     static constexpr DeviceID decode(u32 id) {
         return { (id >> 8) & 0xFFF, (id & 0xFF) | ((id >> 12) & ~0xFF) };
     }
 
     static RefPtr<Device> get_device(DeviceMajor major, u32 minor);
+
+    template<typename T, typename ...Args>
+    static inline RefPtr<T> create(Args&&... args) {
+        auto device = RefPtr<T>(new T(args...));
+        after_device_creation(device);
+
+        return device;
+    }
+
     static Queue<DeviceEvent>& event_queue();
-    static void add_device_event(Device*);
+
+    static void after_device_creation(RefPtr<Device>);
+    static void add_device_event(Device const&, DeviceEvent::Type);
 
     virtual RefPtr<fs::FileDescriptor> open(int options);
 
