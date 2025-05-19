@@ -57,8 +57,7 @@ struct MouseState {
 
 class MouseDevice : public CharacterDevice, IRQHandler {
 public:
-    static void init();
-    static MouseDevice* instance();
+    static MouseDevice* create();
 
     ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
     ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
@@ -75,13 +74,18 @@ public:
     MouseState state();
 
 private:
+    friend class Device;
+
     static constexpr u8 MAX_BUFFER_SIZE = 255;
-    static MouseDevice* s_instance;
 
     void update_mouse_state();
     void handle_irq() override;
 
-    MouseDevice() : CharacterDevice(DeviceMajor::Input, 0), IRQHandler(12) {}
+    MouseDevice() : CharacterDevice(DeviceMajor::Input, 0), IRQHandler(12) {
+        this->initialize();
+    }
+
+    void initialize();
 
     CircularQueue<MouseState, MAX_BUFFER_SIZE> m_state_buffer;
     u8 m_cycle;

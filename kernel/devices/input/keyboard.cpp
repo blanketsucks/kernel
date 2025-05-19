@@ -7,8 +7,6 @@
 
 namespace kernel {
 
-KeyboardDevice* KeyboardDevice::s_instance = nullptr;
-
 static const char SCANCODE_MAP[0x80] = {
     0, '\033', '1', '2', '3', '4',
     '5', '6', '7', '8', '9', '0',
@@ -104,16 +102,13 @@ ErrorOr<size_t> KeyboardDevice::write(const void*, size_t, size_t) {
     return Error(ENOTSUP);
 }
 
-void KeyboardDevice::init() {
-    auto* device = new KeyboardDevice();
-    device->m_key_buffer.reserve(MAX_KEY_BUFFER_SIZE);
-
-    device->enable_irq();
-    s_instance = device;
+KeyboardDevice::KeyboardDevice() : CharacterDevice(DeviceMajor::Input, 1), IRQHandler(1) {
+    m_key_buffer.reserve(MAX_KEY_BUFFER_SIZE);
+    this->enable_irq();
 }
 
-KeyboardDevice* KeyboardDevice::instance() {
-    return s_instance;
+KeyboardDevice* KeyboardDevice::create() {
+    return Device::create<KeyboardDevice>().take();
 }
 
 }

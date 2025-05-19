@@ -74,6 +74,8 @@ public:
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
     
 private:
+    friend class Device;
+
     BochsGPUDevice(pci::Address);
 
     PhysicalAddress m_physical_address;

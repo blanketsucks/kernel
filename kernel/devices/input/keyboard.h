@@ -36,8 +36,7 @@ public:
         Alt   = 1 << 2
     };
 
-    static void init();
-    static KeyboardDevice* instance();
+    static KeyboardDevice* create();
 
     ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
     ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
@@ -45,10 +44,11 @@ public:
     bool is_full() const { return m_key_buffer.size() == MAX_KEY_BUFFER_SIZE; }
 
 private:
-    static constexpr u8 MAX_KEY_BUFFER_SIZE = 255;
-    static KeyboardDevice* s_instance;
+    friend class Device;
 
-    KeyboardDevice() : CharacterDevice(DeviceMajor::Input, 1), IRQHandler(1) {}
+    static constexpr u8 MAX_KEY_BUFFER_SIZE = 255;
+
+    KeyboardDevice();
 
     void handle_irq() override;
 

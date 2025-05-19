@@ -114,6 +114,8 @@ public:
     bool set_sample_rate(u16 sample_rate);
 
 private:
+    friend class Device;
+
     AC97Device(pci::Address address);
 
     void handle_irq() override;

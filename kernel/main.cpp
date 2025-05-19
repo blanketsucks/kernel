@@ -81,8 +81,8 @@ extern "C" void main(BootInfo const& boot_info) {
 
     pic::init();
     
-    KeyboardDevice::init();
-    MouseDevice::init();
+    KeyboardDevice::create();
+    MouseDevice::create();
     
     memory::MemoryManager::init();
     TimeManager::init();
@@ -150,7 +150,7 @@ void stage2() {
 
     vfs->mount(ptsfs, vfs->resolve("/dev/pts").unwrap());
 
-    auto* tty0 = new VirtualTTY(0);
+    auto* tty0 = VirtualTTY::create(0);
     
     auto fd = vfs->open("/bin/shell", O_RDONLY, 0).unwrap();
     ELF elf(fd);

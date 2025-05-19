@@ -8,10 +8,11 @@
 namespace kernel {
 
 PTYMaster::PTYMaster(u32 pts) : CharacterDevice(DeviceMajor::MasterPTY, pts), m_pts(pts) {
-    m_slave = new PTYSlave(pts, this);
+    m_slave = Device::create<PTYSlave>(pts, this).take();
 }
 
 PTYMaster::~PTYMaster() {
+    // TODO: Remove the slave from the global list of devices
     delete m_slave;
     m_slave = nullptr;
 

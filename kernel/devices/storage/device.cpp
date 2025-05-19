@@ -11,7 +11,7 @@ RefPtr<StorageDevicePartition> StorageDevice::partition(size_t index) const {
 }
 
 RefPtr<StorageDevicePartition> StorageDevicePartition::create(StorageDevice* device, const PartitionEntry& partition) {
-    return RefPtr<StorageDevicePartition>(new StorageDevicePartition(device, partition));
+    return Device::create<StorageDevicePartition>(device, partition);
 }
 
 StorageDevicePartition::StorageDevicePartition(StorageDevice* device, const PartitionEntry& partition)

@@ -50,6 +50,8 @@ public:
     void write_sectors_with_dma(size_t lba, u8 sectors, const u8* buffer);
     
 private:
+    friend class Device;
+
     PATADevice(ata::Channel channel, ata::Drive drive, pci::Address address);
 
     void handle_irq() override;

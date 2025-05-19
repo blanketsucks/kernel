@@ -3,7 +3,7 @@
 namespace kernel {
 
 NullDevice* NullDevice::create() {
-    return new NullDevice();
+    return Device::create<NullDevice>().take();
 }
 
 ErrorOr<size_t> NullDevice::read(void*, size_t, size_t) {

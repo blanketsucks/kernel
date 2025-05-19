@@ -46,6 +46,7 @@ public:
     ErrorOr<bool> write_blocks(const void* buffer, size_t count, size_t block) override;
 
 private:
+    friend class Device;
     StorageDevicePartition(StorageDevice* device, const PartitionEntry& partition);
 
     StorageDevice* m_device;

@@ -21,7 +21,7 @@ AC97Device* AC97Device::create() {
         return nullptr;
     }
 
-    return new AC97Device(address);
+    return Device::create<AC97Device>(address).take();
 }
 
 AC97Device::AC97Device(pci::Address address) : CharacterDevice(DeviceMajor::Audio, 0), IRQHandler(address.interrupt_line()) {

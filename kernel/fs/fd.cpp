@@ -3,6 +3,8 @@
 #include <kernel/posix/errno.h>
 #include <kernel/posix/unistd.h>
 
+#include <std/format.h>
+
 namespace kernel::fs {
 
 ErrorOr<size_t> FileDescriptor::read(void* buffer, size_t size) {

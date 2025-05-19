@@ -13,6 +13,8 @@ public:
     ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
 
 private:
+    friend class Device;
+
     NullDevice() : CharacterDevice(DeviceMajor::Generic, 1) {}
 };
 

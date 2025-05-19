@@ -15,7 +15,7 @@ RefPtr<GPUDevice> BochsGPUDevice::create(pci::Device pci_device) {
         return nullptr;
     }
 
-    auto device = RefPtr<BochsGPUDevice>(new BochsGPUDevice(pci_device.address()));
+    auto device = Device::create<BochsGPUDevice>(pci_device.address());
     device->set_resolution(1024, 768, 32, false);
     if (!device->map()) {
         return nullptr;

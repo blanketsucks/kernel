@@ -17,7 +17,7 @@ PTYMultiplexer::PTYMultiplexer() : CharacterDevice(DeviceMajor::PTYMultiplexer, 
 }
 
 PTYMultiplexer* PTYMultiplexer::create() {
-    s_instance = new PTYMultiplexer();
+    s_instance = Device::create<PTYMultiplexer>().take();
     return s_instance;
 }
 
@@ -35,7 +35,7 @@ RefPtr<fs::FileDescriptor> PTYMultiplexer::open(int options) {
     }
 
     u32 pts = m_free_master_pts.take_last();
-    auto master = RefPtr<PTYMaster>::make(pts);
+    auto master = Device::create<PTYMaster>(pts);
 
     return fs::FileDescriptor::create(move(master), options);
 }

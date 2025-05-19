@@ -22,6 +22,8 @@ public:
     ErrorOr<void> test();
 
 private:
+    friend class kernel::Device;
+
     VirtIOGPUDevice(pci::Device device);
 
     ErrorOr<void> initialize();

@@ -19,7 +19,7 @@ RefPtr<GenericGPUDevice> GenericGPUDevice::create_from_boot() {
 RefPtr<GenericGPUDevice> GenericGPUDevice::create(
     PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp
 ) {
-    return RefPtr<GenericGPUDevice>(new GenericGPUDevice(framebuffer, width, height, pitch, bpp));
+    return Device::create<GenericGPUDevice>(framebuffer, width, height, pitch, bpp);
 }
 
 ErrorOr<void*> GenericGPUDevice::mmap(Process& process, size_t size, int prot) {

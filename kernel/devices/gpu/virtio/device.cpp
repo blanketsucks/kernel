@@ -1,9 +1,11 @@
 #include <kernel/devices/gpu/virtio/device.h>
 #include <kernel/devices/gpu/virtio/virtio.h>
 #include <kernel/devices/gpu/edid.h>
+#include <kernel/devices/device.h>
 #include <kernel/pci/pci.h>
 
 #include <std/format.h>
+
 
 namespace kernel {
 
@@ -17,7 +19,7 @@ RefPtr<GPUDevice> VirtIOGPUDevice::create(pci::Device pci_device) {
         return device;
     }
 
-    device = RefPtr<VirtIOGPUDevice>(new VirtIOGPUDevice(pci_device));
+    device = kernel::Device::create<VirtIOGPUDevice>(pci_device);
 
     auto result = device->initialize();
     if (result.is_err()) {

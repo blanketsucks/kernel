@@ -4,7 +4,7 @@
 namespace kernel {
 
 ZeroDevice* ZeroDevice::create() {
-    return new ZeroDevice();
+    return Device::create<ZeroDevice>().take();
 }
 
 ErrorOr<size_t> ZeroDevice::read(void* buffer, size_t size, size_t) {

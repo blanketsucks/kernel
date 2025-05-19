@@ -15,6 +15,8 @@ public:
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
 
 private:
+    friend class Device;
+
     GenericGPUDevice(
         PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp
     ) : m_framebuffer(framebuffer), m_width(width), m_height(height), m_pitch(pitch), m_bpp(bpp) {}
