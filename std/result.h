@@ -35,6 +35,7 @@ public:
     E& error() { return m_error; }
 
     T release_value() { return move(m_value); }
+    E release_error() { return move(m_error); }
 
     T& unwrap() {
         if (this->is_err()) {
@@ -78,7 +79,7 @@ public:
     Error(const char* message) : m_msg(message) {}
 
     const char* message() const { return m_msg; }
-    int err() const { return m_errno; }
+    int code() const { return m_errno; }
 
 private:
     const char* m_msg;

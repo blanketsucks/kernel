@@ -29,7 +29,7 @@ FlatPtr Process::handle_syscall(arch::Registers* registers) {
     }
 
     if (result.is_err()) {
-        return -result.error().err();
+        return -result.error().code();
     } else {
         return result.value();
     }
