@@ -141,6 +141,36 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t, 
     return move(fd);
 }
 
+ErrorOr<void> VFS::mknod(StringView path, mode_t mode, dev_t dev, RefPtr<ResolvedInode> relative_to) {
+    if (path.empty()) {
+        return Error(ENOENT);
+    }
+
+    RefPtr<ResolvedInode> parent;
+    auto result = this->resolve(path, &parent, relative_to);
+
+    if (!result.is_err()) {
+        return Error(EEXIST);
+    } else if (!parent) {
+        return Error(ENOENT);
+    } else if (result.error().code() != ENOENT) {
+        return result.release_error();
+    }
+
+    auto& inode = parent->inode();
+
+    StringView basename;
+    size_t index = path.rfind('/');
+    if (index == StringView::npos) {
+        basename = path;
+    } else {
+        basename = path.substr(index + 1);
+    }
+
+    inode.create_entry(basename, mode, dev, 0, 0); // TODO: uid/gid
+    return {};
+}
+
 ErrorOr<void> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
     if (!target->inode().is_directory()) {
         return Error(ENOTDIR);
