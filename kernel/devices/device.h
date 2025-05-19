@@ -53,7 +53,7 @@ public:
 
     DeviceID id() const { return { to_underlying(m_major), m_minor }; }
 
-    static constexpr u32 encode(u32 major, u32 minor) { 
+    static constexpr u32 encode(u32 major, u32 minor) {
         return (minor & 0xFF) | (major << 8) | ((minor & ~0xFF) << 12);
     }
 
