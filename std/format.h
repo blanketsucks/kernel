@@ -222,6 +222,11 @@ template<> struct Formatter<char> {
 
 template<> struct Formatter<const char*> {
     static void format(FormatBuffer& buffer, const char* value, const FormatStyle&) {
+        if (value == nullptr) {
+            buffer.append("(null)");
+            return;
+        }
+
         buffer.append(value);
     }
 };
