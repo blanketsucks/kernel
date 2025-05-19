@@ -527,8 +527,8 @@ ErrorOr<void> InodeEntry::add_entry(String name, RefPtr<fs::Inode> inode) {
     return this->add_directory_entry(inode->id(), name, type);
 }
 
-RefPtr<fs::Inode> InodeEntry::create_entry(String name, mode_t mode, uid_t uid, gid_t gid) {
-    auto inode = m_fs->create_inode(mode, uid, gid);
+RefPtr<fs::Inode> InodeEntry::create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) {
+    auto inode = m_fs->create_inode(mode, dev, uid, gid);
     if (!inode) {
         return nullptr;
     }

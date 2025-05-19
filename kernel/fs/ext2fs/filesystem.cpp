@@ -144,7 +144,7 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
     return entry;
 }
 
-RefPtr<fs::Inode> FileSystem::create_inode(mode_t mode, uid_t uid, gid_t gid) {
+RefPtr<fs::Inode> FileSystem::create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid) {
     BlockGroup* block_group = this->find_block_group([](BlockGroup* group) {
         return group->free_inodes() > 0 ? IterationAction::Break : IterationAction::Continue;
     });
@@ -163,6 +163,12 @@ RefPtr<fs::Inode> FileSystem::create_inode(mode_t mode, uid_t uid, gid_t gid) {
     result.group_id = gid;
     result.size_lower = 0;
     result.hard_link_count = S_ISDIR(mode) ? 1 : 0;
+
+    if (S_ISCHR(mode)) {
+        result.block_pointers[0] = dev;
+    } else if (S_ISBLK(mode)) {
+        result.block_pointers[1] = dev;
+    }
 
     // FIXME: Set the creation time.
 

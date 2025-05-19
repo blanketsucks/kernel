@@ -86,7 +86,7 @@ public:
     ErrorOr<void> add_directory_entry(ino_t id, String name, fs::DirectoryEntry::Type type);
 
     ErrorOr<void> add_entry(String name, RefPtr<fs::Inode> inode) override;
-    RefPtr<fs::Inode> create_entry(String name, mode_t mode, uid_t uid, gid_t gid) override;
+    RefPtr<fs::Inode> create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) override;
 
     void flush() override;
 

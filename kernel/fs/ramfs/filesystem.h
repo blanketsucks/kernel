@@ -48,7 +48,7 @@ public:
     RefPtr<fs::Inode> lookup(StringView name) const override;
 
     ErrorOr<void> add_entry(String name, RefPtr<fs::Inode> inode) override;
-    RefPtr<fs::Inode> create_entry(String name, mode_t mode, uid_t uid, gid_t gid) override;
+    RefPtr<fs::Inode> create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) override;
 
     void flush() override;
 

@@ -59,7 +59,7 @@ public:
     void free_blocks(const Vector<u32>& blocks);
     void free_block(u32 block);
 
-    RefPtr<fs::Inode> create_inode(mode_t mode, uid_t uid, gid_t gid);
+    RefPtr<fs::Inode> create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid);
 
 private:
     FileSystem(Superblock* superblock, BlockDevice* drive);

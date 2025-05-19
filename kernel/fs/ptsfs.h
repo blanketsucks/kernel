@@ -39,7 +39,7 @@ public:
     RefPtr<Inode> lookup(StringView name) const override;
 
     ErrorOr<void> add_entry(String, RefPtr<Inode>) override { return Error(EROFS); }
-    RefPtr<Inode> create_entry(String, mode_t, uid_t, gid_t) override { return nullptr; }
+    RefPtr<Inode> create_entry(String, mode_t, dev_t, uid_t, gid_t) override { return nullptr; }
 
     void flush() override {}
 

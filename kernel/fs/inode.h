@@ -72,7 +72,7 @@ public:
     virtual RefPtr<Inode> lookup(StringView name) const = 0;
 
     virtual ErrorOr<void> add_entry(String name, RefPtr<Inode> inode) = 0;
-    virtual RefPtr<Inode> create_entry(String name, mode_t mode, uid_t uid, gid_t gid) = 0;
+    virtual RefPtr<Inode> create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) = 0;
 
     virtual void flush() = 0;
 

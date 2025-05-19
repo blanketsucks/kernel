@@ -84,7 +84,7 @@ ErrorOr<void> Inode::add_entry(String name, RefPtr<fs::Inode> inode) {
 }
 
 // TODO: Handle mode (correctly), uid, gid
-RefPtr<fs::Inode> Inode::create_entry(String name, mode_t mode, uid_t, gid_t) {
+RefPtr<fs::Inode> Inode::create_entry(String name, mode_t mode, dev_t, uid_t, gid_t) {
     if (!this->is_directory()) {
         return nullptr;
     }
