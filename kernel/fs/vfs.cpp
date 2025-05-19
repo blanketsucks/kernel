@@ -31,7 +31,7 @@ bool VFS::mount_root(FileSystem* fs) {
     return true;
 }
 
-ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInode> relative_to) {
+ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInode>* parent, RefPtr<ResolvedInode> relative_to) {
     if (path.empty()) {
         return Error(ENOENT);
     } else if (path == "/") {
@@ -50,6 +50,11 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
     }
 
     FileSystem* fs = current->fs();
+
+    if (parent) {
+        *parent = current;
+    }
+
     while (!path.empty()) {
         if (!current->inode().is_directory()) {
             return Error(ENOTDIR);
@@ -93,6 +98,10 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
             auto root = guest->inode(guest->root());
             current = ResolvedInode::create(component, fs, root, current);
         }
+
+        if (parent) {
+            *parent = current;
+        }
     }
 
     return current;
@@ -105,8 +114,9 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t, 
         return Error(EINVAL);
     }
 
+    
     // TODO: Handle O_CREAT and O_EXCL
-    auto resolved = TRY(this->resolve(path, relative_to));
+    auto resolved = TRY(this->resolve(path, nullptr, relative_to));
     auto& inode = resolved->inode();
 
     if (inode.is_directory() && (options & O_DIRECTORY) == 0) {

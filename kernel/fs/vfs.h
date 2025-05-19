@@ -29,9 +29,10 @@ public:
 
     ResolvedInode const& root() const { return *m_root; }
 
-    ErrorOr<RefPtr<ResolvedInode>> resolve(StringView path, RefPtr<ResolvedInode> relative_to = nullptr);
+    ErrorOr<RefPtr<ResolvedInode>> resolve(StringView path, RefPtr<ResolvedInode>* parent = nullptr, RefPtr<ResolvedInode> relative_to = nullptr);
 
     ErrorOr<RefPtr<FileDescriptor>> open(StringView path, int options, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
+    ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev, RefPtr<ResolvedInode> relative_to = nullptr);
 
     bool mount_root(FileSystem* fs);
     ErrorOr<void> mount(FileSystem* fs, RefPtr<ResolvedInode> target);

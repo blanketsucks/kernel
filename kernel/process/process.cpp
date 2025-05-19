@@ -519,7 +519,7 @@ ErrorOr<FlatPtr> Process::sys$chdir(const char* pathname) {
     StringView path = this->validate_string(pathname);
 
     auto vfs = fs::vfs();
-    m_cwd = TRY(vfs->resolve(path, m_cwd));
+    m_cwd = TRY(vfs->resolve(path, nullptr, m_cwd));
 
     return 0;
 }
