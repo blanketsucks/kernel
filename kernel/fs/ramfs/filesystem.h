@@ -71,7 +71,9 @@ private:
 
 class FileSystem : public fs::FileSystem {
 public:
-    static FileSystem* create();
+    static FileSystem* create() {
+        return new FileSystem();
+    }
 
     fs::FileSystemID id() const override { return fs::FileSystemID::RamFS; }
     StringView name() const override { return "ramfs"; }
