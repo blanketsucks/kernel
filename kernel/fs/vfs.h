@@ -35,7 +35,7 @@ public:
     ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev, RefPtr<ResolvedInode> relative_to = nullptr);
 
     bool mount_root(FileSystem* fs);
-    ErrorOr<void> mount(FileSystem* fs, RefPtr<ResolvedInode> target);
+    ErrorOr<Mount*> mount(FileSystem* fs, RefPtr<ResolvedInode> target);
 
     Mount const* find_mount(ResolvedInode const& inode) const;
 

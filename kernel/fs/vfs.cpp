@@ -171,7 +171,7 @@ ErrorOr<void> VFS::mknod(StringView path, mode_t mode, dev_t dev, RefPtr<Resolve
     return {};
 }
 
-ErrorOr<void> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
+ErrorOr<Mount*> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
     if (!target->inode().is_directory()) {
         return Error(ENOTDIR);
     }
@@ -184,7 +184,7 @@ ErrorOr<void> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
     }
 
     m_mounts.append(Mount(fs, target));
-    return {};
+    return &m_mounts.last();
 }
 
 Mount const* VFS::find_mount(ResolvedInode const& inode) const {
