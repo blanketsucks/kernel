@@ -33,6 +33,7 @@ public:
 
     ErrorOr<RefPtr<FileDescriptor>> open(StringView path, int options, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
     ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev, RefPtr<ResolvedInode> relative_to = nullptr);
+    ErrorOr<void> mkdir(StringView path, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
 
     bool mount_root(FileSystem* fs);
     ErrorOr<Mount*> mount(FileSystem* fs, RefPtr<ResolvedInode> target);
