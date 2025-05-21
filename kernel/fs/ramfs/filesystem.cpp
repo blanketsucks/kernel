@@ -4,10 +4,8 @@
 
 namespace kernel::ramfs {
 
-static ino_t s_next_id = 1;
-
-RefPtr<Inode> Inode::create(String name, int flags, ino_t parent) {
-    return RefPtr(new Inode(s_next_id++, move(name), flags, parent));
+RefPtr<Inode> Inode::create(FileSystem* fs, String name, mode_t mode, dev_t dev, ino_t parent) {
+    return RefPtr(new Inode(fs, fs->allocate_inode(), move(name), mode, dev, parent));
 }
 
 ssize_t Inode::read(void* buffer, size_t size, size_t offset) const {
@@ -84,12 +82,12 @@ ErrorOr<void> Inode::add_entry(String name, RefPtr<fs::Inode> inode) {
 }
 
 // TODO: Handle mode (correctly), uid, gid
-RefPtr<fs::Inode> Inode::create_entry(String name, mode_t mode, dev_t, uid_t, gid_t) {
+RefPtr<fs::Inode> Inode::create_entry(String name, mode_t mode, dev_t dev, uid_t, gid_t) {
     if (!this->is_directory()) {
         return nullptr;
     }
 
-    auto inode = Inode::create(name, mode, m_id);
+    auto inode = Inode::create(m_fs, name, mode, dev, m_id);
     m_children.set(name, inode);
 
     return inode;
@@ -98,7 +96,7 @@ RefPtr<fs::Inode> Inode::create_entry(String name, mode_t mode, dev_t, uid_t, gi
 void Inode::flush() {}
 
 FileSystem::FileSystem() {
-    m_root = Inode::create("/", S_IFDIR | 0755, 0);
+    m_root = Inode::create(this, "/", S_IFDIR | 0755, 0, 0);
 }
 
 RefPtr<fs::Inode> FileSystem::inode(ino_t id) {
