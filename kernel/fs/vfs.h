@@ -13,7 +13,7 @@ class Mount {
 public:
     Mount(FileSystem* fs, RefPtr<ResolvedInode> host) : m_fs(fs), m_host(host) {}
 
-    ResolvedInode const& host() const { return *m_host; }
+    RefPtr<ResolvedInode> host() const { return m_host; }
     FileSystem* guest() const { return m_fs; }
 
 private:

@@ -177,8 +177,8 @@ ErrorOr<Mount*> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
     }
 
     for (auto& mount : m_mounts) {
-        auto& host = mount.host();
-        if (host.inode() == target->inode() && host.fs() == target->fs()) {
+        auto host = mount.host();
+        if (host->inode() == target->inode() && host->fs() == target->fs()) {
             return Error(EBUSY);
         }
     }
@@ -189,8 +189,8 @@ ErrorOr<Mount*> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
 
 Mount const* VFS::find_mount(ResolvedInode const& inode) const {
     for (auto& mount : m_mounts) {
-        auto& host = mount.host();
-        if (host.inode() == inode.inode() && host.fs() == inode.fs()) {
+        auto host = mount.host();
+        if (host->inode() == inode.inode() && host->fs() == inode.fs()) {
             return &mount;
         }
     }
