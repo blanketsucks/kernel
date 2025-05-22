@@ -81,12 +81,12 @@ extern "C" void main(BootInfo const& boot_info) {
 
     pic::init();
     
+    memory::MemoryManager::init();
+    TimeManager::init();
+    
     KeyboardDevice::create();
     MouseDevice::create();
     
-    memory::MemoryManager::init();
-    TimeManager::init();
-
     asm volatile("sti");
 
     auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
