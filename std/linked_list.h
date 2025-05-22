@@ -347,6 +347,8 @@ public:
 
     void append(T&& value) {
         auto* node = new Node(move(value));
+        m_size++;
+
         if (!m_head) {
             m_head = node;
             m_tail = node;
@@ -366,6 +368,8 @@ public:
 
     void prepend(T&& value) {
         auto* node = new Node(move(value));
+        m_size++;
+
         if (!m_head) {
             m_head = node;
             m_tail = node;
