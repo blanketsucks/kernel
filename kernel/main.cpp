@@ -116,6 +116,7 @@ void stage2() {
 
     usb::UHCIController::create();
 
+    InputManager::initialize();
     GPUManager::initialize();
     NetworkManager::initialize();
     StorageManager::initialize();
