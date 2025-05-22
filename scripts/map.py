@@ -1,11 +1,16 @@
 import subprocess
 import sys
+import pathlib
+
+CWD = pathlib.Path(__file__).parent
+ROOT = CWD.parent
+
+DEFAULT_KERNEL_LOCATION = ROOT  / 'build' / 'kernel' / 'kernel.bin'
 
 try:
     binary = sys.argv[1]
 except IndexError:
-    print(f'Usage: {sys.executable} map.py <binary>')
-    sys.exit(1)
+    binary = str(DEFAULT_KERNEL_LOCATION)
 
 process = subprocess.Popen(['nm', '-n', '-C', binary], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
