@@ -156,7 +156,7 @@ int main() {
     gfx::FrameBuffer framebuffer(buffer, resolution);
     gfx::RenderContext context(framebuffer);
 
-    int kb = open("/dev/input/keyboard", O_RDONLY);
+    int kb = open("/dev/input/keyboard0", O_RDONLY);
     KeyEvent event;
 
     auto font = gfx::PSFFont::create("/res/fonts/zap-light16.psf");
