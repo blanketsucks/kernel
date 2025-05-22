@@ -1,4 +1,4 @@
-#include <kernel/devices/input/mouse.h>
+#include <kernel/devices/input/ps2/mouse.h>
 #include <kernel/arch/io.h>
 #include <kernel/serial.h>
 
@@ -8,11 +8,11 @@
 
 namespace kernel {
 
-MouseDevice* MouseDevice::create() {
-    return Device::create<MouseDevice>().take();
+RefPtr<InputDevice> PS2MouseDevice::create() {
+    return Device::create<PS2MouseDevice>();
 }
 
-void MouseDevice::update_mouse_state() {
+void PS2MouseDevice::update_mouse_state() {
     m_cycle = 0;
     MousePacket* packet = reinterpret_cast<MousePacket*>(m_bytes);
 
@@ -41,7 +41,7 @@ void MouseDevice::update_mouse_state() {
     m_state_buffer.push(state);
 }
 
-void MouseDevice::handle_irq() {
+void PS2MouseDevice::handle_irq() {
     u8 status = io::read<u8>(MOUSE_STATUS);
     if (!(status & MOUSE_B_BIT)) {
         return; // No data available
@@ -76,7 +76,7 @@ void MouseDevice::handle_irq() {
     }
 }
 
-void MouseDevice::wait(u8 type) {
+void PS2MouseDevice::wait(u8 type) {
     u32 timeout = 100000;
     if (!type) {
         while (timeout--) {
@@ -95,19 +95,19 @@ void MouseDevice::wait(u8 type) {
     }
 }
 
-void MouseDevice::write(u8 value) {
+void PS2MouseDevice::write(u8 value) {
     this->wait(1);
     io::write<u8>(MOUSE_STATUS, MOUSE_WRITE);
     this->wait(1);
     io::write<u8>(MOUSE_DATA, value);
 }
 
-u8 MouseDevice::read() {
+u8 PS2MouseDevice::read() {
     this->wait(0);
     return io::read<u8>(MOUSE_DATA);
 }
 
-void MouseDevice::initialize() {
+void PS2MouseDevice::initialize() {
     this->wait(1);
     io::write<u8>(MOUSE_STATUS, 0xA8);
 
@@ -142,17 +142,17 @@ void MouseDevice::initialize() {
     this->enable_irq();
 }
 
-u8 MouseDevice::get_device_id() {
+u8 PS2MouseDevice::get_device_id() {
     this->write(MOUSE_GET_DEVICE_ID); this->read();
     return this->read();
 }
 
-void MouseDevice::set_sample_rate(u8 rate) {
+void PS2MouseDevice::set_sample_rate(u8 rate) {
     this->write(MOUSE_SET_SAMPLE_RATE); this->read();
     this->write(rate); this->read();
 }
 
-ErrorOr<size_t> MouseDevice::read(void* buffer, size_t size, size_t) {
+ErrorOr<size_t> PS2MouseDevice::read(void* buffer, size_t size, size_t) {
     size_t i = 0;
     while (i < size && !m_state_buffer.empty()) {
         auto state = m_state_buffer.pop();
@@ -164,7 +164,7 @@ ErrorOr<size_t> MouseDevice::read(void* buffer, size_t size, size_t) {
     return i;
 }
 
-ErrorOr<size_t> MouseDevice::write(const void*, size_t, size_t) {
+ErrorOr<size_t> PS2MouseDevice::write(const void*, size_t, size_t) {
     return Error(ENOTSUP);
 }
 

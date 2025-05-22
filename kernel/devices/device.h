@@ -21,9 +21,10 @@ enum class DeviceMajor : u32 {
     Generic = 1,
     Storage = 3,
     StoragePartition = 4,
-    Input = 5,
-    Audio = 6,
-    GPU = 7,
+    Keyboard = 5,
+    Mouse = 6,
+    Audio = 7,
+    GPU = 8,
 
     PTYMultiplexer = 99,
     MasterPTY = 100,

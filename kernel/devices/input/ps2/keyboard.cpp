@@ -1,5 +1,5 @@
-#include <kernel/devices/input/keyboard.h>
-#include <kernel/vga.h>
+#include <kernel/devices/input/ps2/keyboard.h>
+#include <kernel/fs/devfs/filesystem.h>
 #include <kernel/arch/io.h>
 
 #include <std/string.h>
@@ -40,7 +40,7 @@ static bool s_shift = false;
 static bool s_ctrl  = false;
 static bool s_alt   = false;
 
-void KeyboardDevice::handle_irq() {
+void PS2KeyboardDevice::handle_irq() {
     u8 scancode = io::read<u8>(0x60);
     u8 modifiers = None;
 
@@ -82,7 +82,7 @@ void KeyboardDevice::handle_irq() {
     m_key_buffer.append(event);
 }
 
-ErrorOr<size_t> KeyboardDevice::read(void* buffer, size_t size, size_t) {
+ErrorOr<size_t> PS2KeyboardDevice::read(void* buffer, size_t size, size_t) {
     size_t i = 0;
     while (i < size) {
         if (m_key_buffer.empty()) {
@@ -98,17 +98,17 @@ ErrorOr<size_t> KeyboardDevice::read(void* buffer, size_t size, size_t) {
     return i;
 }
 
-ErrorOr<size_t> KeyboardDevice::write(const void*, size_t, size_t) {
+ErrorOr<size_t> PS2KeyboardDevice::write(const void*, size_t, size_t) {
     return Error(ENOTSUP);
 }
 
-KeyboardDevice::KeyboardDevice() : CharacterDevice(DeviceMajor::Input, 1), IRQHandler(1) {
+PS2KeyboardDevice::PS2KeyboardDevice() : IRQHandler(1) {
     m_key_buffer.reserve(MAX_KEY_BUFFER_SIZE);
     this->enable_irq();
 }
 
-KeyboardDevice* KeyboardDevice::create() {
-    return Device::create<KeyboardDevice>().take();
+RefPtr<InputDevice> PS2KeyboardDevice::create() {
+    return Device::create<PS2KeyboardDevice>();
 }
 
 }
