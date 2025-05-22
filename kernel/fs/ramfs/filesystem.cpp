@@ -1,5 +1,4 @@
 #include <kernel/fs/ramfs/filesystem.h>
-
 #include <kernel/posix/sys/stat.h>
 
 namespace kernel::ramfs {

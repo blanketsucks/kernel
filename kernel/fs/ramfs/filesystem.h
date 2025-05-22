@@ -52,10 +52,9 @@ public:
     void flush() override;
 
 private:
-    Inode(FileSystem* fs, ino_t id, String name, mode_t mode, dev_t dev, ino_t parent) : m_fs(fs), m_id(id), m_name(name), m_mode(mode), m_dev(dev), m_parent(parent) {}
+    Inode(FileSystem* fs, ino_t id, String name, mode_t mode, dev_t dev, ino_t parent) : fs::Inode(id), m_fs(fs), m_name(name), m_mode(mode), m_dev(dev), m_parent(parent) {}
 
     FileSystem* m_fs = nullptr;
-    ino_t m_id = 0;
 
     String m_name;
 
@@ -78,7 +77,7 @@ public:
     fs::FileSystemID id() const override { return fs::FileSystemID::RamFS; }
     StringView name() const override { return "ramfs"; }
 
-    ino_t allocate_inode() { return m_next_inode++;}
+    ino_t allocate_inode() { return m_next_inode++; }
 
     ino_t root() const override { return ROOT_INODE; }
     RefPtr<fs::Inode> inode(ino_t id) override;
