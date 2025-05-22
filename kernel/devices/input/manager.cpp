@@ -1,4 +1,5 @@
 #include <kernel/devices/input/manager.h>
+#include <kernel/fs/devfs/filesystem.h>
 
 #include <kernel/devices/input/ps2/keyboard.h>
 #include <kernel/devices/input/ps2/mouse.h>
@@ -22,6 +23,11 @@ u32 InputManager::generate_keyboard_minor() {
 }
 
 void InputManager::initialize() {
+    auto& subsystem = devfs::create_subsystem("input");
+    
+    subsystem.add_range("mouse", DeviceMajor::Mouse);
+    subsystem.add_range("keyboard", DeviceMajor::Keyboard);
+
     s_instance.enumerate();
 }
 

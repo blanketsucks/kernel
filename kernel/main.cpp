@@ -46,6 +46,7 @@
 #include <kernel/fs/ptsfs.h>
 #include <kernel/fs/ramfs/filesystem.h>
 #include <kernel/fs/ext2fs/filesystem.h>
+#include <kernel/fs/devfs/filesystem.h>
 
 #include <kernel/arch/cpu.h>
 #include <kernel/arch/processor.h>
@@ -83,6 +84,8 @@ extern "C" void main(BootInfo const& boot_info) {
     
     memory::MemoryManager::init();
     TimeManager::init();
+
+    devfs::init();
 
     asm volatile("sti");
 
@@ -140,6 +143,8 @@ void stage2() {
     vfs->mount_root(fs);
 
     parse_symbols_from_fs();
+
+    devfs::mount();
 
     PTYMultiplexer::create();
 

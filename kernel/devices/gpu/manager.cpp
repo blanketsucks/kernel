@@ -1,5 +1,6 @@
 #include <kernel/devices/gpu/manager.h>
 #include <kernel/devices/gpu/device.h>
+#include <kernel/fs/devfs/filesystem.h>
 #include <kernel/boot/boot_info.h>
 #include <kernel/pci/pci.h>
 
@@ -24,6 +25,8 @@ GPUManager* GPUManager::instance() {
 }
 
 void GPUManager::initialize() {
+    devfs::register_device_range("fb", DeviceMajor::GPU);
+
     s_instance.enumerate();
 }
 
