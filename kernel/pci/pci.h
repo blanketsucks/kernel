@@ -1,9 +1,10 @@
 #pragma once
 
 #include <kernel/pci/device.h>
-#include <std/function.h>
-
 #include <kernel/pci/controllers/controller.h>
+
+#include <std/function.h>
+#include <std/optional.h>
 
 namespace kernel {
 
@@ -13,6 +14,8 @@ public:
     static PCI* instance();
 
     static void enumerate(Function<void(const pci::Device&)>&& callback);
+
+    static Optional<pci::Device> find_device(u16 vendor_id, u16 device_id, i16 prog_if = -1);
 
     template<typename T>
     T read(u32 domain, u8 bus, u8 device, u8 function, u32 offset) = delete;

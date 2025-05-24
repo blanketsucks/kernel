@@ -25,6 +25,20 @@ void PCI::enumerate(Function<void(const pci::Device&)>&& callback) {
     }
 }
 
+Optional<pci::Device> PCI::find_device(u16 vendor_id, u16 device_id, i16 prog_if) {
+    for (auto& device : s_instance.m_devices) {
+        if (device.vendor_id() != vendor_id || device.device_id() != device_id) {
+            continue;
+        }
+
+        if (prog_if == -1 || device.address().prog_if() == prog_if) {
+            return device;
+        }
+    }
+
+    return None;
+}
+
 void PCI::init() {
     auto* parser = acpi::Parser::instance();
     parser->init();
@@ -50,7 +64,6 @@ void PCI::init() {
 
         m_controllers.append(move(controller));
     }
-
 }
 
 template<> u8 PCI::read<u8>(u32 domain, u8 bus, u8 device, u8 function, u32 offset) {
