@@ -13,36 +13,76 @@ class Optional {
 public:
     Optional() = default;
     Optional(nullopt_t) : m_has_value(false) {}
-    Optional(const T& value) : m_value(value), m_has_value(true) {}
-    Optional(T&& value) : m_value(move(value)), m_has_value(true) {}
 
-    Optional(const Optional& other) : m_value(other.m_value), m_has_value(other.m_has_value) {}
-    Optional(Optional&& other) : m_value(move(other.m_value)), m_has_value(other.m_has_value) {}
+    Optional(const T& value) : m_has_value(true) {
+        new (&m_storage) T(value);
+    }
+
+    Optional(T&& value) : m_has_value(true) {
+        new (&m_storage) T(move(value));
+    }
+
+    Optional(const Optional& other) : m_has_value(other.m_has_value) {
+        if (m_has_value) {
+            new (&m_storage) T(other.value());
+        }
+    }
+
+    Optional(Optional&& other) : m_has_value(other.m_has_value) {
+        if (m_has_value) {
+            new (&m_storage) T(move(other.value()));
+            other.reset();
+        }
+    }
 
     Optional& operator=(const Optional& other) {
-        m_value = other.m_value;
+        if (this == &other) {
+            return *this;
+        }
+
+        reset();
         m_has_value = other.m_has_value;
+        if (m_has_value) {
+            new (&m_storage) T(other.value());
+        }
+
         return *this;
     }
 
     Optional& operator=(Optional&& other) {
-        m_value = move(other.m_value);
+        if (this == &other) {
+            return *this;
+        }
+
+        reset();
         m_has_value = other.m_has_value;
+        if (m_has_value) {
+            new (&m_storage) T(move(other.value()));
+            other.reset();
+        }
+        
         return *this;
     }
 
     bool has_value() const { return m_has_value; }
+    explicit operator bool() const { return m_has_value; }
 
-    T& value() { return m_value; }
-    const T& value() const { return m_value; }
+    T& value() { return *reinterpret_cast<T*>(&m_storage); }
+    const T& value() const { return *reinterpret_cast<const T*>(&m_storage); }
 
-    T& value_or(T& default_value) { return m_has_value ? m_value : default_value; }
-    const T& value_or(const T& default_value) const { return m_has_value ? m_value : default_value; }
+    T& value_or(T& default_value) { return m_has_value ? value() : default_value; }
+    const T& value_or(const T& default_value) const { return m_has_value ? value() : default_value; }
 
-    void clear() { m_has_value = false; }
+    void reset() {
+        if (m_has_value) {
+            value().~T();
+            m_has_value = false;
+        }
+    }
 
 private:
-    T m_value;
+
+    alignas(T) unsigned char m_storage[sizeof(T)];
     bool m_has_value = false;
 };
 
