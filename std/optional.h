@@ -73,6 +73,13 @@ public:
     T& value_or(T& default_value) { return m_has_value ? value() : default_value; }
     const T& value_or(const T& default_value) const { return m_has_value ? value() : default_value; }
 
+    T release_value() {
+        T released_value = move(value());
+        reset();
+
+        return released_value;
+    }
+
     void reset() {
         if (m_has_value) {
             value().~T();
@@ -81,7 +88,6 @@ public:
     }
 
 private:
-
     alignas(T) unsigned char m_storage[sizeof(T)];
     bool m_has_value = false;
 };
