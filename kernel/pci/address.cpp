@@ -1,5 +1,6 @@
 #include <kernel/pci/address.h>
 #include <kernel/arch/io.h>
+#include <kernel/pci/pci.h>
 
 namespace kernel::pci {
 
@@ -25,63 +26,27 @@ union Command {
 };
 
 template<> u8 Address::read<u8>(u8 offset) const {
-    auto addr = m_value;
-
-    addr.register_offset = offset;
-    addr.enable = 1;
-
-    io::write<u32>(CONFIG_ADDRESS, addr.value);
-    return io::read<u8>(CONFIG_DATA + (offset & 3));
+    return PCI::instance()->read<u8>(m_domain, m_bus, m_device, m_function, offset);
 }
 
 template<> u16 Address::read<u16>(u8 offset) const {
-    auto addr = m_value;
-
-    addr.register_offset = offset;
-    addr.enable = 1;
-
-    io::write<u32>(CONFIG_ADDRESS, addr.value);
-    return io::read<u16>(CONFIG_DATA + (offset & 2));
+    return PCI::instance()->read<u16>(m_domain, m_bus, m_device, m_function, offset);
 }
 
 template<> u32 Address::read<u32>(u8 offset) const {
-    auto addr = m_value;
-
-    addr.register_offset = offset;
-    addr.enable = 1;
-
-    io::write<u32>(CONFIG_ADDRESS, addr.value);
-    return io::read<u32>(CONFIG_DATA);
+    return PCI::instance()->read<u32>(m_domain, m_bus, m_device, m_function, offset);
 }
 
 template<> void Address::write<u8>(u8 offset, u8 data) {
-    auto addr = m_value;
-
-    addr.register_offset = offset;
-    addr.enable = 1;
-
-    io::write<u32>(CONFIG_ADDRESS, addr.value);
-    io::write<u8>(CONFIG_DATA + (offset & 3), data);
+    return PCI::instance()->write<u8>(m_domain, m_bus, m_device, m_function, offset, data);
 }
 
 template<> void Address::write<u16>(u8 offset, u16 data) {
-    auto addr = m_value;
-
-    addr.register_offset = offset;
-    addr.enable = 1;
-
-    io::write<u32>(CONFIG_ADDRESS, addr.value);
-    io::write<u16>(CONFIG_DATA + (offset & 2), data);
+    return PCI::instance()->write<u16>(m_domain, m_bus, m_device, m_function, offset, data);
 }
 
 template<> void Address::write<u32>(u8 offset, u32 data) {
-    auto addr = m_value;
-
-    addr.register_offset = offset;
-    addr.enable = 1;
-
-    io::write<u32>(CONFIG_ADDRESS, addr.value);
-    io::write<u32>(CONFIG_DATA, data);
+    return PCI::instance()->write<u32>(m_domain, m_bus, m_device, m_function, offset, data);
 }
 
 void Address::set_interrupt_line(bool value) {

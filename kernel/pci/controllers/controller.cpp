@@ -53,7 +53,7 @@ void Controller::enumerate_functions(u8 bus, u8 slot, u8 function, Function<void
         u8 secondary_bus = read8(bus, slot, function, Address::SecondaryBus);
         this->enumerate_bus(secondary_bus, callback);
     } else {
-        Address address = { bus, slot, function };
+        Address address = { m_domain, bus, slot, function };
         callback({ address });
     }
 }

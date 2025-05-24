@@ -17,7 +17,9 @@ static constexpr size_t ISO_TD_COUNT = PAGE_SIZE / sizeof(TransferDescriptor);
 
 UHCIController* UHCIController::create() {
     pci::Address address;
-    pci::enumerate([&address](pci::Device device) {
+    bool found = false;
+
+    PCI::enumerate([&found, &address](pci::Device device) {
         if (device.is_usb_controller()) {
             u8 prog_if = device.address().prog_if();
             if (prog_if != 0x00) {
@@ -25,10 +27,11 @@ UHCIController* UHCIController::create() {
             }
 
             address = device.address();
+            found = true;
         }
     });
 
-    if (!address.value()) {
+    if (!found) {
         return nullptr;
     }
 

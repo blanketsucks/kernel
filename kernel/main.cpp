@@ -103,7 +103,9 @@ void stage2() {
     auto* process = Process::current();
 
     dbgln("PCI Bus:");
-    pci::enumerate([](pci::Device device) {
+
+    PCI::initialize();
+    PCI::enumerate([](pci::Device device) {
         dbgln(" - {}: {}", device.class_name(), device.subclass_name());
     });
     

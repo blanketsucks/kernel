@@ -176,6 +176,19 @@ struct FADT {
     GenericAddressStructure x_gpe1_block;
 } PACKED;
 
+struct MCFG {
+    SDTHeader header;
+    u64 reserved;
+
+    struct {
+        u64 base_address;
+        u16 segment_group_number;
+        u8 start_bus_number;
+        u8 end_bus_number;
+        u32 reserved;
+    } entries[];
+} PACKED;
+
 class Parser {
 public:
     static Parser* instance();

@@ -1,62 +1,86 @@
 #include <kernel/pci/pci.h>
 #include <kernel/pci/address.h>
 #include <kernel/pci/device.h>
+#include <kernel/pci/controllers/piix4.h>
+#include <kernel/pci/controllers/mmio.h>
+#include <kernel/acpi/acpi.h>
 
-namespace kernel::pci {
+#include <std/format.h>
 
-static void enumerate_bus(u8 bus, EnumerationCallback& callback);
+namespace kernel {
 
-static void enumerate_functions(u8 bus, u8 slot, u8 function, EnumerationCallback& callback) {
-    Address address = { bus, slot, function };
-    
-    // Check if the device is a PCI-to-PCI bridge
-    if (address.class_id() == 0x6 && address.subclass_id() == 0x4) {
-        u8 secondary_bus = address.read<u8>(Address::SecondaryBus);
-        enumerate_bus(secondary_bus, callback);
-    } else {
-        callback({ address });
+static PCI s_instance;
+
+PCI* PCI::instance() {
+    return &s_instance;
+}
+
+void PCI::initialize() {
+    s_instance.init();
+}
+
+void PCI::enumerate(Function<void(const pci::Device&)>&& callback) {
+    for (const auto& device : s_instance.m_devices) {
+        callback(device);
     }
 }
 
-static void enumerate_slot(u8 bus, u8 slot, EnumerationCallback& callback) {
-    Address address = { bus, slot, 0 };
-    if (address.vendor_id() == 0xFFFF) {
+void PCI::init() {
+    auto* parser = acpi::Parser::instance();
+    parser->init();
+
+    auto* mcfg = parser->find_table<acpi::MCFG>("MCFG");
+    if (!mcfg) {
+        auto controller = pci::PIIX4Controller::create();
+        controller->enumerate([this](const pci::Device& device) {
+            m_devices.append(device);
+        });
+        
+        m_controllers.append(move(controller));
         return;
     }
 
-    for (u8 function = 0; function < 8; function++) {
-        Address address = { bus, slot, function };
-        if (address.vendor_id() == 0xFFFF) {
-            continue;
-        }
+    size_t entries = (mcfg->header.length - sizeof(acpi::SDTHeader)) / sizeof(mcfg->entries[0]);
+    for (size_t i = 0; i < entries; i++) {
+        auto controller = pci::MMIOController::create(i, mcfg->entries[i].base_address);
 
-        enumerate_functions(bus, slot, function, callback);
+        controller->enumerate([this](const pci::Device& device) {
+            m_devices.append(device);
+        });
+
+        m_controllers.append(move(controller));
     }
+
 }
 
-static void enumerate_bus(u8 bus, EnumerationCallback& callback) {
-    for (u8 slot = 0; slot < 32; slot++) {
-        enumerate_slot(bus, slot, callback);
-    }
+template<> u8 PCI::read<u8>(u32 domain, u8 bus, u8 device, u8 function, u32 offset) {
+    auto controller = s_instance.m_controllers[domain];    
+    return controller->read8(bus, device, function, offset);
 }
 
-void enumerate(EnumerationCallback&& callback) {
-    Address address = { 0, 0, 0 };
-    bool has_multiple_functions = address.header_type() & (1 << 7);
+template<> u16 PCI::read<u16>(u32 domain, u8 bus, u8 device, u8 function, u32 offset) {
+    auto controller = s_instance.m_controllers[domain];
+    return controller->read16(bus, device, function, offset);
+}
 
-    if (!has_multiple_functions) {
-        enumerate_bus(0, callback);
-        return;
-    }
+template<> u32 PCI::read<u32>(u32 domain, u8 bus, u8 device, u8 function, u32 offset) {
+    auto controller = s_instance.m_controllers[domain];
+    return controller->read32(bus, device, function, offset);
+}
 
-    for (u8 function = 0; function < 8; function++) {
-        Address address = { 0, 0, function };
-        if (address.vendor_id() == 0xFFFF) {
-            continue;
-        }
+template<> void PCI::write<u8>(u32 domain, u8 bus, u8 device, u8 function, u32 offset, u8 value) {
+    auto controller = s_instance.m_controllers[domain];
+    controller->write8(bus, device, function, offset, value);
+}
 
-        enumerate_bus(function, callback);
-    }
+template<> void PCI::write<u16>(u32 domain, u8 bus, u8 device, u8 function, u32 offset, u16 value) {
+    auto controller = s_instance.m_controllers[domain];
+    controller->write16(bus, device, function, offset, value);
+}
+
+template<> void PCI::write<u32>(u32 domain, u8 bus, u8 device, u8 function, u32 offset, u32 value) {
+    auto controller = s_instance.m_controllers[domain];
+    controller->write32(bus, device, function, offset, value);
 }
 
 }

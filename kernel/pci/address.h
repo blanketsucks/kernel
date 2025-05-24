@@ -45,18 +45,12 @@ public:
         SecondaryBus = 0x19,
     };
 
-    Address() : m_value({ .value = 0 }) {}
-    Address(u8 bus, u8 device, u8 function) : m_value({ .value = 0 }) {
-        m_value.bus = bus;
-        m_value.device = device;
-        m_value.function = function;
-    }
+    Address() = default;
+    Address(u32 domain, u8 bus, u8 device, u8 function) : m_domain(domain), m_bus(bus), m_device(device), m_function(function) {}
 
-    u32 value() const { return m_value.value; }
-
-    u8 bus() const { return m_value.bus; }
-    u8 device() const { return m_value.device; }
-    u8 function() const { return m_value.function; }
+    u8 bus() const { return m_bus; }
+    u8 device() const { return m_device; }
+    u8 function() const { return m_function; }
 
     template<typename T> T read(u8 offset) const = delete;
     template<typename T> void write(u8 offset, T value) = delete;
@@ -82,18 +76,10 @@ public:
     u8 interrupt_line() const;
     
 private:
-    union {
-        struct {
-            u32 register_offset : 8;
-            u32 function : 3;
-            u32 device : 5;
-            u32 bus : 8;
-            u32 reserved : 7;
-            u32 enable : 1;
-        };
-
-        u32 value;
-    } m_value;
+    u32 m_domain = 0;
+    u8 m_bus = 0;
+    u8 m_device = 0;
+    u8 m_function = 0;
 };
 
 class Capability {

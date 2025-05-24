@@ -11,13 +11,16 @@ namespace kernel {
 
 AC97Device* AC97Device::create() {
     pci::Address address = {};
-    pci::enumerate([&address](pci::Device device) {
+    bool found = false;
+
+    PCI::enumerate([&found, &address](pci::Device device) {
         if (device.is_audio_device()) {
             address = device.address();
+            found = true;
         }
     });
 
-    if (!address.value()) {
+    if (!found) {
         return nullptr;
     }
 

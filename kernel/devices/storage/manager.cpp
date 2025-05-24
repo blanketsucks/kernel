@@ -34,7 +34,7 @@ u32 StorageManager::generate_partition_minor() {
 }
 
 void StorageManager::enumerate_controllers() {
-    pci::enumerate([&](pci::Device device) {
+    PCI::enumerate([&](pci::Device device) {
         if (device.class_id() != pci::DeviceClass::MassStorageController) {
             return;
         }

@@ -39,7 +39,7 @@ void GPUManager::enumerate() {
         m_devices.append(GenericGPUDevice::create_from_boot());
     }
 
-    pci::enumerate([this](pci::Device device) {
+    PCI::enumerate([this](pci::Device device) {
         if (!device.is_display_controller()) {
             return;
         }

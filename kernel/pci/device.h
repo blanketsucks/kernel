@@ -14,10 +14,6 @@ public:
 
     Address address() const { return m_address; }
 
-    bool is_valid() const {
-        return m_address.value() && m_address.vendor_id() != 0xFFFF;
-    }
-
     u16 vendor_id() const;
     u16 device_id() const;
 

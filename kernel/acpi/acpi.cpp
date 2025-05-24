@@ -3,6 +3,8 @@
 #include <kernel/memory/manager.h>
 #include <kernel/serial.h>
 
+#include <kernel/pci/controllers/mmio.h>
+
 #include <std/utility.h>
 #include <std/format.h>
 #include <std/cstring.h>

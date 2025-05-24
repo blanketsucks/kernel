@@ -47,7 +47,7 @@ RefPtr<net::NetworkAdapter> NetworkManager::create_network_adapter(pci::Device d
 }
 
 void NetworkManager::enumerate() {
-    pci::enumerate([&](pci::Device device) {
+    PCI::enumerate([&](pci::Device device) {
         if (device.class_id() != pci::DeviceClass::NetworkController) {
             return;
         }
