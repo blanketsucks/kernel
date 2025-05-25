@@ -2,7 +2,7 @@
 
 #ifdef __KERNEL__
     #include <kernel/memory/liballoc.h>
-    #include <kernel/memory/manager.h>
+    #include <kernel/memory/stdlib.h>
 #else
     #include <stdlib.h>
 
