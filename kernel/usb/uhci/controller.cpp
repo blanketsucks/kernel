@@ -44,15 +44,11 @@ UHCIController* UHCIController::create() {
 }
 
 UHCIController::UHCIController(pci::Address address) : IRQHandler(address.interrupt_line()) {
-    dbgln();
-
     address.set_bus_master(true);
     address.set_interrupt_line(true);
 
     m_port = address.bar(4) & ~1;
     this->initialize();
-
-    dbgln();
 }
 
 void UHCIController::reset() {
