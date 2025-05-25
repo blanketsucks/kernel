@@ -42,10 +42,10 @@ class QemuArgs(NamedTuple):
     ovmf: str
 
     netdev: str = 'user,id=net0,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888'
-    devices: List[str] = ['ac97', 'e1000,netdev=net0', 'ahci,id=ahci', 'ide-hd,bus=ahci.0,drive=map']
+    devices: List[str] = ['ac97', 'e1000,netdev=net0']
 
     def build_disk_image_argument(self) -> List[str]:
-        return ['-drive', self.disk_image.build(), '-drive', 'if=none,id=map,format=raw,file=kernel.map']
+        return ['-drive', self.disk_image.build()]
     
     def build_memory_argument(self) -> List[str]:
         return ['-m', str(self.memory)]
@@ -86,25 +86,26 @@ class QemuArgs(NamedTuple):
             args.extend(['-kernel', self.kernel])
         elif self.use_loader:
             args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
-            args.extend(['-append', 'root=/dev/hda2'])
+            args.extend(['-append', 'root=/dev/sda2'])
 
         if self.uefi:
             args.extend(['-bios', self.ovmf])
 
+        args.extend(['-machine', 'q35'])
         return args
 
 def main():
     parser = argparse.ArgumentParser(description='Run kernel in QEMU.')
 
     parser.add_argument('--kernel', type=str, default=DEFAULT_KERNEL_LOCATION, help='Path to kernel image.')
-    parser.add_argument('--x86_64', action='store_false', help='Run kernel in x86_64 mode.')
+    parser.add_argument('--x86', action='store_true', help='Run kernel in x86 mode.')
 
     parser.add_argument('--qemu', type=str, default=None, help='Path to QEMU executable.')
     parser.add_argument('--disk-image', type=str, default=DEFAULT_DISK_IMAGE, help='Path to disk image.')
     parser.add_argument('--memory', type=int, default=256, help='Amount of memory to allocate to QEMU (in MB).')
     parser.add_argument('--debug', action='store_true', help='Run QEMU in debug mode and listen to GDB connections.')
     parser.add_argument('--with-monitor', action='store_true', help='Run QEMU with a monitor (useful for debugging).')
-    parser.add_argument('--with-loader', action='store_true', help='Run the kernel with the 64-bit loader.')
+    parser.add_argument('--disable-loader', action='store_true', help='Run the kernel without the 64-bit loader.')
     parser.add_argument('--usb', action='store_true', help='Enable USB support.')
     parser.add_argument('--disable-virtio-gpu', action='store_true', help='Disable VirtIO GPU support.')
     
@@ -119,7 +120,7 @@ def main():
         action.default = 'C:/Program Files/qemu/OVMF.fd'
     
     args = parser.parse_args()
-    if args.with_loader and not args.x86_64:
+    if not args.disable_loader and args.x86:
         print('Loader is only supported in x86_64 mode.')
         return
 
@@ -129,17 +130,17 @@ def main():
         memory=args.memory,
         debug=args.debug,
         monitor=args.with_monitor,
-        x86_64=args.x86_64,
+        x86_64=not args.x86,
         uefi=args.uefi,
         ovmf=args.ovmf,
         serial=True,
         usb=args.usb,
-        use_loader=args.with_loader,
+        use_loader=not args.disable_loader,
         virtio_gpu=not args.disable_virtio_gpu,
     )
 
     if not args.qemu:
-        args.qemu = 'qemu-system-x86_64' if args.x86_64 else 'qemu-system-i386'
+        args.qemu = 'qemu-system-i386' if args.x86 else 'qemu-system-x86_64'
 
     command = [args.qemu, *qemu_args.build()]
     print(' '.join(command), end='\n\n')
