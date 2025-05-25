@@ -6,6 +6,7 @@
 
 #include <std/vector.h>
 #include <std/array.h>
+#include <std/result.h>
 
 namespace kernel::virtio {
 

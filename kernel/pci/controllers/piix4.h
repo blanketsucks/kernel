@@ -2,6 +2,8 @@
 
 #include <kernel/pci/controllers/controller.h>
 
+#include <std/memory.h>
+
 namespace kernel::pci {
 
 class PIIX4Controller : public Controller {

@@ -1,4 +1,5 @@
 #include <kernel/devices/storage/ide/controller.h>
+
 #include <std/vector.h>
 
 namespace kernel {

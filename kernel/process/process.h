@@ -8,6 +8,7 @@
 #include <kernel/tty/tty.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/sync/resource.h>
+#include <kernel/arch/registers.h>
 
 #include <std/hash_map.h>
 #include <std/string.h>

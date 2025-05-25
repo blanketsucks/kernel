@@ -3,6 +3,7 @@
 #include <kernel/process/process.h>
 #include <kernel/process/blocker.h>
 #include <kernel/time/manager.h>
+#include <kernel/memory/manager.h>
 #include <std/format.h>
 
 namespace kernel {

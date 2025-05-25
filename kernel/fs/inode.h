@@ -8,6 +8,7 @@
 #include <std/memory.h>
 #include <std/string.h>
 #include <std/function.h>
+#include <std/result.h>
 
 namespace kernel::fs {
 

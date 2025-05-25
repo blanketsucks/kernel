@@ -3,6 +3,7 @@
 #include <kernel/pci/controllers/controller.h>
 
 #include <std/array.h>
+#include <std/memory.h>
 
 namespace kernel::pci {
 

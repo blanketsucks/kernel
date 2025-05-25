@@ -9,6 +9,7 @@
 #include <kernel/posix/sys/wait.h>
 #include <kernel/time/manager.h>
 #include <kernel/serial.h>
+#include <kernel/memory/manager.h>
 
 #include <std/format.h>
 

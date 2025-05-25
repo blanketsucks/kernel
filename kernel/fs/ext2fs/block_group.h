@@ -4,6 +4,7 @@
 #include <kernel/fs/ext2fs/ext2.h>
 
 #include <std/vector.h>
+#include <std/result.h>
 
 namespace kernel::ext2fs {
 

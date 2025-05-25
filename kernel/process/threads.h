@@ -3,7 +3,7 @@
 #include <kernel/posix/sys/types.h>
 #include <kernel/posix/time.h>
 #include <kernel/process/stack.h>
-
+#include <kernel/arch/registers.h>
 
 #include <std/format.h>
 #include <std/string.h>

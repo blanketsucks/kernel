@@ -3,6 +3,8 @@
 #include <kernel/arch/irq.h>
 #include <kernel/time/timer.h>
 
+#include <std/memory.h>
+
 namespace kernel {
 
 class PIT : public Timer {

@@ -8,6 +8,7 @@
 
 #include <std/atomic.h>
 #include <std/time.h>
+#include <std/memory.h>
 
 namespace kernel {
 

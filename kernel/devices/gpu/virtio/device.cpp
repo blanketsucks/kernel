@@ -3,6 +3,7 @@
 #include <kernel/devices/gpu/edid.h>
 #include <kernel/devices/device.h>
 #include <kernel/pci/pci.h>
+#include <kernel/memory/manager.h>
 
 #include <std/format.h>
 

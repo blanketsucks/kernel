@@ -1,6 +1,7 @@
 #include <kernel/devices/storage/ide/pata.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/process/threads.h>
+#include <kernel/memory/manager.h>
 
 #include <std/format.h>
 

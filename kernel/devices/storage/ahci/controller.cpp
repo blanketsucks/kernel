@@ -1,5 +1,6 @@
 #include <kernel/devices/storage/ahci/controller.h>
 #include <kernel/devices/storage/ahci/sata.h>
+#include <kernel/memory/manager.h>
 
 #include <std/format.h>
 #include <std/hash_map.h>

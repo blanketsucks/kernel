@@ -5,6 +5,7 @@
 
 #include <std/function.h>
 #include <std/optional.h>
+#include <std/memory.h>
 
 namespace kernel {
 

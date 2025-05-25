@@ -1,8 +1,10 @@
-#include "std/string_view.h"
 #include <kernel/panic.h>
 #include <kernel/symbols.h>
 #include <kernel/serial.h>
 #include <kernel/vga.h>
+#include <kernel/memory/manager.h>
+
+
 #include <std/format.h>
 
 namespace kernel {
