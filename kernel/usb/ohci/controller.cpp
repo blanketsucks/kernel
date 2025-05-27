@@ -294,7 +294,7 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     this->enqueue_control_transfer(ed);
 
     // TODO: Check for errors
-    // TODO: Unqueue the endpoint descriptor after the transfer is complete
+    // TODO: Dequeue the endpoint descriptor after the transfer is complete
     // FIXME: There is a chance this will block a kernel process indefinitely especially if this is done early on (kernel stage 2 process).
     while (true) {
         if ((ed->head() & ~0xf) == ed->tail()) {
