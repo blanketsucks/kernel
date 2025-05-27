@@ -61,6 +61,7 @@
 #include <kernel/net/manager.h>
 
 #include <kernel/usb/uhci/controller.h>
+#include <kernel/usb/ohci/controller.h>
 #include <kernel/usb/pipe.h>
 #include <kernel/usb/device.h>
 #include <kernel/usb/usb.h>
@@ -120,6 +121,7 @@ void stage2() {
     AC97Device::create();
 
     usb::UHCIController::create();
+    usb::OHCIController::create();
 
     InputManager::initialize();
     GPUManager::initialize();

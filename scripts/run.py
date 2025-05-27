@@ -73,8 +73,9 @@ class QemuArgs(NamedTuple):
         ]
 
         if self.usb:
-            args.append('-usb')
-            args.extend(['-device', 'usb-audio,bus=usb-bus.0,id=foobar'])
+            # args.append('-usb')
+            args.extend(['-device', 'pci-ohci,id=ohci'])
+            args.extend(['-device', 'usb-audio,bus=ohci.0,id=foobar'])
 
         if self.virtio_gpu:
             args.extend(['-device', 'virtio-gpu-pci'])
@@ -86,12 +87,11 @@ class QemuArgs(NamedTuple):
             args.extend(['-kernel', self.kernel])
         elif self.use_loader:
             args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
-            args.extend(['-append', 'root=/dev/sda2'])
+            args.extend(['-append', 'root=/dev/hda2'])
 
         if self.uefi:
             args.extend(['-bios', self.ovmf])
 
-        args.extend(['-machine', 'q35'])
         return args
 
 def main():

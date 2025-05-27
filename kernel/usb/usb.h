@@ -67,4 +67,10 @@ struct DeviceDescriptor {
     u8 num_configurations;
 };
 
+struct UnicodeStringDescriptor {
+    u8 length;
+    u8 type;
+    u16 string[0];
+};
+
 }
