@@ -204,6 +204,18 @@ ohci::TransferDescriptor* OHCIController::allocate_transfer_descriptor() {
     return m_free_tds.pop();
 }
 
+void OHCIController::free_transfer_chain(TransferDescriptor* head) {
+    TransferDescriptor* current = head;
+    while (current) {
+        auto* next = current->next();
+
+        current->reset();
+        m_free_tds.push(current);
+
+        current = next;
+    }
+}
+
 TransferDescriptor* OHCIController::create_transfer_descriptor(Pipe* pipe, ohci::PacketPID direction) {
     auto* td = this->allocate_transfer_descriptor();
 
@@ -257,8 +269,23 @@ EndpointDescriptor* OHCIController::create_endpoint_descriptor(Pipe* pipe, Chain
 }
 
 void OHCIController::enqueue_control_transfer(EndpointDescriptor* ed) {
-    m_control_ed->set_next(ed);
+    if (!m_control_head) {
+        m_control_head = ed;
+        m_control_ed->set_next(m_control_head);
+    } else {
+        m_control_head->set_next(ed);
+    }
+
     m_registers->command_status |= CommandStatus::ControlListFilled;
+}
+
+void OHCIController::dequeue_control_transfer(EndpointDescriptor* ed) {
+    auto* prev = ed->prev();
+    if (!ed->next()) {
+        m_control_head = prev;
+    }
+
+    prev->set_next(ed->next());
 }
 
 size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& request, PhysicalAddress buffer, size_t length) {
@@ -294,7 +321,6 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     this->enqueue_control_transfer(ed);
 
     // TODO: Check for errors
-    // TODO: Dequeue the endpoint descriptor after the transfer is complete
     // FIXME: There is a chance this will block a kernel process indefinitely especially if this is done early on (kernel stage 2 process).
     while (true) {
         if ((ed->head() & ~0xf) == ed->tail()) {
@@ -302,6 +328,12 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
             break;
         }
     }
+
+    this->dequeue_control_transfer(ed);
+    this->free_transfer_chain(setup);
+
+    ed->reset();
+    m_free_eds.push(ed);
 
     return length;
 }

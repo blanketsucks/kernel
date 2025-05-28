@@ -41,11 +41,14 @@ private:
     ohci::TransferDescriptor* allocate_transfer_descriptor();
 
     ohci::TransferDescriptor* create_transfer_descriptor(Pipe*, ohci::PacketPID direction);
+
     Chain create_transfer_chain(Pipe*, ohci::PacketPID direction, PhysicalAddress buffer, size_t size);
+    void free_transfer_chain(ohci::TransferDescriptor* head);
 
     ohci::EndpointDescriptor* create_endpoint_descriptor(Pipe* pipe, Chain chain);
 
     void enqueue_control_transfer(ohci::EndpointDescriptor*);
+    void dequeue_control_transfer(ohci::EndpointDescriptor*);
 
     ohci::Registers* m_registers;
     ohci::HCCA* m_hcca;
@@ -59,6 +62,8 @@ private:
     std::Stack<ohci::TransferDescriptor*> m_free_tds;
 
     ohci::EndpointDescriptor* m_control_ed = nullptr;
+    ohci::EndpointDescriptor* m_control_head = nullptr;
+
     ohci::EndpointDescriptor* m_bulk_ed = nullptr;
 };
 
