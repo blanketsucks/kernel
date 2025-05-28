@@ -14,7 +14,7 @@ class OHCIController : public Controller, public IRQHandler {
 public:
     static OHCIController* create();
 
-    u8 allocate_device_address() override { return 1; };
+    u8 allocate_device_address() override { return m_device_address++; };
 
     size_t submit_control_transfer(Pipe*, const DeviceRequest&, PhysicalAddress, size_t) override;
 
@@ -54,6 +54,7 @@ private:
     ohci::HCCA* m_hcca;
 
     u8 m_port_count = 0;
+    u8 m_device_address = 1;
 
     ohci::EndpointDescriptor* m_endpoint_descriptors;
     ohci::TransferDescriptor* m_transfer_descriptors;
