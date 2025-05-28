@@ -48,6 +48,10 @@ struct DeviceRequest {
     u16 value;
     u16 index;
     u16 length;
+
+    bool is_device_to_host() const { 
+        return (request_type & (u8)RequestType::DeviceToHost) != 0; 
+    }
 };
 
 struct DeviceDescriptor {

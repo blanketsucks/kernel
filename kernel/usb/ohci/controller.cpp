@@ -263,8 +263,7 @@ void OHCIController::enqueue_control_transfer(EndpointDescriptor* ed) {
 
 size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& request, PhysicalAddress buffer, size_t length) {
     pipe->set_data_toggle(false);
-
-    bool is_device_to_host = (request.request_type & (u8)RequestType::DeviceToHost) != 0;
+    bool is_device_to_host = request.is_device_to_host();
 
     auto* setup = this->create_transfer_descriptor(pipe, PacketPID::Setup);
     setup->set_buffer_address(buffer, sizeof(DeviceRequest));
@@ -277,6 +276,7 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     auto* status = this->create_transfer_descriptor(pipe, is_device_to_host ? PacketPID::Out : PacketPID::In);
 
     auto* tail = this->allocate_transfer_descriptor();
+
     tail->set_buffer_address(0, 0);
     tail->set_next(nullptr);
 

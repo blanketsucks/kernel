@@ -270,7 +270,7 @@ size_t UHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     m_irq_blocker.set_value(false);
     pipe->set_data_toggle(false);
 
-    bool is_device_to_host = (request.request_type & (u8)RequestType::DeviceToHost) != 0;
+    bool is_device_to_host = request.is_device_to_host();
 
     auto* setup = this->create_transfer_descriptor(pipe, PacketType::Setup, sizeof(DeviceRequest));
     setup->set_buffer_address(buffer);
