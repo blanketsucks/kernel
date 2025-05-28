@@ -17,8 +17,8 @@ void Device::initialize() {
     }
 
     DeviceDescriptor descriptor;
-    m_default_control_pipe->submit_transfer(
-        to_underlying(RequestType::DeviceToHost | RequestType::Standard | RequestType::Device),
+    this->submit_control_transfer(
+        RequestType::DeviceToHost | RequestType::Standard | RequestType::Device,
         Request::GetDescriptor, USB_DESCRIPTOR_TYPE_DEVICE << 8, 0, sizeof(DeviceDescriptor), &descriptor
     );
 
@@ -44,13 +44,25 @@ void Device::initialize() {
     dbgln(" - Product ID: {:#x}", descriptor.product_id);
 }
 
+size_t Device::submit_control_transfer(RequestType type, u8 request, u16 value, u16 index, u16 length, void* data) {
+    if (!m_default_control_pipe) {
+        return 0;
+    }
+
+    m_default_control_pipe->submit_transfer(
+        to_underlying(type), request, value, index, length, data
+    );
+
+    return length;
+}
+
 void Device::set_device_address(u8 address) {
     if (m_address != 0) {
         return;
     }
 
-    m_default_control_pipe->submit_transfer(
-        to_underlying(RequestType::HostToDevice | RequestType::Standard | RequestType::Device),
+    this->submit_control_transfer(
+        RequestType::HostToDevice | RequestType::Standard | RequestType::Device,
         Request::SetAddress, address, 0, 0, nullptr
     );
 
