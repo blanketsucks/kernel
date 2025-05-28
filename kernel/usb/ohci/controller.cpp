@@ -321,12 +321,24 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     this->enqueue_control_transfer(ed);
 
     // TODO: Check for errors
-    // FIXME: There is a chance this will block a kernel process indefinitely especially if this is done early on (kernel stage 2 process).
+
+    size_t spins = 0;
     while (true) {
+        // "USB sets an upper limit of 5 seconds as the upper limit for any command to be processed."
+        if (spins > 5000) {
+            length = 0;
+
+            // FIXME: Signal a timeout to the caller.
+            break;
+        }
+
         if ((ed->head() & ~0xf) == ed->tail()) {
             // The transfer is complete
             break;
         }
+
+        io::wait(1'000); // Wait for 1 ms
+        spins++;
     }
 
     this->dequeue_control_transfer(ed);
