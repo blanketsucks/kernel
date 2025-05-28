@@ -163,6 +163,15 @@ public:
         m_next = next ? next->address() : 0;
     }
 
+    void reset() {
+        m_control = 0;
+        m_current_buffer_pointer = 0;
+        m_next = 0;
+        m_buffer_end = 0;
+
+        m_data->next = nullptr;
+    }
+
 private:
     u32 m_control;
     u32 m_current_buffer_pointer;
@@ -207,6 +216,14 @@ public:
         return m_data;
     }
 
+    EndpointDescriptor* next() const {
+        return m_data->next;
+    }
+
+    EndpointDescriptor* prev() const {
+        return m_data->prev;
+    }
+
     u32 control() const { return m_control; }
     u32 head() const { return m_head; }
     u32 tail() const { return m_tail; }
@@ -248,6 +265,18 @@ public:
         } else {
             m_next = 0;
         }
+    }
+
+    void reset() {
+        m_control = 0;
+        m_tail = 0;
+        m_head = 0;
+        m_next = 0;
+
+        m_data->next = nullptr;
+        m_data->prev = nullptr;
+        m_data->head = nullptr;
+        m_data->tail = nullptr;
     }
 
 public:
