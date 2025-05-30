@@ -47,6 +47,11 @@ private:
 
     ohci::EndpointDescriptor* create_endpoint_descriptor(Pipe* pipe, Chain chain);
 
+    void enqueue_endpoint_descriptor(
+        ohci::EndpointDescriptor* ed, ohci::EndpointDescriptor* anchor, ohci::EndpointDescriptor*& head
+    );
+    void dequeue_endpoint_descriptor(ohci::EndpointDescriptor* ed, ohci::EndpointDescriptor*& head);
+
     void enqueue_control_transfer(ohci::EndpointDescriptor*);
     void dequeue_control_transfer(ohci::EndpointDescriptor*);
 

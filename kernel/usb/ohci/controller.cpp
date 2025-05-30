@@ -268,24 +268,32 @@ EndpointDescriptor* OHCIController::create_endpoint_descriptor(Pipe* pipe, Chain
     return ed;
 }
 
-void OHCIController::enqueue_control_transfer(EndpointDescriptor* ed) {
-    if (!m_control_head) {
-        m_control_head = ed;
-        m_control_ed->set_next(m_control_head);
+void OHCIController::enqueue_endpoint_descriptor(EndpointDescriptor* ed, EndpointDescriptor* anchor, EndpointDescriptor*& head) {
+    if (!head) {
+        anchor->set_next(ed);
     } else {
-        m_control_head->set_next(ed);
+        head->set_next(ed);
     }
 
+    head = ed;
+}
+
+void OHCIController::dequeue_endpoint_descriptor(EndpointDescriptor* ed, EndpointDescriptor*& head) {
+    auto* prev = ed->prev();
+    if (!ed->next()) {
+        head = prev;
+    }
+
+    prev->set_next(ed->next());
+}
+
+void OHCIController::enqueue_control_transfer(EndpointDescriptor* ed) {
+    this->enqueue_endpoint_descriptor(ed, m_control_ed, m_control_head);
     m_registers->command_status |= CommandStatus::ControlListFilled;
 }
 
 void OHCIController::dequeue_control_transfer(EndpointDescriptor* ed) {
-    auto* prev = ed->prev();
-    if (!ed->next()) {
-        m_control_head = prev;
-    }
-
-    prev->set_next(ed->next());
+    this->dequeue_endpoint_descriptor(ed, m_control_head);
 }
 
 size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& request, PhysicalAddress buffer, size_t length) {
