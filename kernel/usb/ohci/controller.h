@@ -17,6 +17,7 @@ public:
     u8 allocate_device_address() override { return m_device_address++; };
 
     size_t submit_control_transfer(Pipe*, const DeviceRequest&, PhysicalAddress, size_t) override;
+    size_t submit_bulk_transfer(Pipe*, PhysicalAddress, size_t) override { return 0; }
 
 private:
     struct Chain {

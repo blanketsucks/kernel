@@ -15,6 +15,7 @@ public:
     virtual u8 allocate_device_address() = 0;
 
     virtual size_t submit_control_transfer(Pipe*, const DeviceRequest& request, PhysicalAddress buffer, size_t length) = 0;
+    virtual size_t submit_bulk_transfer(Pipe*, PhysicalAddress buffer, size_t length) = 0;
 };
 
 }

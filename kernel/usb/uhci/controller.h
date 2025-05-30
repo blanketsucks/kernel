@@ -23,6 +23,7 @@ public:
     void create_resources();
 
     size_t submit_control_transfer(Pipe*, const DeviceRequest& request, PhysicalAddress buffer, size_t length) override;
+    size_t submit_bulk_transfer(Pipe*, PhysicalAddress, size_t) override { return 0; }
 
     u8 allocate_device_address() override {
         return m_device_address++;
