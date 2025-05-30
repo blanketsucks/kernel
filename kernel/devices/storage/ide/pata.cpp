@@ -39,10 +39,12 @@ PATADevice::PATADevice(
 
     m_data.write<u8>(ata::CommandReg, ata::Identify);
 
-    while (m_data.read<u8>(ata::StatusReg) & ata::Busy);
+    u8 status = m_data.read<u8>(ata::StatusReg);
+    while (status & ata::Busy) {
+        status = m_data.read<u8>(ata::StatusReg);
+    }
 
-    u8 status = m_control.read<u8>();
-    if (status == 0x00) {
+    if (status & ata::Error || status == 0) {
         return;
     }
 
