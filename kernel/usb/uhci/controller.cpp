@@ -301,6 +301,24 @@ size_t UHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     return 0;
 }
 
+size_t UHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, size_t length) {
+    m_irq_blocker.set_value(false);
+    pipe->set_data_toggle(false);
+
+    auto pid = pipe->direction() == Pipe::In ? PacketType::In : PacketType::Out;
+    auto chain = this->create_td_chain(pipe, pid, buffer, length);
+
+    auto* qh = this->allocate_queue_head();
+    qh->attach_td(chain.head);
+
+    auto* prev = m_bulk_anchor_qh->prev();
+    prev->link(qh);
+    qh->link(m_anchor_qh);
+
+    m_irq_blocker.wait();
+    return length;
+}
+
 void UHCIController::handle_irq() {
     u16 status = m_port.read<u16>(IORegister::USBSTS);
     if (!status) {
