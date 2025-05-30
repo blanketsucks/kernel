@@ -296,6 +296,27 @@ void OHCIController::dequeue_control_transfer(EndpointDescriptor* ed) {
     this->dequeue_endpoint_descriptor(ed, m_control_head);
 }
 
+void OHCIController::wait_for_transfer(EndpointDescriptor* ed) {
+    // TODO: Check for errors
+
+    size_t spins = 0;
+    while (true) {
+        // "USB sets an upper limit of 5 seconds as the upper limit for any command to be processed."
+        if (spins > 5000) {
+            // FIXME: Signal a timeout to the caller.
+            break;
+        }
+
+        if ((ed->head() & ~0xf) == ed->tail()) {
+            // The transfer is complete
+            break;
+        }
+
+        io::wait(1'000); // Wait for 1 ms
+        spins++;
+    }
+}
+
 size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& request, PhysicalAddress buffer, size_t length) {
     pipe->set_data_toggle(false);
     bool is_device_to_host = request.is_device_to_host();
@@ -328,29 +349,37 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     auto* ed = this->create_endpoint_descriptor(pipe, { setup, tail });
     this->enqueue_control_transfer(ed);
 
-    // TODO: Check for errors
-
-    size_t spins = 0;
-    while (true) {
-        // "USB sets an upper limit of 5 seconds as the upper limit for any command to be processed."
-        if (spins > 5000) {
-            length = 0;
-
-            // FIXME: Signal a timeout to the caller.
-            break;
-        }
-
-        if ((ed->head() & ~0xf) == ed->tail()) {
-            // The transfer is complete
-            break;
-        }
-
-        io::wait(1'000); // Wait for 1 ms
-        spins++;
-    }
+    this->wait_for_transfer(ed);
 
     this->dequeue_control_transfer(ed);
     this->free_transfer_chain(setup);
+
+    ed->reset();
+    m_free_eds.push(ed);
+
+    return length;
+}
+
+size_t OHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, size_t length) {
+    pipe->set_data_toggle(false);
+    auto pid = pipe->direction() == Pipe::In ? PacketPID::In : PacketPID::Out;
+
+    auto chain = this->create_transfer_chain(pipe, pid, buffer, length);
+
+    auto* tail = this->allocate_transfer_descriptor();
+    tail->set_buffer_address(0, 0);
+    tail->set_next(nullptr);
+
+    chain.tail->set_next(tail);
+    auto* ed = this->create_endpoint_descriptor(pipe, { chain.head, tail });
+
+    this->enqueue_endpoint_descriptor(ed, m_bulk_ed, m_bulk_head);
+    m_registers->command_status |= CommandStatus::BulkListFilled;
+
+    this->wait_for_transfer(ed);
+
+    this->dequeue_endpoint_descriptor(ed, m_bulk_head);
+    this->free_transfer_chain(chain.head);
 
     ed->reset();
     m_free_eds.push(ed);

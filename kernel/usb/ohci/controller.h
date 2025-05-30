@@ -17,7 +17,7 @@ public:
     u8 allocate_device_address() override { return m_device_address++; };
 
     size_t submit_control_transfer(Pipe*, const DeviceRequest&, PhysicalAddress, size_t) override;
-    size_t submit_bulk_transfer(Pipe*, PhysicalAddress, size_t) override { return 0; }
+    size_t submit_bulk_transfer(Pipe*, PhysicalAddress buffer, size_t length) override;
 
 private:
     struct Chain {
@@ -56,6 +56,8 @@ private:
     void enqueue_control_transfer(ohci::EndpointDescriptor*);
     void dequeue_control_transfer(ohci::EndpointDescriptor*);
 
+    void wait_for_transfer(ohci::EndpointDescriptor*);
+
     ohci::Registers* m_registers;
     ohci::HCCA* m_hcca;
 
@@ -72,6 +74,7 @@ private:
     ohci::EndpointDescriptor* m_control_head = nullptr;
 
     ohci::EndpointDescriptor* m_bulk_ed = nullptr;
+    ohci::EndpointDescriptor* m_bulk_head = nullptr;
 };
 
 }
