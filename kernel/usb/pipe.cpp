@@ -14,7 +14,7 @@ OwnPtr<ControlPipe> ControlPipe::create(Device* device, u8 endpoint, u8 max_pack
 
 ControlPipe::ControlPipe(
     Device* device, u8 endpoint, u8 max_packet_size
-) : Pipe(device, Pipe::Direction::In, Pipe::Type::Control, endpoint, max_packet_size) {
+) : Pipe(device, Pipe::In, Pipe::Control, endpoint, max_packet_size) {
     m_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(PAGE_SIZE));
 }
 
@@ -41,5 +41,34 @@ void ControlPipe::submit_transfer(u8 request_type, u8 req, u16 value, u16 index,
         memcpy(data, m_buffer + sizeof(DeviceRequest), length);
     }
 }
+
+OwnPtr<BulkPipe> BulkPipe::create(Device* device, Direction direction, u8 endpoint, u8 max_packet_size) {
+    return OwnPtr<BulkPipe>(new BulkPipe(device, direction, endpoint, max_packet_size));
+}
+
+BulkPipe::BulkPipe(
+    Device* device, Direction direction, u8 endpoint, u8 max_packet_size
+) : Pipe(device, direction, Pipe::Bulk, endpoint, max_packet_size) {
+    m_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(PAGE_SIZE));
+}
+
+void BulkPipe::submit_transfer(void* data, size_t length) {
+    if (length > PAGE_SIZE) {
+        return;
+    }
+
+    auto* controller = m_device->controller();
+    PhysicalAddress address = MM->get_physical_address(m_buffer);
+
+    if (m_direction == Pipe::Out) {
+        memcpy(m_buffer, data, length);
+    }
+
+    controller->submit_bulk_transfer(this, address, length);
+    if (m_direction == Pipe::In) {
+        memcpy(data, m_buffer, length);
+    }
+}
+
 
 }

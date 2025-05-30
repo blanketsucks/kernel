@@ -60,4 +60,16 @@ private:
     u8* m_buffer;
 };
 
+class BulkPipe : public Pipe {
+public:
+    static OwnPtr<BulkPipe> create(Device* device, Direction direction, u8 endpoint, u8 max_packet_size);
+
+    void submit_transfer(void* data, size_t length);
+
+private:
+    BulkPipe(Device* device, Direction direction, u8 endpoint, u8 max_packet_size);
+
+    u8* m_buffer;
+};
+
 }
