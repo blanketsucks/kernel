@@ -50,9 +50,10 @@ OHCIController::OHCIController(pci::Address address) : IRQHandler(address.interr
     address.set_bus_master(true);
     address.set_interrupt_line(true);
 
+    m_port_count = m_registers->root_hub_descriptor_a & 0xff;
+
     dbgln("OHCI Controller ({}:{}:{}):", address.bus(), address.device(), address.function());
     dbgln(" - Revision: {:#x}", m_registers->revision);
-    m_port_count = m_registers->root_hub_descriptor_a & 0xff;
     dbgln(" - Ports: {}", m_port_count);
     dbgln();
 
@@ -104,17 +105,18 @@ void OHCIController::initialize() {
 void OHCIController::initialize_resources() {
     m_hcca = reinterpret_cast<ohci::HCCA*>(MM->allocate_dma_region(sizeof(ohci::HCCA)));
     memset(m_hcca, 0, sizeof(ohci::HCCA));
-    
-    this->create_endpoint_descriptors();
-    this->create_transfer_descriptors();
 
-    m_control_ed = this->allocate_endpoint_descriptor();
-    m_bulk_ed = this->allocate_endpoint_descriptor();
+    m_ed_pool = DescriptorPool<EndpointDescriptor>::create();
+    m_td_pool = DescriptorPool<TransferDescriptor>::create();
+    
+    m_control_ed = m_ed_pool->allocate();
+    m_bulk_ed = m_ed_pool->allocate();
 
     m_control_ed->set_skip();
     m_bulk_ed->set_skip();
 
     m_registers->hcca = MM->get_physical_address(m_hcca);
+
     m_registers->control_head_ed = m_control_ed->address();
     m_registers->bulk_head_ed = m_bulk_ed->address();
 }
@@ -163,61 +165,20 @@ void OHCIController::handle_hub_status_change() {
     }
 }
 
-
-void OHCIController::create_endpoint_descriptors() {
-    m_endpoint_descriptors = reinterpret_cast<ohci::EndpointDescriptor*>(MM->allocate_kernel_region(PAGE_SIZE));
-    PhysicalAddress address = MM->get_physical_address(m_endpoint_descriptors);
-
-    for (size_t i = 0; i < ED_COUNT; i++) {
-        auto* ed = &m_endpoint_descriptors[i];
-        new (ed) ohci::EndpointDescriptor(address + i * sizeof(ohci::EndpointDescriptor));
-
-        m_free_eds.push(ed);
-    }
-}
-
-void OHCIController::create_transfer_descriptors() {
-    m_transfer_descriptors = reinterpret_cast<ohci::TransferDescriptor*>(MM->allocate_kernel_region(PAGE_SIZE));
-    PhysicalAddress address = MM->get_physical_address(m_transfer_descriptors);
-
-    for (size_t i = 0; i < TD_COUNT; i++) {
-        auto* td = &m_transfer_descriptors[i];
-        new (td) ohci::TransferDescriptor(address + i * sizeof(ohci::TransferDescriptor));
-
-        m_free_tds.push(td);
-    }
-}
-
-ohci::EndpointDescriptor* OHCIController::allocate_endpoint_descriptor() {
-    if (m_free_eds.empty()) {
-        return nullptr;
-    }
-
-    return m_free_eds.pop();
-}
-
-ohci::TransferDescriptor* OHCIController::allocate_transfer_descriptor() {
-    if (m_free_tds.empty()) {
-        return nullptr;
-    }
-
-    return m_free_tds.pop();
-}
-
 void OHCIController::free_transfer_chain(TransferDescriptor* head) {
     TransferDescriptor* current = head;
     while (current) {
         auto* next = current->next();
 
         current->reset();
-        m_free_tds.push(current);
+        m_td_pool->free(current);
 
         current = next;
     }
 }
 
 TransferDescriptor* OHCIController::create_transfer_descriptor(Pipe* pipe, ohci::PacketPID direction) {
-    auto* td = this->allocate_transfer_descriptor();
+    auto* td = m_td_pool->allocate();
 
     td->set_direction(direction);
     td->set_data_toggle(pipe->data_toggle());
@@ -252,7 +213,7 @@ OHCIController::Chain OHCIController::create_transfer_chain(Pipe* pipe, ohci::Pa
 }
 
 EndpointDescriptor* OHCIController::create_endpoint_descriptor(Pipe* pipe, Chain chain) {
-    auto* ed = this->allocate_endpoint_descriptor();
+    auto* ed = m_ed_pool->allocate();
     if (!ed) {
         return nullptr;
     }
@@ -331,7 +292,7 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     pipe->set_data_toggle(true);
     auto* status = this->create_transfer_descriptor(pipe, is_device_to_host ? PacketPID::Out : PacketPID::In);
 
-    auto* tail = this->allocate_transfer_descriptor();
+    auto* tail = m_td_pool->allocate();
 
     tail->set_buffer_address(0, 0);
     tail->set_next(nullptr);
@@ -355,7 +316,7 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     this->free_transfer_chain(setup);
 
     ed->reset();
-    m_free_eds.push(ed);
+    m_ed_pool->free(ed);
 
     return length;
 }
@@ -366,7 +327,7 @@ size_t OHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, 
 
     auto chain = this->create_transfer_chain(pipe, pid, buffer, length);
 
-    auto* tail = this->allocate_transfer_descriptor();
+    auto* tail = m_td_pool->allocate();
     tail->set_buffer_address(0, 0);
     tail->set_next(nullptr);
 
@@ -382,7 +343,7 @@ size_t OHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, 
     this->free_transfer_chain(chain.head);
 
     ed->reset();
-    m_free_eds.push(ed);
+    m_ed_pool->free(ed);
 
     return length;
 }

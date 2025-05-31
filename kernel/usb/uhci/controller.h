@@ -2,6 +2,7 @@
 
 #include <kernel/usb/uhci/uhci.h>
 #include <kernel/usb/controller.h>
+#include <kernel/usb/descriptor_pool.h>
 #include <kernel/usb/device.h>
 #include <kernel/arch/io.h>
 #include <kernel/pci/pci.h>
@@ -44,12 +45,6 @@ private:
 
     void handle_irq() override;
 
-    void create_queue_heads();
-    void create_transfer_descriptors();
-
-    uhci::QueueHead* allocate_queue_head();
-    uhci::TransferDescriptor* allocate_transfer_descriptor();
-
     void setup_transfer();
 
     uhci::TransferDescriptor* create_transfer_descriptor(Pipe*, uhci::PacketType direction, size_t size);
@@ -62,11 +57,8 @@ private:
 
     uhci::FrameListEntry* m_frame_list;
 
-    uhci::QueueHead* m_queue_heads;
-    uhci::TransferDescriptor* m_transfer_descriptors;
-
-    std::Stack<uhci::QueueHead*> m_free_qhs;
-    std::Stack<uhci::TransferDescriptor*> m_free_tds;
+    OwnPtr<DescriptorPool<uhci::QueueHead>> m_qh_pool;
+    OwnPtr<DescriptorPool<uhci::TransferDescriptor>> m_td_pool;
 
     uhci::TransferDescriptor* m_iso_tds;
 

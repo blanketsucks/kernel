@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/usb/controller.h>
+#include <kernel/usb/descriptor_pool.h>
 #include <kernel/usb/ohci/ohci.h>
 #include <kernel/arch/irq.h>
 #include <kernel/pci/address.h>
@@ -35,12 +36,6 @@ private:
     void initialize();
     void initialize_resources();
 
-    void create_endpoint_descriptors();
-    void create_transfer_descriptors();
-
-    ohci::EndpointDescriptor* allocate_endpoint_descriptor();
-    ohci::TransferDescriptor* allocate_transfer_descriptor();
-
     ohci::TransferDescriptor* create_transfer_descriptor(Pipe*, ohci::PacketPID direction);
 
     Chain create_transfer_chain(Pipe*, ohci::PacketPID direction, PhysicalAddress buffer, size_t size);
@@ -64,11 +59,8 @@ private:
     u8 m_port_count = 0;
     u8 m_device_address = 1;
 
-    ohci::EndpointDescriptor* m_endpoint_descriptors;
-    ohci::TransferDescriptor* m_transfer_descriptors;
-
-    std::Stack<ohci::EndpointDescriptor*> m_free_eds;
-    std::Stack<ohci::TransferDescriptor*> m_free_tds;
+    OwnPtr<DescriptorPool<ohci::EndpointDescriptor>> m_ed_pool;
+    OwnPtr<DescriptorPool<ohci::TransferDescriptor>> m_td_pool;
 
     ohci::EndpointDescriptor* m_control_ed = nullptr;
     ohci::EndpointDescriptor* m_control_head = nullptr;

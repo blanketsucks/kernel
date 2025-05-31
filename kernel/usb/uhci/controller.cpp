@@ -78,9 +78,9 @@ void UHCIController::create_resources() {
     for (size_t i = 0; i < FRAME_COUNT; i++) {
         m_frame_list[i].enable = 0;
     }
-    
-    this->create_queue_heads();
-    this->create_transfer_descriptors();
+
+    m_qh_pool = DescriptorPool<QueueHead>::create();
+    m_td_pool = DescriptorPool<TransferDescriptor>::create();
 }
 
 void UHCIController::spawn_poll_process() {
@@ -131,54 +131,14 @@ void UHCIController::enable_port(u8 port) {
     m_devices[port] = device;
 }
 
-void UHCIController::create_queue_heads() {
-    m_queue_heads = reinterpret_cast<QueueHead*>(MM->allocate_kernel_region(PAGE_SIZE));
-    PhysicalAddress address = MM->get_physical_address(m_queue_heads);
-
-    for (size_t i = 0; i < PAGE_SIZE / sizeof(QueueHead); i++) {
-        auto* qh = &m_queue_heads[i];
-        new (qh) QueueHead(address + i * sizeof(QueueHead));
-
-        m_free_qhs.push(qh);
-    }
-}
-
-void UHCIController::create_transfer_descriptors() {
-    m_transfer_descriptors = reinterpret_cast<TransferDescriptor*>(MM->allocate_kernel_region(PAGE_SIZE));
-    PhysicalAddress address = MM->get_physical_address(m_transfer_descriptors);
-
-    for (size_t i = 0; i < PAGE_SIZE / sizeof(TransferDescriptor); i++) {
-        auto* td = &m_transfer_descriptors[i];
-        new (td) TransferDescriptor(address + i * sizeof(TransferDescriptor));
-
-        m_free_tds.push(td);
-    }
-}
-
-uhci::QueueHead* UHCIController::allocate_queue_head() {
-    if (m_free_qhs.empty()) {
-        return nullptr;
-    }
-
-    return m_free_qhs.pop();
-}
-
-uhci::TransferDescriptor* UHCIController::allocate_transfer_descriptor() {
-    if (m_free_tds.empty()) {
-        return nullptr;
-    }
-
-    return m_free_tds.pop();
-}
-
 void UHCIController::setup_transfer() {
     // We will essentially structure the queue heads by order of priority.
-    m_anchor_qh = this->allocate_queue_head();
+    m_anchor_qh = m_qh_pool->allocate();
 
-    m_iso_anchor_qh = this->allocate_queue_head();
-    m_interrupt_anchor_qh = this->allocate_queue_head();
-    m_control_anchor_qh = this->allocate_queue_head();
-    m_bulk_anchor_qh = this->allocate_queue_head();
+    m_iso_anchor_qh = m_qh_pool->allocate();
+    m_interrupt_anchor_qh = m_qh_pool->allocate();
+    m_control_anchor_qh = m_qh_pool->allocate();
+    m_bulk_anchor_qh = m_qh_pool->allocate();
 
     m_anchor_qh->link(m_iso_anchor_qh);
     m_anchor_qh->terminate_element_link();
@@ -212,7 +172,7 @@ void UHCIController::setup_transfer() {
 }
 
 TransferDescriptor* UHCIController::create_transfer_descriptor(Pipe* pipe, uhci::PacketType direction, size_t size) {
-    auto* td = this->allocate_transfer_descriptor();
+    auto* td = m_td_pool->allocate();
     if (!td) {
         return nullptr;
     }
@@ -290,7 +250,7 @@ size_t UHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
         setup->link(status);
     }
 
-    auto* qh = this->allocate_queue_head();
+    auto* qh = m_qh_pool->allocate();
     qh->attach_td(setup);
 
     auto* prev = m_control_anchor_qh->prev();
@@ -308,7 +268,7 @@ size_t UHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, 
     auto pid = pipe->direction() == Pipe::In ? PacketType::In : PacketType::Out;
     auto chain = this->create_td_chain(pipe, pid, buffer, length);
 
-    auto* qh = this->allocate_queue_head();
+    auto* qh = m_qh_pool->allocate();
     qh->attach_td(chain.head);
 
     auto* prev = m_bulk_anchor_qh->prev();
