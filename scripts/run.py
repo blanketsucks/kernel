@@ -4,6 +4,7 @@ import argparse
 import pathlib
 import subprocess
 import sys
+from enum import Enum
 
 CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
@@ -14,6 +15,12 @@ DEFAULT_KERNEL_LOCATION = ROOT  / 'build' / 'kernel' / 'kernel.bin'
 DEFAULT_LOADER_LOCATION = ROOT / 'build' / 'kernel' / 'loader' / 'loader.bin'
 
 DEFAULT_QEMU_ARGS: List[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int,guest_errors,unimp', '-no-reboot', '-no-shutdown']
+
+class USBController(str, Enum):
+    OHCI = 'ohci'
+    UHCI = 'uhci'
+    EHCI = 'ehci'
+    xHCI = 'xhci'
 
 class DiskImage(NamedTuple):
     file: str
@@ -36,6 +43,7 @@ class QemuArgs(NamedTuple):
     x86_64: bool
     uefi: bool
     usb: bool
+    usb_controller: USBController
     use_loader: bool
     virtio_gpu: bool
 
@@ -73,9 +81,15 @@ class QemuArgs(NamedTuple):
         ]
 
         if self.usb:
-            # args.append('-usb')
-            args.extend(['-device', 'pci-ohci,id=ohci'])
-            args.extend(['-device', 'usb-audio,bus=ohci.0,id=foobar'])
+            if self.usb_controller is USBController.UHCI:
+                args.append('-usb')
+            elif self.usb_controller is USBController.OHCI:
+                args.extend(['-device', 'pci-ohci,id=usb-bus'])
+            else:
+                # TODO: Support
+                ...
+
+            args.extend(['-device', 'usb-audio,bus=usb-bus.0,id=foobar'])
 
         if self.virtio_gpu:
             args.extend(['-device', 'virtio-gpu-pci'])
@@ -107,6 +121,7 @@ def main():
     parser.add_argument('--with-monitor', action='store_true', help='Run QEMU with a monitor (useful for debugging).')
     parser.add_argument('--disable-loader', action='store_true', help='Run the kernel without the 64-bit loader.')
     parser.add_argument('--usb', action='store_true', help='Enable USB support.')
+    parser.add_argument('--usb-controller', type=USBController, default='uhci', help='USB controller type (default: uhci).')
     parser.add_argument('--disable-virtio-gpu', action='store_true', help='Disable VirtIO GPU support.')
     
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
@@ -135,6 +150,7 @@ def main():
         ovmf=args.ovmf,
         serial=True,
         usb=args.usb,
+        usb_controller=args.usb_controller,
         use_loader=not args.disable_loader,
         virtio_gpu=not args.disable_virtio_gpu,
     )
