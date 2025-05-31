@@ -107,7 +107,7 @@ ErrorOr<void> VirtIOGPUDevice::test() {
 
     TRY(this->set_resource_scanout(0, id, { 0, 0, 1024, 768 }));
     for (size_t i = 0; i < 1024 * 768; i++) {
-        fb[i] = 0xffffffff;
+        fb[i] = 0x41414141;
     }
 
     TRY(this->transfer_to_host_2d(id, { 0, 0, 1024, 768 }, 0));
