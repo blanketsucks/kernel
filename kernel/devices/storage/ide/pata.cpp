@@ -8,11 +8,12 @@
 namespace kernel {
 
 RefPtr<PATADevice> PATADevice::create(ata::Channel channel, ata::Drive drive, pci::Address address) {
-    auto device = Device::create<PATADevice>(channel, drive, address);
+    auto device = RefPtr<PATADevice>(new PATADevice(channel, drive, address));
     if (!device->max_addressable_block()) { // If max_addressable_block is 0, we returned early in the constructor which means the device is not present
         return nullptr;
     }
 
+    Device::after_device_creation(device);
     return device;
 }
 
