@@ -42,6 +42,9 @@ public:
 
     size_t max_io_block_count() const override;
 
+    PartitionEntry const& partition() const { return m_partition; }
+    StorageDevice* device() const { return m_device; }
+
     ErrorOr<bool> read_blocks(void* buffer, size_t count, size_t block) override;
     ErrorOr<bool> write_blocks(const void* buffer, size_t count, size_t block) override;
 
