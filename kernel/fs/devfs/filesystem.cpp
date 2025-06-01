@@ -17,6 +17,8 @@ static fs::FileSystem* s_fs = nullptr;
 static Vector<Subsystem> s_subsystems;
 static HashMap<u32, DeviceRange> s_ranges;
 
+static HashMap<u32, String> s_nodes;
+
 static void poll();
 static void handle_device_event(DeviceEvent event);
 
@@ -39,6 +41,15 @@ void init() {
     Scheduler::add_process(process);
 }
 
+StringView get_device_path(u32 major, u32 minor) {
+    auto iterator = s_nodes.find(Device::encode(major, minor));
+    if (iterator == s_nodes.end()) {
+        return {};
+    }
+
+    return iterator->value;
+}
+
 ErrorOr<void> mount() {
     auto* vfs = fs::vfs();
 
@@ -59,6 +70,7 @@ ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev) {
     auto* vfs = fs::vfs();
     TRY(vfs->mknod(path, mode, dev, s_root));
 
+    s_nodes.set(dev, path);
     return {};
 }
 
@@ -72,6 +84,10 @@ Subsystem& create_subsystem(String name) {
 
 void register_device_range(String name, DeviceMajor major, FormatStyle format_style) {
     s_ranges.set(static_cast<u32>(major), DeviceRange(name, major, format_style));
+}
+
+void register_device_range(DeviceMajor major, Function<String(DeviceEvent)> callback) {
+    s_ranges.set(static_cast<u32>(major), DeviceRange(major, move(callback)));
 }
 
 static void poll() {
@@ -117,8 +133,6 @@ static void handle_device_event(DeviceEvent event) {
         basepath = range->name();
     }
 
-    auto* vfs = fs::vfs();
-
     mode_t mode = 0777;
     if (event.is_block_device) {
         mode |= S_IFBLK;
@@ -128,14 +142,16 @@ static void handle_device_event(DeviceEvent event) {
 
     String name = basepath;
     if (range->format_style() == FormatStyle::ASCII) {
-        name.append('a' - event.minor);
+        name.append('a' + event.minor);
+    } else if (range->format_style() == FormatStyle::Callback) {
+        name = range->callback()(event);
     } else {
         name = format("{}{}", basepath, event.minor);
     }
 
     switch (event.event_type) {
         case DeviceEvent::Added: {
-            vfs->mknod(name, mode, Device::encode(event.major, event.minor), s_root);
+            mknod(name, mode, Device::encode(event.major, event.minor));
             break;
         }
     }

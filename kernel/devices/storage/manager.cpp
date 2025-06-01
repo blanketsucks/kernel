@@ -1,5 +1,6 @@
 #include <kernel/devices/storage/manager.h>
 #include <kernel/boot/command_line.h>
+#include <kernel/fs/devfs/filesystem.h>
 #include <kernel/pci/pci.h>
 
 #include <kernel/devices/storage/ahci/controller.h>
@@ -23,6 +24,19 @@ StorageManager* StorageManager::instance() {
 
 void StorageManager::initialize() {
     s_instance.enumerate_controllers();
+
+    devfs::register_device_range("hd", DeviceMajor::Storage, devfs::FormatStyle::ASCII);
+    devfs::register_device_range(DeviceMajor::StoragePartition, [](DeviceEvent event) -> String {
+        // FIXME: Maybe we could just pass in the device pointer directly to DeviceEvent. And maybe we could find a whole better way
+        //        to do this kind of thing in the first place.
+        RefPtr<StorageDevicePartition> partition = Device::get_device(static_cast<DeviceMajor>(event.major), event.minor);
+        size_t index = partition->partition().index + 1;
+
+        auto* device = partition->device();
+        StringView path = devfs::get_device_path(static_cast<u32>(device->major()), device->minor());
+
+        return format("{}{}", path, index);
+    });
 }
 
 u32 StorageManager::generate_device_minor() {
