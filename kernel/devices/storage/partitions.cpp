@@ -70,12 +70,14 @@ Vector<PartitionEntry> enumerate_device_partitions(BlockDevice* device) {
     }
     
     Vector<PartitionEntry> partitions;
+    size_t index = 0;
+
     for (auto& partition : mbr.partitions) {
         if (!partition.offset) {
             continue;
         }
 
-        partitions.append({ partition.offset, partition.sectors });
+        partitions.append({ index++, partition.offset, partition.sectors });
     }
 
     return partitions;
@@ -105,7 +107,7 @@ Vector<PartitionEntry> parse_gpt_partitions(BlockDevice* device) {
             continue;
         }
 
-        partitions.append({ entry.first_lba, entry.last_lba - entry.first_lba + 1 });
+        partitions.append({ i, entry.first_lba, entry.last_lba - entry.first_lba + 1 });
     }
 
     return partitions;

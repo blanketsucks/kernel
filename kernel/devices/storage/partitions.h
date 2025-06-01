@@ -9,6 +9,7 @@
 namespace kernel {
 
 struct PartitionEntry {
+    size_t index;
     u64 offset;
     u64 size;
 };
