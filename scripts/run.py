@@ -99,7 +99,7 @@ class QemuArgs(NamedTuple):
 
         if not self.x86_64:
             args.extend(['-kernel', self.kernel])
-        elif self.use_loader:
+        elif self.use_loader and not self.uefi:
             args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
             args.extend(['-append', 'root=/dev/hda2'])
 

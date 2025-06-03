@@ -4,6 +4,8 @@ if (x86_64)
     list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86/.*")
     file(GLOB_RECURSE ASM_SOURCES arch/x86_64/asm/*.asm)
 
+    add_subdirectory(efi)
+    
     add_compile_definitions(__x86_64__)
     add_compile_options(
         -fno-stack-protector -fno-stack-check
@@ -30,7 +32,9 @@ if (x86_64)
     set(BITS 64)
 
     add_subdirectory(loader)
+
     list(FILTER CPP_SOURCES EXCLUDE REGEX ".*loader/.*")
+    list(FILTER CPP_SOURCES EXCLUDE REGEX ".*efi/.*")
 else()
     list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86_64/.*")
     file(GLOB_RECURSE ASM_SOURCES arch/x86/asm/*.asm)
