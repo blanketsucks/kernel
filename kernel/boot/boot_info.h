@@ -2,7 +2,6 @@
 
 #include <kernel/common.h>
 #include <std/string_view.h>
-#include <limine.h>
 
 namespace kernel {
 
