@@ -79,44 +79,6 @@ void VirtIOGPUDevice::populate_header(GPUControlHeader& header, GPUControlType t
     header.padding = 0;
 }
 
-ErrorOr<void> VirtIOGPUDevice::test() {
-    if (accepted_features() & VIRTIO_GPU_F_EDID) {
-        GPUGetEDIDResponse* response = TRY(this->get_edid(0));
-        EDID* edid = reinterpret_cast<EDID*>(response->edid);
-
-        for (auto& timing : edid->standard_timings) {
-            dbgln(" - Standard Timing: {} @ {}Hz", (timing.x_resolution + 31) * 8, timing.vertical_frequency + 60);
-        }
-
-        for (auto& timing : edid->timings) {
-            if (timing.monitor_descriptor.descriptor != 0) {
-                continue;
-            } else if (timing.monitor_descriptor.type != 0xfc) {
-                continue;
-            }
-
-            StringView text = { reinterpret_cast<const char*>(timing.monitor_descriptor.data), 13 };
-            dbgln(" - Monitor Descriptor: {}", text);
-        }
-    }
-
-    auto* fb = (u32*)MM->allocate_kernel_region(768 * 1024 * 4);
-    PhysicalAddress address = MM->get_physical_address(fb);
-
-    u32 id = TRY(this->create_resource_2d(GPUFormat::B8G8R8X8, 1024, 768));
-    TRY(this->attach_resource_backing(id, address, 768 * 1024 * 4));
-
-    TRY(this->set_resource_scanout(0, id, { 0, 0, 1024, 768 }));
-    for (size_t i = 0; i < 1024 * 768; i++) {
-        fb[i] = 0x41414141;
-    }
-
-    TRY(this->transfer_to_host_2d(id, { 0, 0, 1024, 768 }, 0));
-    TRY(this->resource_flush(id, { 0, 0, 1024, 768 }));
-
-    return {};
-}
-
 void VirtIOGPUDevice::send_command(size_t request, size_t response) {
     auto& queue = this->queue(0);
     auto chain = queue.create_chain();

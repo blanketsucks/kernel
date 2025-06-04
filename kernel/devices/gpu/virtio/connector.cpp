@@ -20,6 +20,13 @@ ErrorOr<void> VirtIOGPUConnector::initialize() {
     TRY(m_device->attach_resource_backing(m_resource_id, address, size));
     TRY(m_device->set_resource_scanout(m_id, m_resource_id, m_rect));
 
+    u32* fb = reinterpret_cast<u32*>(m_framebuffer);
+    for (size_t i = 0; i < m_rect.width * m_rect.height; i++) {
+        fb[i] = 0x41414141;
+    }
+
+    TRY(this->flush());
+
     return {};
 }
 
@@ -42,7 +49,7 @@ ErrorOr<void*> VirtIOGPUConnector::map_framebuffer(Process* process) {
 ErrorOr<void> VirtIOGPUConnector::flush() {
     TRY(m_device->transfer_to_host_2d(m_resource_id, m_rect, 0));
     TRY(m_device->resource_flush(m_resource_id, m_rect));
-    
+
     return {};
 }
 

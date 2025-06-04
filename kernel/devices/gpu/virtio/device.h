@@ -19,8 +19,6 @@ public:
 
     static RefPtr<GPUDevice> create(pci::Device);
     
-    ErrorOr<void> test();
-
 private:
     friend class kernel::Device;
     friend class VirtIOGPUConnector;
