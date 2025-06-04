@@ -6,6 +6,26 @@
 
 namespace kernel {
 
+ErrorOr<GPUConnector::Resolution> GenericGPUConnector::get_resolution() const {
+    return GPUConnector::Resolution {
+        m_device->width(),
+        m_device->height(),
+        m_device->width() * (m_device->bpp() / 8),
+        m_device->bpp()
+    };
+}
+
+ErrorOr<void*> GenericGPUConnector::map_framebuffer(Process* process) {
+    PhysicalAddress address = m_device->framebuffer();
+    size_t size = m_device->height() * m_device->pitch();
+
+    return process->allocate_with_physical_region(address, size, PROT_READ | PROT_WRITE);
+}
+
+ErrorOr<void> GenericGPUConnector::flush() {
+    return {};
+}
+
 RefPtr<GenericGPUDevice> GenericGPUDevice::create_from_boot() {
     return GenericGPUDevice::create(
         reinterpret_cast<PhysicalAddress>(g_boot_info->framebuffer.address),
@@ -17,36 +37,15 @@ RefPtr<GenericGPUDevice> GenericGPUDevice::create_from_boot() {
 }
 
 RefPtr<GenericGPUDevice> GenericGPUDevice::create(
-    PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp
+    PhysicalAddress framebuffer, i32 width, i32 height, i32 pitch, i32 bpp
 ) {
     return Device::create<GenericGPUDevice>(framebuffer, width, height, pitch, bpp);
 }
 
-ErrorOr<void*> GenericGPUDevice::mmap(Process& process, size_t size, int prot) {
-    if (size < std::align_up(this->size(), PAGE_SIZE)) {
-        return Error(EINVAL);
-    }
-    
-    void* region = process.allocate_with_physical_region(m_framebuffer, size, prot);
-    return region;
-}
-
-ErrorOr<int> GenericGPUDevice::ioctl(unsigned request, unsigned arg) {
-    auto* process = Process::current();
-    switch (request) {
-        case FB_GET_RESOLUTION: {
-            auto* resolution = reinterpret_cast<FrameBufferResolution*>(arg);
-            process->validate_write(resolution, sizeof(FrameBufferResolution));
-
-            resolution->width = m_width;
-            resolution->height = m_height;
-            resolution->pitch = m_pitch;
-
-            return 0;
-        }
-    }
-
-    return -EINVAL;
+GenericGPUDevice::GenericGPUDevice(
+    PhysicalAddress framebuffer, i32 width, i32 height, i32 pitch, i32 bpp
+) : m_framebuffer(framebuffer), m_width(width), m_height(height), m_pitch(pitch), m_bpp(bpp) {
+    m_connectors.append(GenericGPUConnector::create(this));
 }
 
 }

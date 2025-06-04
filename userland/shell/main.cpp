@@ -145,13 +145,24 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
 }
 
 int main() {
-    int fd = open("/dev/fb0", O_RDONLY);
+    int gpu = open("/dev/gpu/card0", O_RDONLY);
+    if (gpu < 0) {
+        dbgln("Failed to open GPU device: {}", strerror(errno));
+        return 1;
+    }
 
-    FrameBufferResolution resolution;
-    ioctl(fd, FB_GET_RESOLUTION, &resolution);
+    struct gpu_connector connector;
+    ioctl(gpu, GPU_GET_CONNECTORS, &connector);
 
-    u32* buffer = reinterpret_cast<u32*>(mmap(nullptr, resolution.width * resolution.pitch, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
-    memset(buffer, 0x00, resolution.width * resolution.pitch);
+    struct gpu_connector_map_fb map_fb;
+    map_fb.id = connector.id;
+
+    ioctl(gpu, GPU_CONNECTOR_MAP_FB, &map_fb);
+    u32* buffer = reinterpret_cast<u32*>(map_fb.framebuffer);
+
+    memset(buffer, 0x00, connector.height * connector.pitch);
+
+    gfx::FrameBufferResolution resolution(connector.width, connector.height, connector.pitch);
 
     gfx::FrameBuffer framebuffer(buffer, resolution);
     gfx::RenderContext context(framebuffer);
@@ -161,7 +172,7 @@ int main() {
 
     auto font = gfx::PSFFont::create("/res/fonts/zap-light16.psf");
 
-    shell::Terminal term(resolution.width, resolution.height, context, font->glyph_data(), font->width(), font->height());
+    shell::Terminal term(connector.width, connector.height, context, font->glyph_data(), font->width(), font->height());
     term.on_line_flush = [&term](String text) {
         if (text.empty()) {
             return;
@@ -211,6 +222,6 @@ int main() {
         term.on_char(event.ascii);
     }
 
-    close(fd);
+    close(gpu);
     return 0;
 }

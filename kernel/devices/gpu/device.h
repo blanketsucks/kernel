@@ -15,10 +15,14 @@ public:
     ErrorOr<bool> write_blocks(const void*, size_t, size_t) override { return Error(EIO); }
     size_t max_io_block_count() const override { return 0; }
 
+    ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
+
 protected:
     GPUDevice() : BlockDevice(DeviceMajor::GPU, GPUManager::generate_device_minor(), 0) {}
 
     Vector<RefPtr<GPUConnector>> m_connectors;
+
+    ErrorOr<GPUConnector*> get_connector(int id) const;
 };
 
 }

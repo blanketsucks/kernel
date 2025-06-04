@@ -23,6 +23,7 @@ public:
 
 private:
     friend class kernel::Device;
+    friend class VirtIOGPUConnector;
 
     VirtIOGPUDevice(pci::Device device);
 

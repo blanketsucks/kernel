@@ -6,27 +6,47 @@
 
 namespace kernel {
 
+class GenericGPUDevice;
+
+class GenericGPUConnector : public GPUConnector {
+public:
+    static RefPtr<GenericGPUConnector> create(GenericGPUDevice* device) {
+        return RefPtr<GenericGPUConnector>(new GenericGPUConnector(device));
+    }
+
+    ErrorOr<Resolution> get_resolution() const override;
+    ErrorOr<void*> map_framebuffer(Process*) override;
+    ErrorOr<void> flush() override;
+
+private:
+    GenericGPUConnector(GenericGPUDevice* device) : GPUConnector(0), m_device(device) {}
+
+    GenericGPUDevice* m_device;
+};
+
 class GenericGPUDevice : public GPUDevice {
 public:
     static RefPtr<GenericGPUDevice> create_from_boot();
-    static RefPtr<GenericGPUDevice> create(PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp);
+    static RefPtr<GenericGPUDevice> create(PhysicalAddress framebuffer, i32 width, i32 height, i32 pitch, i32 bpp);
 
-    ErrorOr<void*> mmap(Process&, size_t size, int prot) override;
-    ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
+    PhysicalAddress framebuffer() const { return m_framebuffer; }
+
+    i32 width() const { return m_width; }
+    i32 height() const { return m_height; }
+    i32 pitch() const { return m_pitch; }
+    i32 bpp() const { return m_bpp; }
 
 private:
     friend class Device;
 
-    GenericGPUDevice(
-        PhysicalAddress framebuffer, u32 width, u32 height, u32 pitch, u16 bpp
-    ) : m_framebuffer(framebuffer), m_width(width), m_height(height), m_pitch(pitch), m_bpp(bpp) {}
+    GenericGPUDevice(PhysicalAddress framebuffer, i32 width, i32 height, i32 pitch, i32 bpp);
 
     PhysicalAddress m_framebuffer;
 
-    u32 m_width;
-    u32 m_height;
-    u32 m_pitch;
-    u16 m_bpp;
+    i32 m_width;
+    i32 m_height;
+    i32 m_pitch;
+    i32 m_bpp;
 };
 
 }

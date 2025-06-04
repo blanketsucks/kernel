@@ -25,7 +25,8 @@ GPUManager* GPUManager::instance() {
 }
 
 void GPUManager::initialize() {
-    devfs::register_device_range("fb", DeviceMajor::GPU);
+    auto& subsystem = devfs::create_subsystem("gpu");
+    subsystem.add_range("card", DeviceMajor::GPU);
 
     s_instance.enumerate();
 }

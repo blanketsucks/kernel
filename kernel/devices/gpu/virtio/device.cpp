@@ -1,4 +1,5 @@
 #include <kernel/devices/gpu/virtio/device.h>
+#include <kernel/devices/gpu/virtio/connector.h>
 #include <kernel/devices/gpu/virtio/virtio.h>
 #include <kernel/devices/gpu/edid.h>
 #include <kernel/devices/device.h>
@@ -23,11 +24,6 @@ RefPtr<GPUDevice> VirtIOGPUDevice::create(pci::Device pci_device) {
     device = kernel::Device::create<VirtIOGPUDevice>(pci_device);
 
     auto result = device->initialize();
-    if (result.is_err()) {
-        return nullptr;
-    }
-
-    result = device->test();
     if (result.is_err()) {
         return nullptr;
     }
@@ -59,6 +55,11 @@ ErrorOr<void> VirtIOGPUDevice::initialize() {
     for (u32 i = 0; i < m_num_scanouts; i++) {
         auto& mode = display_info->modes[i];
         m_scanouts[i] = { i, mode.rect };
+
+        auto connector = VirtIOGPUConnector::create(this, i, mode.rect);
+        TRY(connector->initialize());
+
+        m_connectors.append(connector);
     }
 
     dbgln();

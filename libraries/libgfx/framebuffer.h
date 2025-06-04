@@ -5,6 +5,14 @@
 
 namespace gfx {
 
+struct FrameBufferResolution {
+    u32 width;
+    u32 height;
+    u32 pitch;
+
+    FrameBufferResolution(u32 w, u32 h, u32 p) : width(w), height(h), pitch(p) {}
+};
+
 class FrameBuffer {
 public:
     FrameBuffer(

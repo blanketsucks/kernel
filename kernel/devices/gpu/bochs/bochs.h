@@ -5,7 +5,6 @@
 #include <kernel/posix/errno.h>
 #include <kernel/pci/pci.h>
 
-
 namespace kernel {
 
 constexpr u16 MAX_RESOLUTION_WIDTH = 4096;
@@ -24,6 +23,24 @@ constexpr u16 VBE_BPP_32 = 0x20;
 constexpr u16 VBE_DISABLED = 0x00;
 constexpr u16 VBE_ENABLED = 0x01;
 constexpr u16 VBE_LFB_ENABLED = 0x40;
+
+class BochsGPUDevice;
+
+class BochsGPUConnector : public GPUConnector {
+public:
+    static RefPtr<BochsGPUConnector> create(BochsGPUDevice* device) {
+        return RefPtr<BochsGPUConnector>(new BochsGPUConnector(device));
+    }
+
+    ErrorOr<Resolution> get_resolution() const override;
+    ErrorOr<void*> map_framebuffer(Process*) override;
+    ErrorOr<void> flush() override;
+
+private:
+    BochsGPUConnector(BochsGPUDevice* device) : GPUConnector(0), m_device(device) {}
+
+    BochsGPUDevice* m_device;
+};
 
 class BochsGPUDevice : public GPUDevice {
 public:
@@ -51,7 +68,7 @@ public:
     static RefPtr<GPUDevice> create(pci::Device);
 
     u32* framebuffer() const { return m_framebuffer; }
-    u32 physical_address() const { return m_physical_address; }
+    PhysicalAddress physical_address() const { return m_physical_address; }
 
     i32 width() const { return m_width; }
     i32 height() const { return m_height; }
@@ -67,11 +84,6 @@ public:
 
     bool map();
     bool remap();
-
-    void set_pixel(i32 x, i32 y, u32 color);
-
-    ErrorOr<void*> mmap(Process&, size_t size, int prot) override;
-    ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
     
 private:
     friend class Device;

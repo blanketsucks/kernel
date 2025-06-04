@@ -10,13 +10,32 @@
 
 namespace kernel {
 
+ErrorOr<GPUConnector::Resolution> BochsGPUConnector::get_resolution() const {
+    return GPUConnector::Resolution {
+        m_device->width(),
+        m_device->height(),
+        m_device->width() * (m_device->bpp() / 8),
+        m_device->bpp()
+    };
+}
+
+ErrorOr<void*> BochsGPUConnector::map_framebuffer(Process* process) {
+    PhysicalAddress address = m_device->physical_address();
+    size_t size = m_device->size();
+
+    return process->allocate_with_physical_region(address, size, PROT_READ | PROT_WRITE);
+}
+
+ErrorOr<void> BochsGPUConnector::flush() {
+    return {};
+}
+
 RefPtr<GPUDevice> BochsGPUDevice::create(pci::Device pci_device) {
     if (pci_device.vendor_id() != VENDOR_ID || pci_device.device_id() != DEVICE_ID) {
         return nullptr;
     }
 
     auto device = Device::create<BochsGPUDevice>(pci_device.address());
-    device->set_resolution(1024, 768, 32, false);
     if (!device->map()) {
         return nullptr;
     }
@@ -26,6 +45,9 @@ RefPtr<GPUDevice> BochsGPUDevice::create(pci::Device pci_device) {
 
 BochsGPUDevice::BochsGPUDevice(pci::Address address) {
     m_physical_address = address.bar(0) & 0xfffffff0;
+
+    this->set_resolution(1024, 768, 32, false);
+    m_connectors.append(BochsGPUConnector::create(this));
 }
 
 void BochsGPUDevice::write_register(u16 index, u16 value) {
@@ -79,41 +101,6 @@ bool BochsGPUDevice::remap() {
     }
 
     return this->map();
-}
-
-ErrorOr<void*> BochsGPUDevice::mmap(Process& process, size_t size, int prot) {
-    if (size < std::align_up(this->size(), PAGE_SIZE)) {
-        return Error(EINVAL);
-    }
-    
-    void* region = process.allocate_with_physical_region(m_physical_address, size, prot);
-    return region;
-}
-
-void BochsGPUDevice::set_pixel(i32 x, i32 y, u32 color) {
-    if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
-        return;
-    }
-
-    m_framebuffer[y * m_width + x] = color;
-}
-
-ErrorOr<int> BochsGPUDevice::ioctl(unsigned request, unsigned arg) {
-    auto* process = Process::current();
-    switch (request) {
-        case FB_GET_RESOLUTION: {
-            auto* resolution = reinterpret_cast<FrameBufferResolution*>(arg);
-            process->validate_write(resolution, sizeof(FrameBufferResolution));
-
-            resolution->width = m_width;
-            resolution->height = m_height;
-            resolution->pitch = m_width * (m_bpp / 8);
-
-            return 0;
-        }
-        default:
-            return Error(EINVAL);
-    }
 }
 
 }
