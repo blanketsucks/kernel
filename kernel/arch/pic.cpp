@@ -1,7 +1,6 @@
 #include <kernel/arch/pic.h>
 #include <kernel/arch/interrupts.h>
 #include <kernel/arch/io.h>
-#include <kernel/vga.h>
 
 namespace kernel::pic {
 

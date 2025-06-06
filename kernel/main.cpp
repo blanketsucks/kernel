@@ -1,5 +1,4 @@
 #include <kernel/common.h>
-#include <kernel/vga.h>
 #include <kernel/arch/io.h>
 #include <kernel/serial.h>
 #include <kernel/ctors.h>
