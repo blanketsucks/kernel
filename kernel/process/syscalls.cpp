@@ -6,6 +6,14 @@ namespace kernel {
 
 using SyscallHandler = ErrorOr<FlatPtr>(Process::*)(FlatPtr, FlatPtr, FlatPtr, FlatPtr);
 
+static const SyscallHandler SYSCALL_HANDLERS[] = {
+#define Op(name, func) reinterpret_cast<SyscallHandler>(&Process::sys$##func),
+    __SYSCALL_LIST(Op)
+#undef Op
+};
+
+static constexpr size_t SYSCALL_COUNT = sizeof(SYSCALL_HANDLERS) / sizeof(SyscallHandler);
+
 FlatPtr Process::handle_syscall(arch::Registers* registers) {
     FlatPtr syscall, arg1, arg2, arg3, arg4;
 
@@ -15,17 +23,16 @@ FlatPtr Process::handle_syscall(arch::Registers* registers) {
     if (syscall == SYS_FORK) {
         result = this->sys$fork(*registers);
     } else {
-        switch (syscall) {
-    #define Op(name, func)                                                             \
-            case name: {                                                               \
-                auto handler = reinterpret_cast<SyscallHandler>(&Process::sys$##func); \
-                result = (this->*handler)(arg1, arg2, arg3, arg4); break;              \
-            }
-            __SYSCALL_LIST(Op)
-    #undef Op
-            default:
-                return -ENOSYS;
+        if (syscall >= SYSCALL_COUNT || syscall < 0) {
+            return -ENOSYS;
         }
+
+        auto handler = SYSCALL_HANDLERS[syscall];
+        if (!handler) {
+            return -ENOSYS;
+        }
+
+        result = (this->*handler)(arg1, arg2, arg3, arg4);
     }
 
     if (result.is_err()) {
