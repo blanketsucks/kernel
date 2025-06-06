@@ -47,7 +47,7 @@ void GPUManager::enumerate() {
 
         this->try_initialize_device(device);
     });
-}
+} 
 
 void GPUManager::try_initialize_device(pci::Device pci_device) {
     for (auto& initializer : s_gpu_device_initializers) {
