@@ -8,7 +8,7 @@ set(CMAKE_INSTALL_MESSAGE LAZY)
 
 option(USE_CLANG "Use clang as the compiler" OFF)
 option(DEBUG "Enable debug mode" OFF)
-option(x86_64 "Build for x86_64" OFF)
+option(x86_64 "Build for x86_64" ON)
 
 file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/usr/include ${CMAKE_INSTALL_PREFIX}/lib)
 
