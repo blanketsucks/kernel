@@ -14,8 +14,10 @@ if (x86_64)
         -mcmodel=kernel
         -m64
         -march=x86-64
-        -mno-sse2
+        -mno-80387
         -mno-mmx
+        -mno-sse
+        -mno-sse2
     )
 
     add_link_options(
