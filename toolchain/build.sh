@@ -20,7 +20,7 @@ rsync -avm --include='*.h' --include='*/' --exclude='*' $KERNEL $SYSROOT/usr/inc
 source "build-gcc.sh"
 source "build-binutils.sh"
 
-# build_binutils
+build_binutils
 build_gcc
 
 echo "Toolchain build completed successfully."
