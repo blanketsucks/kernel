@@ -90,6 +90,11 @@ void register_device_range(DeviceMajor major, Function<String(DeviceEvent)> call
     s_ranges.set(static_cast<u32>(major), DeviceRange(major, move(callback)));
 }
 
+bool has_events() {
+    auto& events = Device::event_queue();
+    return !events.empty();
+}
+
 static void poll() {
     using namespace std::time_literals;
 

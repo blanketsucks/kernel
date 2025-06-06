@@ -156,6 +156,11 @@ void stage2() {
 
     vfs->mount(ptsfs, vfs->resolve("/dev/pts").unwrap());
 
+    // Before we hand off control to userspace, we need to ensure that all the previous device events have been processed.
+    // If not we might end up with a situation where a userspace process tries to open a device that has been initialized but not yet registered
+    // in the devfs.
+    while (devfs::has_events()) {}
+
     auto* tty0 = VirtualTTY::create(0);
     
     auto fd = vfs->open("/bin/shell", O_RDONLY, 0).unwrap();

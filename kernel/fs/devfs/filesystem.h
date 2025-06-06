@@ -71,6 +71,8 @@ ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev);
 void init();
 ErrorOr<void> mount();
 
+bool has_events();
+
 Subsystem& create_subsystem(String name);
 
 StringView get_device_path(u32 major, u32 minor);
