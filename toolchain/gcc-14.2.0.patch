@@ -71,7 +71,7 @@ index 000000000..568aadab5
 +#define LIB_SPEC "-lc" /* link against C standard library */
 +
 +#undef LINK_SPEC
-+#define LINK_SPEC "-z max-page-size=4096 %{shared:-shared} %{static:-static} %{!shared: %{!static: %{rdynamic:-export-dynamic} %{!dynamic-linker:-dynamic-linker /lib/dyn-loader.so.so}}}"
++#define LINK_SPEC "-z max-page-size=4096 %{shared:-shared} %{static:-static} %{!shared: %{!static: %{rdynamic:-export-dynamic} %{!dynamic-linker:-dynamic-linker /lib/dyn-loader.so}}}"
 +
 +/* Files that are linked before user code.
 +   The %s tells GCC to look for these files in the library directory. */
