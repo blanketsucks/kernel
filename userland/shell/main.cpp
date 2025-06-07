@@ -127,15 +127,14 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
     int fd = open(name, O_RDWR);
 
     int status = 0;
-    while (true) {        
+    while (true) {
         ssize_t n = read(fd, buffer, sizeof(buffer));
-        if (n == 0) {
-            continue;
+        if (n > 0) {
+            terminal.write(StringView { buffer, static_cast<size_t>(n) });
         } else if (n < 0) {
             break;
         }
         
-        terminal.write(StringView { buffer, static_cast<size_t>(n) });
         if (waitpid(pid, &status, WNOHANG) > 0) {
             break;
         }
@@ -158,20 +157,20 @@ int main() {
     map_fb.id = connector.id;
 
     ioctl(gpu, GPU_CONNECTOR_MAP_FB, &map_fb);
+    
     u32* buffer = reinterpret_cast<u32*>(map_fb.framebuffer);
-
     memset(buffer, 0x00, connector.height * connector.pitch);
-
+    
     gfx::FrameBufferResolution resolution(connector.width, connector.height, connector.pitch);
-
+    
     gfx::FrameBuffer framebuffer(buffer, resolution);
     gfx::RenderContext context(framebuffer);
-
+    
     int kb = open("/dev/input/keyboard0", O_RDONLY);
     KeyEvent event;
-
+    
     auto font = gfx::PSFFont::create("/res/fonts/zap-light16.psf");
-
+    
     shell::Terminal term(connector.width, connector.height, context, font->glyph_data(), font->width(), font->height());
     term.on_line_flush = [&term](String text) {
         if (text.empty()) {
