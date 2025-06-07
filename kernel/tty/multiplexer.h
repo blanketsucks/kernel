@@ -17,6 +17,9 @@ public:
     ErrorOr<size_t> read(void*, size_t, size_t) override { return 0; }
     ErrorOr<size_t> write(const void*, size_t, size_t) override { return 0; }
 
+    bool can_read(fs::FileDescriptor const&) const override { return false; }
+    bool can_write(fs::FileDescriptor const&) const override { return false; }
+
     void add_master_pts(u32 pts);
 
 private:

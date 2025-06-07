@@ -54,6 +54,9 @@ public:
 
     MouseState state();
 
+    bool can_read(fs::FileDescriptor const&) const override;
+    bool can_write(fs::FileDescriptor const&) const override { return false; }
+
 private:
     friend class Device;
 

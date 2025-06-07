@@ -13,6 +13,9 @@ public:
         return Error(ENOTSUP);
     }
 
+    bool can_read(fs::FileDescriptor const&) const override;
+    bool can_write(fs::FileDescriptor const&) const override { return false; }
+
 private:
     DeviceControl() : CharacterDevice(DeviceMajor::Generic, 3) {}
 };

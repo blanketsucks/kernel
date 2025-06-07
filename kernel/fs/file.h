@@ -12,6 +12,7 @@ namespace kernel {
 namespace kernel::fs {
 
 class Inode;
+class FileDescriptor;
 
 class File {
 public:
@@ -24,7 +25,10 @@ public:
 
     virtual size_t size() const = 0;
 
-    virtual void close() { }
+    virtual bool can_read(FileDescriptor const&) const = 0;
+    virtual bool can_write(FileDescriptor const&) const = 0;
+
+    virtual void close() {}
 
     virtual ErrorOr<void*> mmap(Process&, size_t, int) { return Error(ENODEV); }
     virtual ErrorOr<int> ioctl(unsigned, unsigned) { return Error(ENOTTY); }
@@ -43,6 +47,9 @@ public:
 
     ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
     ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
+
+    bool can_read(FileDescriptor const&) const override { return true; }
+    bool can_write(FileDescriptor const&) const override { return true; }
 
     size_t size() const override;
 

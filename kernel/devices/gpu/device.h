@@ -17,6 +17,9 @@ public:
 
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
 
+    bool can_read(fs::FileDescriptor const&) const override { return true; }
+    bool can_write(fs::FileDescriptor const&) const override { return true; }
+
 protected:
     GPUDevice() : BlockDevice(DeviceMajor::GPU, GPUManager::generate_device_minor(), 0) {}
 

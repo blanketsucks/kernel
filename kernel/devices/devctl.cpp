@@ -7,6 +7,10 @@ DeviceControl* DeviceControl::create() {
     return new DeviceControl();
 }
 
+bool DeviceControl::can_read(fs::FileDescriptor const&) const {
+    return !Device::event_queue().empty();
+}
+
 ErrorOr<size_t> DeviceControl::read(void* buffer, size_t size, size_t) {
     if ((size % sizeof(DeviceEvent)) != 0) {
         return Error(EINVAL);

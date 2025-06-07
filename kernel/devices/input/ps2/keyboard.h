@@ -24,6 +24,9 @@ public:
 
     bool is_full() const { return m_key_buffer.size() == MAX_KEY_BUFFER_SIZE; }
 
+    bool can_read(fs::FileDescriptor const&) const override;
+    bool can_write(fs::FileDescriptor const&) const override { return false; }
+
 private:
     friend class Device;
 

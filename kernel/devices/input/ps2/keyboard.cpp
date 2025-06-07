@@ -111,4 +111,8 @@ RefPtr<InputDevice> PS2KeyboardDevice::create() {
     return Device::create<PS2KeyboardDevice>();
 }
 
+bool PS2KeyboardDevice::can_read(fs::FileDescriptor const&) const {
+    return !m_key_buffer.empty();
+}
+
 }

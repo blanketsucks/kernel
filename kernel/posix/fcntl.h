@@ -8,3 +8,4 @@
 #define O_TRUNC     (1 << 4)
 #define O_APPEND    (1 << 5)
 #define O_DIRECTORY (1 << 6)
+#define O_NONBLOCK  (1 << 7)

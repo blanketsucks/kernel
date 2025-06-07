@@ -107,6 +107,9 @@ public:
 
     ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
 
+    bool can_read(fs::FileDescriptor const&) const override { return false; }
+    bool can_write(fs::FileDescriptor const&) const override { return true; }
+
     void reset();
 
     void write_single(const void* data, size_t count, size_t offset);

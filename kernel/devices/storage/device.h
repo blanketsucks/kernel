@@ -22,6 +22,9 @@ public:
     virtual ErrorOr<bool> read_blocks(void* buffer, size_t count, size_t block) override = 0;
     virtual ErrorOr<bool> write_blocks(const void* buffer, size_t count, size_t block) override = 0;
 
+    bool can_read(fs::FileDescriptor const&) const override { return true; }
+    bool can_write(fs::FileDescriptor const&) const override { return true; }
+
     virtual Type type() const = 0;
 
     RefPtr<StorageDevicePartition> partition(size_t index) const;
@@ -47,6 +50,9 @@ public:
 
     ErrorOr<bool> read_blocks(void* buffer, size_t count, size_t block) override;
     ErrorOr<bool> write_blocks(const void* buffer, size_t count, size_t block) override;
+
+    bool can_read(fs::FileDescriptor const&) const override { return true; }
+    bool can_write(fs::FileDescriptor const&) const override { return true; }
 
 private:
     friend class Device;

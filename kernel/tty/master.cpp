@@ -19,6 +19,10 @@ PTYMaster::~PTYMaster() {
     PTYMultiplexer::instance()->add_master_pts(m_pts);
 }
 
+bool PTYMaster::can_read(fs::FileDescriptor const&) const {
+    return !m_buffer.empty();
+}
+
 ErrorOr<size_t> PTYMaster::read(void* buff, size_t size, size_t) {
     if (!m_slave) {
         return Error(ENODEV);

@@ -168,4 +168,8 @@ ErrorOr<size_t> PS2MouseDevice::write(const void*, size_t, size_t) {
     return Error(ENOTSUP);
 }
 
+bool PS2MouseDevice::can_read(fs::FileDescriptor const&) const {
+    return !m_state_buffer.empty();
+}
+
 }

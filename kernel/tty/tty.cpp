@@ -4,6 +4,10 @@ namespace kernel {
 
 TTY::TTY(DeviceMajor major, u32 minor) : CharacterDevice(major, minor) {}
 
+bool TTY::can_read(fs::FileDescriptor const&) const {
+    return !m_input_buffer.empty();
+}
+
 ErrorOr<size_t> TTY::read(void* buff, size_t size, size_t) {
     u8* buffer = reinterpret_cast<u8*>(buff);
     size = std::min(size, m_input_buffer.size());
