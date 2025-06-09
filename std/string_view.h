@@ -23,6 +23,9 @@ private:
 
 class String;
 
+template<typename T>
+class Vector;
+
 constexpr size_t __strlen(const char* str) {
     size_t len = 0;
     while (str[len] != '\0') {
@@ -181,6 +184,8 @@ public:
     constexpr bool endswith(char c) const {
         return m_data[m_size - 1] == c;
     }
+
+    Vector<StringView> split(char delimiter) const;
     
 private:
     const char* m_data = nullptr;
