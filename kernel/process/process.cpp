@@ -454,6 +454,7 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
     this->validate_pointer_access(args, sizeof(mmap_args), false);
 
     size_t size = args->size;
+    VirtualAddress hint = reinterpret_cast<VirtualAddress>(args->addr);
     int prot = args->prot;
     int flags = args->flags;
     int fileno = args->fd;
@@ -469,7 +470,12 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
 
     void* address = nullptr;
     if (flags & MAP_ANONYMOUS) {
-        address = this->allocate(size, pflags);
+        if (flags & MAP_FIXED) {
+            address = this->allocate_at(hint, size, pflags);
+        } else {
+            address = this->allocate(size, pflags);
+        }
+
         if (!address) {
             return Error(ENOMEM);
         }

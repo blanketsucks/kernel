@@ -12,6 +12,7 @@
 #define MAP_PRIVATE 2
 #define MAP_ANONYMOUS 4
 #define MAP_ANON MAP_ANONYMOUS
+#define MAP_FIXED 8
 
 #define MAP_FAILED ((void*)-1)
 
