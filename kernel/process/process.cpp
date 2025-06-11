@@ -19,9 +19,9 @@ Process* Process::create_kernel_process(String name, void (*entry)(void*), void*
     return new Process(generate_id(), move(name), true, entry, data);
 }
 
-Process* Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty) {
+ErrorOr<Process*> Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty) {
     auto* process = new Process(generate_id(), move(name), false, nullptr, nullptr, cwd, move(arguments), tty);
-    process->create_user_entry(elf);
+    TRY(process->create_user_entry(elf));
 
     return process;
 }
@@ -64,14 +64,15 @@ Process::Process(
     }
 }
 
-void Process::create_user_entry(ELF elf) {
-    elf.load();
+ErrorOr<void> Process::create_user_entry(ELF elf) {
+    TRY(elf.load());
+
     if (elf.has_interpreter()) {
         auto* vfs = fs::vfs();
-        auto file = vfs->open(elf.interpreter(), O_RDONLY, 0, m_cwd).unwrap();
+        auto file = TRY(vfs->open(elf.interpreter(), O_RDONLY, 0, m_cwd));
 
         elf = ELF(file);
-        elf.load();
+        TRY(elf.load());
 
         Vector<String> argv = m_arguments.argv;
 
@@ -87,7 +88,7 @@ void Process::create_user_entry(ELF elf) {
 
         uintptr_t address = std::align_down(ph.p_vaddr, PAGE_SIZE);
         size_t size = std::align_up(ph.p_memsz, PAGE_SIZE);
-        
+
         u8* region = reinterpret_cast<u8*>(this->allocate_at(address, size, PageFlags::Write));
         memory::TemporaryMapping temp(*m_page_directory, region, size);
 
@@ -99,6 +100,8 @@ void Process::create_user_entry(ELF elf) {
     
     auto* thread = Thread::create(m_id, "main", this, entry, nullptr, m_arguments);
     this->add_thread(thread);
+
+    return {};
 }
 
 Process* Process::fork(arch::Registers& registers) {

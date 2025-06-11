@@ -6,9 +6,16 @@
 
 namespace kernel {
 
-bool ELF::read_header() {
+ErrorOr<RefPtr<ELF>> ELF::create(RefPtr<fs::FileDescriptor> file) {
+    auto elf = RefPtr<ELF>(new ELF(file));
+    TRY(elf->load());
+
+    return elf;
+}
+
+ErrorOr<void> ELF::read_header() {
     if (m_header) {
-        return true;
+        return {};
     }
 
     auto* header = m_header = new ELFHeader;
@@ -18,12 +25,12 @@ bool ELF::read_header() {
 
     u32 magic = *reinterpret_cast<u32*>(header);
     if (magic != ELF_MAGIC) {
-        return false;
-    } else if (header->e_ident[EI_CLASS] != ELFCLASS32) {
-        return false;
+        return Error(EINVAL);
+    } else if (header->e_ident[EI_CLASS] != ELFCLASS64 && header->e_ident[EI_CLASS] != ELFCLASS32) {
+        return Error(ENOTSUP);
     }
 
-    return true;
+    return {};
 }
 
 void ELF::read_program_headers() {
@@ -48,11 +55,11 @@ void ELF::read_program_headers() {
     }
 }
 
-bool ELF::load() {
-    bool result = this->read_header();
+ErrorOr<void> ELF::load() {
+    TRY(this->read_header());
     this->read_program_headers();
 
-    return result;
+    return {};
 }
 
 }

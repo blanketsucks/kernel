@@ -52,7 +52,7 @@ public:
     }
     
     static Process* create_kernel_process(String name, void (*entry)(void*), void* data = nullptr);
-    static Process* create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments, TTY* = nullptr);
+    static ErrorOr<Process*> create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments, TTY* = nullptr);
 
     static Process* current();
 
@@ -136,7 +136,7 @@ private:
     friend class Scheduler;
     friend class Thread;
 
-    void create_user_entry(ELF);
+    ErrorOr<void> create_user_entry(ELF);
 
     Process(
         pid_t id, 
