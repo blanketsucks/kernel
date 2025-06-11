@@ -169,7 +169,13 @@ void stage2() {
     ProcessArguments arguments;
     arguments.argv = { "/bin/shell" };
 
-    Process* shell = Process::create_user_process("/bin/shell", elf, nullptr, move(arguments), tty0);
+    auto result = Process::create_user_process("/bin/shell", elf, nullptr, move(arguments), tty0);
+    if (result.is_err()) {
+        dbgln("Failed to create user process: errno={}", result.error().code());
+        process->sys$exit(1);
+    }
+
+    Process* shell = result.release_value();
     Scheduler::add_process(shell);
 
     process->sys$exit(0);
