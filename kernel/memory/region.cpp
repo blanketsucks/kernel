@@ -139,8 +139,7 @@ Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int pr
         m_usage += size;
         return region;
     }
-
-
+    
     return nullptr;
 }
 
