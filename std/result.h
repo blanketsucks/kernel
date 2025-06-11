@@ -16,10 +16,19 @@
         result.release_value();         \
     })
 
+#define MUST(expr)                                                      \
+    ({                                                                  \
+        auto result = (expr);                                           \
+        if (result.is_err()) {                                          \
+            kernel::panic("MUST used on an error");                     \
+        }                                                               \
+        result.release_value();                                         \
+    })
+
 namespace std {
 
 template<typename T, typename E>
-class Result {
+class [[nodiscard]] Result {
 public:
     Result(const T& value) : m_has_value(true) {
         new (&m_value_storage) T(value);
