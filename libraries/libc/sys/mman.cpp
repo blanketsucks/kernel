@@ -8,7 +8,7 @@ void* mmap(void* addr, size_t size, int prot, int flags, int fd, off_t offset) {
     mmap_args args = { addr, size, prot, flags, fd, offset };
     uintptr_t ret = syscall(SYS_mmap, reinterpret_cast<uintptr_t>(&args));
 
-    if (ret < 0) {
+    if (ret > static_cast<uintptr_t>(-EMAXERRNO)) {
         errno = -ret;
         return MAP_FAILED;
     } else {
