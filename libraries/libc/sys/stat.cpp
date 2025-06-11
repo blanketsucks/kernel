@@ -7,7 +7,7 @@
 extern "C" {
 
 int fstat(int fd, struct stat* st) {
-    return syscall(SYS_FSTAT, fd, st);
+    return syscall(SYS_fstat, fd, st);
 }
 
 int stat(const char* path, struct stat* st) {

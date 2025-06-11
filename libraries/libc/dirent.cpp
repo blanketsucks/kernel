@@ -67,7 +67,7 @@ struct dirent* readdir(DIR* dirp) {
         }
 
         while (true) {
-            ssize_t nread = syscall(SYS_READDIR, dirp->fd, dirp->buffer, allocation_size);
+            ssize_t nread = syscall(SYS_readdir, dirp->fd, dirp->buffer, allocation_size);
             if (nread < 0) {
                 if (nread == -EINVAL) {
                     allocation_size *= 2;

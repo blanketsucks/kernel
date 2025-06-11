@@ -5,7 +5,7 @@
 extern "C" {
 
 int waitpid(pid_t pid, int* status, int options) {
-    int ret = syscall(SYS_WAITPID, pid, status, options);
+    int ret = syscall(SYS_waitpid, pid, status, options);
     __set_errno_return(ret, ret, -1);
 }
 

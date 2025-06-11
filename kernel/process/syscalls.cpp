@@ -7,7 +7,7 @@ namespace kernel {
 using SyscallHandler = ErrorOr<FlatPtr>(Process::*)(FlatPtr, FlatPtr, FlatPtr, FlatPtr);
 
 static const SyscallHandler SYSCALL_HANDLERS[] = {
-#define Op(name, func) reinterpret_cast<SyscallHandler>(&Process::sys$##func),
+#define Op(name) reinterpret_cast<SyscallHandler>(&Process::sys$##name),
     __SYSCALL_LIST(Op)
 #undef Op
 };
@@ -20,8 +20,10 @@ FlatPtr Process::handle_syscall(arch::Registers* registers) {
     registers->capture_syscall_arguments(syscall, arg1, arg2, arg3, arg4);
     ErrorOr<FlatPtr> result = { FlatPtr(nullptr) };
 
-    if (syscall == SYS_FORK) {
+    if (syscall == SYS_fork) {
         result = this->sys$fork(*registers);
+    } else if (syscall == SYS_exit) {
+        this->sys$exit(arg1); // sys$exit never returns so it needs special handling
     } else {
         if (syscall >= SYSCALL_COUNT || syscall < 0) {
             return -ENOSYS;

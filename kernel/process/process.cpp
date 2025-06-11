@@ -341,14 +341,14 @@ void Process::kill() {
     Scheduler::yield();
 }
 
-ErrorOr<FlatPtr> Process::sys$exit(int status) {
+void Process::sys$exit(int status) {
     dbgln("Process exited with status {}.", status);
 
     m_exit_status = status;
     WaitBlocker::try_wake_all(this, status);
 
     this->kill();
-    return 0;
+    __builtin_unreachable();
 }
 
 ErrorOr<FlatPtr> Process::sys$getpid() { return m_id; }

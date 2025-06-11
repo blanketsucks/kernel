@@ -13,7 +13,7 @@ int open(const char* pathname, int flags, ...) {
     mode_t mode = va_arg(ap, int);
     va_end(ap);
 
-    int ret = syscall(SYS_OPEN, pathname, flags, mode);
+    int ret = syscall(SYS_open, pathname, flags, mode);
     __set_errno_return(ret, ret, -1);
 }
 

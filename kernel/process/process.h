@@ -102,7 +102,7 @@ public:
 
     ErrorOr<FlatPtr> exec(StringView path, ProcessArguments);
 
-    ErrorOr<FlatPtr> sys$exit(int status);
+    [[noreturn]] void sys$exit(int status);
 
     ErrorOr<FlatPtr> sys$getpid();
     ErrorOr<FlatPtr> sys$getppid();

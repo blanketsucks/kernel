@@ -11,7 +11,7 @@ int ioctl(int fd, unsigned request, ...) {
     unsigned arg = va_arg(ap, unsigned);
     
     va_end(ap);
-    return syscall(SYS_IOCTL, fd, request, arg);
+    return syscall(SYS_ioctl, fd, request, arg);
 }
 
 }
