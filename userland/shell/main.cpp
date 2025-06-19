@@ -140,6 +140,12 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
         }
     }
 
+    ssize_t n = read(fd, buffer, sizeof(buffer));
+    while (n > 0) {
+        terminal.write(StringView { buffer, static_cast<size_t>(n) });
+        n = read(fd, buffer, sizeof(buffer));
+    }
+
     close(fd);
 }
 
