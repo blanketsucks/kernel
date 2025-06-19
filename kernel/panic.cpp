@@ -25,6 +25,10 @@ void print_stack_trace() {
 
 void print_stack_trace(StackFrame* frame) {
     while (frame) {
+        if (!frame->ip) {
+            break;
+        }
+
         if (!has_loaded_symbols()) {
             dbgln(" - ??? at {:#x}", frame->ip);
 
