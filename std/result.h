@@ -6,6 +6,8 @@
 
 #include <std/utility.h>
 #include <std/kmalloc.h>
+#include <std/source_location.h>
+#include <std/format.h>
 
 #define TRY(expr)                       \
     ({                                  \
@@ -16,13 +18,10 @@
         result.release_value();         \
     })
 
-#define MUST(expr)                                                      \
-    ({                                                                  \
-        auto result = (expr);                                           \
-        if (result.is_err()) {                                          \
-            kernel::panic("MUST used on an error");                     \
-        }                                                               \
-        result.release_value();                                         \
+#define MUST(expr)                                                        \
+    ({                                                                    \
+        auto result = (expr);                                             \
+        result.unwrap();                                                  \
     })
 
 namespace std {
@@ -128,9 +127,20 @@ public:
         return error;
     }
 
-    T& unwrap() {
+    T& unwrap(const SourceLocation& location = SourceLocation::current()) {
         if (this->is_err()) {
-            kernel::panic("Result::unwrap() called on an error");
+            dbgln("{}({}:{}) at `{}`: Result::unwrap() called on an error", 
+                location.file_name(), 
+                location.line(), 
+                location.column(),
+                location.function_name()
+            );
+
+        #ifdef __KERNEL__
+            kernel::panic();
+        #else
+            exit(1);
+        #endif
         }
 
         return m_value_storage;
