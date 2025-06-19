@@ -98,7 +98,6 @@ void PhysicalMemoryManager::init(BootInfo const& boot_info) {
     m_initialized = true;
     m_total_pages = m_total_usable_memory / PAGE_SIZE;
 
-    // FIXME: This specific call crashes the kernel down the line for some reason
     this->fill_preframe_buffer();
 
     dbgln("Total usable pages: {}", m_total_pages);
