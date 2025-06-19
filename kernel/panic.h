@@ -24,6 +24,7 @@ void print_stack_trace(StackFrame*);
 void print_stack_trace();
 
 [[noreturn]] void panic(std::StringView message);
+[[noreturn]] void panic();
 [[noreturn]] void panic(std::StringView message, const char* file, u32 line);
 
 }

@@ -56,13 +56,23 @@ void print_stack_trace(StackFrame* frame) {
     panic(message, nullptr, 0);
 }
 
+[[noreturn]] void panic() {
+    panic({});
+}
+
 [[noreturn]] void panic(std::StringView message, const char* file, u32 line) {
-    if (file) {
-        dbgln("PANIC({}:{}) {}", StringView { file }, line, message);
-    } else {
-        dbgln("PANIC: {}", message);
+    dbgln();
+
+    if (message.empty()) {
+        message = "No message provided.";
     }
 
+    dbgln("\033[1;31mKernel panic. {}\033[0m", message);
+    if (file) {
+        dbgln("\033[1;31m  At {}:{}\033[0m", StringView { file }, line);
+    }
+
+    dbgln("Stack trace:");
     print_stack_trace();
 
     asm volatile("cli");
