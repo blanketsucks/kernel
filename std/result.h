@@ -127,7 +127,7 @@ public:
         return error;
     }
 
-    T& unwrap(const SourceLocation& location = SourceLocation::current()) {
+    T unwrap(const SourceLocation& location = SourceLocation::current()) {
         if (this->is_err()) {
             dbgln("{}({}:{}) at `{}`: Result::unwrap() called on an error", 
                 location.file_name(), 
@@ -143,7 +143,7 @@ public:
         #endif
         }
 
-        return m_value_storage;
+        return release_value();
     }
 
     void reset() {
