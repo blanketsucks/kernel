@@ -55,6 +55,8 @@ public:
     size_t allocations() const { return m_allocations; }
     bool is_initialized() const { return m_initialized; }
 
+    Vector<PhysicalRegion> const& regions() const { return m_physical_regions; }
+
     [[nodiscard]] ErrorOr<void*> allocate();
     [[nodiscard]] ErrorOr<void*> allocate_contiguous(size_t count);
 
