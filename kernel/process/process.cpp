@@ -19,6 +19,21 @@ Process* Process::create_kernel_process(String name, void (*entry)(void*), void*
     return new Process(generate_id(), move(name), true, entry, data);
 }
 
+ErrorOr<Process*> Process::create_user_process(String path, RefPtr<fs::ResolvedInode> cwd, TTY* tty) {
+    auto vfs = fs::vfs();
+    auto file = TRY(vfs->open(path, O_RDONLY, 0, cwd));
+
+    ELF elf(file);
+
+    ProcessArguments arguments;
+    arguments.argv = { path };
+
+    auto* process = new Process(generate_id(), move(path), false, nullptr, nullptr, cwd, move(arguments), tty);
+    TRY(process->create_user_entry(elf));
+
+    return process;
+}
+
 ErrorOr<Process*> Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty) {
     auto* process = new Process(generate_id(), move(name), false, nullptr, nullptr, cwd, move(arguments), tty);
     TRY(process->create_user_entry(elf));
@@ -519,7 +534,7 @@ ErrorOr<FlatPtr> Process::sys$getcwd(char* buffer, size_t size) {
         return Error(ERANGE);
     }
 
-    memcpy(buffer, path.data(), path.size());
+    std::memcpy(buffer, path.data(), path.size());
     buffer[path.size()] = '\0';
 
     return 0;

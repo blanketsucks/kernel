@@ -52,7 +52,9 @@ public:
     }
     
     static Process* create_kernel_process(String name, void (*entry)(void*), void* data = nullptr);
-    static ErrorOr<Process*> create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments, TTY* = nullptr);
+
+    static ErrorOr<Process*> create_user_process(String path, RefPtr<fs::ResolvedInode> cwd, TTY* tty = nullptr);
+    static ErrorOr<Process*> create_user_process(String name, ELF, RefPtr<fs::ResolvedInode> cwd, ProcessArguments, TTY* tty = nullptr);
 
     static Process* current();
 

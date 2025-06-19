@@ -162,14 +162,8 @@ void stage2() {
     while (devfs::has_events()) {}
 
     auto* tty0 = VirtualTTY::create(0);
-    
-    auto fd = MUST(vfs->open("/bin/shell", O_RDONLY, 0));
-    ELF elf(fd);
+    auto result = Process::create_user_process("/bin/shell", nullptr, tty0);
 
-    ProcessArguments arguments;
-    arguments.argv = { "/bin/shell" };
-
-    auto result = Process::create_user_process("/bin/shell", elf, nullptr, move(arguments), tty0);
     if (result.is_err()) {
         dbgln("Failed to create user process: errno={}", result.error().code());
         process->sys$exit(1);
