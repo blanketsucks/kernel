@@ -1,5 +1,9 @@
 #pragma once
 
+#if not __has_builtin(__builtin_COLUMN)
+    #define __builtin_COLUMN(...) 0
+#endif
+
 namespace std {
 
 class SourceLocation {
