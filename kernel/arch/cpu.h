@@ -135,4 +135,6 @@ void write_cr2(FlatPtr value);
 void write_cr3(FlatPtr value);
 void write_cr4(FlatPtr value);
 
+void invlpg(FlatPtr address);
+
 }

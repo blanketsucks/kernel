@@ -92,4 +92,8 @@ void write_cr4(FlatPtr value) {
     asm volatile("mov %0, %%cr4" :: "r"(value));
 }
 
+void invlpg(FlatPtr address) {
+    asm volatile("invlpg (%0)" :: "r"(address) : "memory");
+}
+
 }
