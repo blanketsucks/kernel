@@ -1,4 +1,5 @@
 #include <kernel/arch/x86_64/page_directory.h>
+#include <kernel/arch/cpu.h>
 #include <kernel/memory/manager.h>
 
 #include <std/format.h>
@@ -9,10 +10,6 @@ static constexpr size_t HHDM_MAPPING_SIZE = 1 * GB;
 static constexpr size_t HHDM_PML4_ENTRY_COUNT = HHDM_MAPPING_SIZE / GB;
 
 static PageDirectory s_kernel_page_directory;
-
-static inline void invlpg(void* addr) {
-    asm volatile("invlpg (%0)" :: "r"(addr) : "memory");
-}
 
 PageDirectory* PageDirectory::create_user_page_directory() {
     PageDirectory* dir = new PageDirectory();
@@ -126,7 +123,7 @@ void PageDirectory::unmap(VirtualAddress virt) {
     }
 
     entry->set_value(0);
-    invlpg(reinterpret_cast<void*>(virt));
+    arch::invlpg(virt);
 }
 
 PageTableEntry* PageDirectory::get_page_table_entry(VirtualAddress virt) {
