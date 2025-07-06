@@ -239,12 +239,7 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
             dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
         });
 
-        dbgln("");
-
-        // TODO: User stack trace
-        dbgln("Stack trace:");
-        kernel::print_stack_trace();
-
+        dbgln();
         this->kill();
     }
 
