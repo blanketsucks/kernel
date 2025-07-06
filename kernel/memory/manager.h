@@ -66,6 +66,15 @@ union PageFault {
     PageFault(u32 value) : value(value) {}
 };
 
+struct PhysicalPage {
+    enum Flags : u16 {
+        CoW = 1 << 0,
+    };
+
+    u16 ref_count = 0;
+    u16 flags = 0;
+};
+
 class MemoryManager {
 public:
     MemoryManager();
@@ -79,7 +88,7 @@ public:
 
     static size_t current_kernel_heap_offset();
 
-    RegionAllocator& heap_region_allocator() { return m_heap_region_allocator; }
+    RegionAllocator& heap_region_allocator() { return *m_heap_region_allocator; }
     RegionAllocator& kernel_region_allocator() { return *m_kernel_region_allocator; }
 
     bool is_mapped(void* addr);
@@ -95,6 +104,7 @@ public:
     
     ErrorOr<void> map_region(arch::PageDirectory*, Region*, PageFlags flags);
 
+    ErrorOr<void> free(RegionAllocator&, Region*);
     ErrorOr<void> free(RegionAllocator&, void* ptr, size_t size);
 
     [[nodiscard]] void* allocate_heap_region(size_t size);
@@ -114,15 +124,23 @@ public:
 
     void copy_physical_memory(void* dst, void* src, size_t size);
 
+    PhysicalPage* get_physical_page(PhysicalAddress address);
+
     SpinLock& liballoc_lock() { return m_liballoc_lock; }
     
 private:
+    void initialize();
+    void create_physical_pages();
+
     bool try_allocate_contiguous(arch::PageDirectory*, Region*, PageFlags flags);
 
     PhysicalMemoryManager* m_pmm;
 
-    RegionAllocator m_heap_region_allocator;
+    RefPtr<RegionAllocator> m_heap_region_allocator;
     RefPtr<RegionAllocator> m_kernel_region_allocator;
+
+    PhysicalPage* m_physical_pages = nullptr;
+    size_t m_physical_pages_count = 0;
 
     SpinLock m_liballoc_lock;
     SpinLock m_lock;
