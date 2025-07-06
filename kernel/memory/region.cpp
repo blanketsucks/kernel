@@ -1,9 +1,7 @@
 #include <kernel/memory/region.h>
 #include <kernel/memory/manager.h>
 #include <kernel/fs/file.h>
-#include <kernel/panic.h>
-#include <kernel/posix/sys/mman.h>
-#include <kernel/arch/interrupts.h>
+#include <kernel/arch/cpu.h>
 
 #include <std/format.h>
 
@@ -23,9 +21,8 @@ RegionAllocator::RegionAllocator(const Range& range, arch::PageDirectory* page_d
     m_head = new Region(range);
 }
 
-RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) const {
-    // TODO: Use a lock instead
-    arch::InterruptDisabler disabler;
+RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) {
+    ScopedSpinLock lock(m_lock);
 
     auto allocator = RegionAllocator::create(m_range, page_directory);
     this->for_each_region([&](Region* region) {
@@ -56,13 +53,20 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
         }
         
         PhysicalAddress dst = entry->get_physical_address();
+        PhysicalPage* page = MM->get_physical_page(dst);
+
+        if (!page) {
+            continue;
+        }
+
         if (!region->is_shared()) {
-            void* frame = MM->allocate_page_frame();
-            MM->copy_physical_memory(frame, reinterpret_cast<void*>(dst), PAGE_SIZE);
-            
-            dst = reinterpret_cast<PhysicalAddress>(frame);
+            entry->set_writable(false);
+            page->flags |= PhysicalPage::CoW;
+
+            arch::invlpg(address);
         }
         
+        page->ref_count++;
         page_directory->map(address, dst, entry->flags());
     }
 }
@@ -144,7 +148,6 @@ Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int pr
 }
 
 Region* RegionAllocator::find_region(VirtualAddress address, bool contains) const {
-
     auto* region = m_head;
     while (region) {
         if (contains && region->contains(address)) {

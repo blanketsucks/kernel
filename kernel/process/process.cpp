@@ -1,15 +1,14 @@
-#include <kernel/process/process.h>
-#include <kernel/process/threads.h>
 #include <kernel/process/scheduler.h>
+#include <kernel/process/process.h>
 #include <kernel/process/syscalls.h>
+#include <kernel/process/threads.h>
 #include <kernel/process/blocker.h>
-#include <kernel/arch/cpu.h>
-#include <kernel/posix/unistd.h>
+#include <kernel/memory/manager.h>
 #include <kernel/posix/sys/mman.h>
 #include <kernel/posix/sys/wait.h>
 #include <kernel/time/manager.h>
-#include <kernel/serial.h>
-#include <kernel/memory/manager.h>
+#include <kernel/posix/unistd.h>
+#include <kernel/arch/cpu.h>
 
 #include <std/format.h>
 
@@ -221,7 +220,43 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
     bool is_null_pointer_dereference = address < PAGE_SIZE;
 
     auto* region = m_allocator->find_region(address, true);
+    if (region && fault.rw && fault.present) {
+        address = std::align_down(address, PAGE_SIZE);
+        arch::PageTableEntry* entry = m_page_directory->get_page_table_entry(address);
+
+        auto* page = MM->get_physical_page(entry->physical_address());
+        if (!page) {
+            goto unrecoverable_fault;
+        }
+
+        bool is_cow = page->flags & memory::PhysicalPage::CoW;
+        if (!is_cow) {
+            goto unrecoverable_fault;
+        }
+
+        if (page->ref_count > 1) {
+            page->ref_count--;
+
+            void* frame = MM->allocate_page_frame();
+
+            // TODO: Move this to a function in MemoryManager
+            page = MM->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
+            page->ref_count++;
+
+            MM->copy_physical_memory(frame, reinterpret_cast<void*>(entry->physical_address()), PAGE_SIZE);
+            entry->set_physical_address(reinterpret_cast<PhysicalAddress>(frame));
+        } else {
+            page->flags &= ~memory::PhysicalPage::CoW;
+        }
+
+        entry->set_writable(true);
+        arch::invlpg(address);
+
+        return;
+    }
+
     if (!region || !region->is_file_backed() || !region->used()) {
+unrecoverable_fault:
         if (is_null_pointer_dereference) {
             dbgln("\033[1;31mNull pointer dereference (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         } else {
@@ -348,6 +383,22 @@ void Process::kill() {
     }
     
     m_state = Dead;
+    if (!m_allocator) {
+        Scheduler::yield();
+        return;
+    }
+
+    m_allocator->for_each_region([this](auto* region) {
+        if (region->is_file_backed()) {
+            // TODO
+            return;
+        } else if (!region->used()) {
+            return;
+        }
+
+        MM->free(*m_allocator, region);
+    });
+
     Scheduler::yield();
 }
 
