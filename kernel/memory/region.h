@@ -102,7 +102,7 @@ public:
         return RefPtr<RegionAllocator>(new RegionAllocator(range, page_directory));
     }
 
-    RefPtr<RegionAllocator> clone(arch::PageDirectory*) const;
+    RefPtr<RegionAllocator> clone(arch::PageDirectory*);
 
     Range const& range() const { return m_range; }
     arch::PageDirectory* page_directory() const { return m_page_directory; }
@@ -126,7 +126,7 @@ public:
     Region* find_region(VirtualAddress address, bool contains = false) const;
 
     template<typename T>
-    void for_each_region(T&& callback) const {
+    void for_each_region(T&& callback) {
         for (auto* region = m_head; region; region = region->next) {
             callback(region);
         }
@@ -145,6 +145,8 @@ private:
 
     size_t m_usage = 0;
     arch::PageDirectory* m_page_directory;
+
+    SpinLock m_lock;
 };
 
 
