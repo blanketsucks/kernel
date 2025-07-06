@@ -122,7 +122,7 @@ def main():
     parser.add_argument('--disable-loader', action='store_true', help='Run the kernel without the 64-bit loader.')
     parser.add_argument('--usb', action='store_true', help='Enable USB support.')
     parser.add_argument('--usb-controller', type=USBController, default='uhci', help='USB controller type (default: uhci).')
-    parser.add_argument('--disable-virtio-gpu', action='store_true', help='Disable VirtIO GPU support.')
+    parser.add_argument('--enable-virtio-gpu', action='store_true', help='Enable VirtIO GPU support.')
     
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
     action = parser.add_argument('--ovmf', type=str, default=None, help='Path to OVMF firmware')
@@ -152,7 +152,7 @@ def main():
         usb=args.usb,
         usb_controller=args.usb_controller,
         use_loader=not args.disable_loader,
-        virtio_gpu=not args.disable_virtio_gpu,
+        virtio_gpu=args.enable_virtio_gpu,
     )
 
     if not args.qemu:
