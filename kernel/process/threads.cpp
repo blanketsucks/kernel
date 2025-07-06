@@ -2,8 +2,8 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
 #include <kernel/process/blocker.h>
-#include <kernel/time/manager.h>
 #include <kernel/memory/manager.h>
+
 #include <std/format.h>
 
 namespace kernel {
@@ -88,7 +88,6 @@ void Thread::create_stack() {
     }
 
     m_registers.set_ip(reinterpret_cast<FlatPtr>(m_entry));
-
     this->set_initial_stack_state(m_user_stack.value(), m_registers);
 }
 
