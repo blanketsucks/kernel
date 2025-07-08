@@ -44,6 +44,10 @@ public:
     Region(const Range& range) : m_range(range), next(nullptr), prev(nullptr) {}
     Region() = default;
 
+    static Region* create(VirtualAddress base, size_t size) {
+        return new Region({ base, size });
+    }
+
     Region* clone() const;
 
     Range const& range() const { return m_range; }
@@ -132,10 +136,10 @@ public:
         }
     }
 
-private:
-    Region* insert_region_before(Region* region, Region* new_region);
-    Region* insert_region_after(Region* region, Region* new_region);
+    Region* insert_before(Region* region, Region* new_region);
+    Region* insert_after(Region* region, Region* new_region);
 
+private:
     void map_into(arch::PageDirectory*, Region* region) const;
 
     Region* find_free_region(size_t size);

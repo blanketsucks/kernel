@@ -71,7 +71,7 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
     }
 }
 
-Region* RegionAllocator::insert_region_before(Region* region, Region* new_region) {
+Region* RegionAllocator::insert_before(Region* region, Region* new_region) {
     new_region->next = region;
     new_region->prev = region->prev;
 
@@ -85,7 +85,7 @@ Region* RegionAllocator::insert_region_before(Region* region, Region* new_region
     return new_region;
 }
 
-Region* RegionAllocator::insert_region_after(Region* region, Region* new_region) {
+Region* RegionAllocator::insert_after(Region* region, Region* new_region) {
     new_region->prev = region;
     new_region->next = region->next;
 
@@ -124,14 +124,14 @@ Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int pr
 
         // Create a new region before `region` if needed
         if (region->base() < address) {
-            auto* before = new Region({ region->base(), address - region->base() });
-            this->insert_region_before(region, before);
+            auto* before = Region::create(region->base(), address - region->base());
+            this->insert_before(region, before);
         }
 
         // Create a new region after `region` if needed
         if (region->end() > address + size) {
-            auto* after = new Region({ address + size, region->end() - (address + size) });
-            this->insert_region_after(region, after);
+            auto* after = Region::create(address + size, region->end() - (address + size));
+            this->insert_after(region, after);
         }
 
         // Mark the region as used
@@ -173,10 +173,10 @@ Region* RegionAllocator::find_free_region(size_t size) {
             return region;
         }
 
-        auto* new_region = new Region({ region->base(), size });
+        auto* new_region = Region::create(region->base(), size);
         region->set_range({ region->base() + size, region->size() - size });
 
-        this->insert_region_before(region, new_region);
+        this->insert_before(region, new_region);
         return new_region;
     }
 
