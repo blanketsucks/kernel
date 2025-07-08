@@ -237,6 +237,8 @@ void* MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress addr
 }
 
 ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, Region* region) {
+    ScopedSpinLock lock(m_lock);
+
     auto* page_directory = allocator.page_directory();
     if (!page_directory->is_mapped(region->base())) {
         return Error(EINVAL);
@@ -259,6 +261,8 @@ ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, Region* region) {
 }
 
 ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t size) {
+    ScopedSpinLock lock(m_lock);
+
     VirtualAddress address = reinterpret_cast<VirtualAddress>(ptr);
     auto* page_directory = allocator.page_directory();
 
@@ -288,6 +292,8 @@ ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t 
 }
 
 ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAddress address, size_t size) {
+    ScopedSpinLock lock(m_lock);
+
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         PhysicalAddress physical = page_directory->get_physical_address(address + i);
         page_directory->unmap(address + i);
