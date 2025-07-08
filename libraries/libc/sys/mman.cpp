@@ -16,9 +16,9 @@ void* mmap(void* addr, size_t size, int prot, int flags, int fd, off_t offset) {
     }
 }
 
-int munmap(void*, size_t) {
-    // FIXME: Implement
-    return 0;
+int munmap(void* addr, size_t size) {
+    int ret = syscall(SYS_munmap, reinterpret_cast<uintptr_t>(addr), size);
+    __set_errno_return(ret, 0, -1);
 }
 
 }

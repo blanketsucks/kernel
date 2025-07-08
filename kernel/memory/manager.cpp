@@ -287,6 +287,22 @@ ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t 
     return {};
 }
 
+ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAddress address, size_t size) {
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+        PhysicalAddress physical = page_directory->get_physical_address(address + i);
+        page_directory->unmap(address + i);
+
+        PhysicalPage* page = this->get_physical_page(physical);
+        page->ref_count--;
+
+        if (page->ref_count == 0) {
+            TRY(this->free_page_frame(reinterpret_cast<void*>(physical)));
+        }
+    }
+
+    return {};
+}
+
 void* MemoryManager::allocate_heap_region(size_t size) {
     return this->allocate(*m_heap_region_allocator, size, PageFlags::Write);
 }

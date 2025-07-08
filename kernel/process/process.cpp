@@ -530,8 +530,6 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
         pflags |= PageFlags::Write;
     }
 
-    // TODO: Handle first argument and MAP_FIXED
-
     void* address = nullptr;
     if (flags & MAP_ANONYMOUS) {
         if (flags & MAP_FIXED) {
@@ -543,7 +541,6 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
         if (!address) {
             return Error(ENOMEM);
         }
-
     } else {
         if (fileno < 0 || static_cast<size_t>(fileno) >= m_file_descriptors.size()) {
             return Error(EBADF);
@@ -558,13 +555,59 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
     }
 
     auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
-    
     region->set_prot(prot);
+    
     if (flags & MAP_SHARED) {
         region->set_shared(true);
     }
 
     return (FlatPtr)address;
+}
+
+ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
+    if (address % PAGE_SIZE != 0) {
+        return Error(EINVAL);
+    } else if (size % PAGE_SIZE != 0) {
+        return Error(EINVAL);
+    }
+
+    auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
+    if (!region) {
+        return Error(EINVAL);
+    }
+
+    if (size > region->size()) {
+        return Error(EINVAL);
+    } else if (region->end() < address + size) {
+        return Error(EINVAL);
+    }
+
+    if (region->base() == address) {
+        if (region->size() == size) {
+            MM->free(*m_allocator, region);
+            return 0;
+        }
+
+        region->set_range({ region->base() + size, region->size() - size });
+        MM->free(m_page_directory, address, size);
+
+        return 0;
+    } else {
+        if (region->end() == address + size) {
+            region->set_range({ region->base(), region->size() - size });
+            MM->free(m_page_directory, address, size);
+
+            return 0;
+        }
+
+        auto* new_region = memory::Region::create(address + size, region->end() - (address + size));
+        region->set_range({ region->base(), address - region->base() });
+
+        m_allocator->insert_after(region, new_region);
+        MM->free(m_page_directory, address, size);
+    }
+
+    return 0;
 }
 
 ErrorOr<FlatPtr> Process::sys$getcwd(char* buffer, size_t size) {

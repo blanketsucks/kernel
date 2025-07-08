@@ -75,11 +75,11 @@ public:
 
     bool is_shared() const { return m_shared; }
     void set_shared(bool shared) { m_shared = shared; }
-
-private:
+    
     void set_range(const Range& range) {
         m_range = range;
     }
+private:
 
     Range m_range;
 

@@ -106,6 +106,7 @@ public:
 
     ErrorOr<void> free(RegionAllocator&, Region*);
     ErrorOr<void> free(RegionAllocator&, void* ptr, size_t size);
+    ErrorOr<void> free(arch::PageDirectory*, VirtualAddress address, size_t size);
 
     [[nodiscard]] void* allocate_heap_region(size_t size);
     ErrorOr<void> free_heap_region(void* ptr, size_t size);

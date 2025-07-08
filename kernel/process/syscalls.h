@@ -10,6 +10,7 @@
     Op(readdir)                 \
     Op(fstat)                   \
     Op(mmap)                    \
+    Op(munmap)                  \
     Op(getpid)                  \
     Op(getppid)                 \
     Op(gettid)                  \
