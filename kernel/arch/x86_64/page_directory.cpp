@@ -7,7 +7,6 @@
 namespace kernel::arch {
 
 static constexpr size_t HHDM_MAPPING_SIZE = 1 * GB;
-static constexpr size_t HHDM_PML4_ENTRY_COUNT = HHDM_MAPPING_SIZE / GB;
 
 static PageDirectory s_kernel_page_directory;
 
@@ -20,9 +19,7 @@ PageDirectory* PageDirectory::create_user_page_directory() {
     };
 
     size_t hhdm_pml4e = PML4::index(g_boot_info->hhdm);
-    for (size_t i = 0; i < HHDM_PML4_ENTRY_COUNT; i++) {
-        dir->m_pml4.entries[hhdm_pml4e + i] = s_kernel_page_directory.m_pml4.entries[hhdm_pml4e + i];
-    }
+    dir->m_pml4.entries[hhdm_pml4e] = s_kernel_page_directory.m_pml4.entries[hhdm_pml4e];
 
     size_t kernel_pml4e = PML4::index(g_boot_info->kernel_virtual_base);
     dir->m_pml4.entries[kernel_pml4e] = s_kernel_page_directory.m_pml4.entries[kernel_pml4e];
