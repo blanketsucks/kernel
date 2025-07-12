@@ -124,9 +124,8 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
     }
 
     char buffer[4096];
-    dbgln("Spawned process {} with PTY {} (fd={})", pid, name, fd);
-
     int status = 0;
+    
     while (true) {
         ssize_t n = read(fd, buffer, sizeof(buffer));
         if (n > 0) {
