@@ -23,8 +23,6 @@ StorageManager* StorageManager::instance() {
 }
 
 void StorageManager::initialize() {
-    s_instance.enumerate_controllers();
-
     devfs::register_device_range("hd", DeviceMajor::Storage, devfs::FormatStyle::ASCII);
     devfs::register_device_range(DeviceMajor::StoragePartition, [](DeviceEvent event) -> String {
         // FIXME: Maybe we could just pass in the device pointer directly to DeviceEvent. And maybe we could find a whole better way
@@ -37,6 +35,9 @@ void StorageManager::initialize() {
 
         return format("{}{}", path, index);
     });
+    
+    s_instance.enumerate_controllers();
+
 }
 
 u32 StorageManager::generate_device_minor() {
