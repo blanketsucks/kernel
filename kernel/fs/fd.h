@@ -17,6 +17,7 @@ namespace kernel::fs {
 class FileDescriptor {
 public:
     FileDescriptor(RefPtr<File> file, int options) : m_file(file), m_offset(0), m_options(options) {};
+    ~FileDescriptor();
 
     static RefPtr<FileDescriptor> create(RefPtr<File> file, int options) {
         return RefPtr<FileDescriptor>::make(move(file), options);

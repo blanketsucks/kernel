@@ -11,13 +11,7 @@ PTYMaster::PTYMaster(u32 pts) : CharacterDevice(DeviceMajor::MasterPTY, pts), m_
     m_slave = Device::create<PTYSlave>(pts, this).take();
 }
 
-PTYMaster::~PTYMaster() {
-    // TODO: Remove the slave from the global list of devices
-    delete m_slave;
-    m_slave = nullptr;
-
-    PTYMultiplexer::instance()->add_master_pts(m_pts);
-}
+PTYMaster::~PTYMaster() {}
 
 bool PTYMaster::can_read(fs::FileDescriptor const&) const {
     return !m_buffer.empty();
@@ -38,7 +32,12 @@ ErrorOr<size_t> PTYMaster::read(void* buff, size_t size, size_t) {
     return size;
 }
 
-void PTYMaster::close() {}
+void PTYMaster::close() {
+    // delete m_slave;
+    // m_slave = nullptr;
+
+    PTYMultiplexer::instance()->add_master_pts(m_pts);
+}
 
 ErrorOr<size_t> PTYMaster::write(const void* buffer, size_t size, size_t) {
     if (!m_slave) {

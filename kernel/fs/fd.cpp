@@ -7,6 +7,12 @@
 
 namespace kernel::fs {
 
+FileDescriptor::~FileDescriptor() {
+    if (m_file) {
+        m_file->close();
+    }
+}
+
 ErrorOr<size_t> FileDescriptor::read(void* buffer, size_t size) {
     if (!this->is_readable()) {
         return Error(EBADF);

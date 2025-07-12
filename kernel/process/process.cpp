@@ -377,9 +377,7 @@ void Process::kill() {
     }
     
     for (auto& fd : m_file_descriptors) {
-        if (fd) {
-            fd->close();
-        }
+        fd.~RefPtr();
     }
     
     m_state = Dead;
@@ -433,9 +431,9 @@ ErrorOr<FlatPtr> Process::sys$close(int fd) {
 
     auto& file = m_file_descriptors[fd];
     if (file) {
-        file->close();
+        file.~RefPtr();
     }
-
+        
     m_file_descriptors[fd] = nullptr;
     return 0;
 }
