@@ -106,12 +106,12 @@ static int term_cat(shell::Terminal& terminal, int argc, char** argv) {
 
 static void spawn(shell::Terminal& terminal, shell::Command const& command, char** argv) {
     int tty = posix_openpt(O_RDWR);
+
     char* name = ptsname(tty);
+    int fd = open(name, O_RDWR);
 
     pid_t pid = fork();
     if (!pid) {
-        int fd = open(name, O_RDWR);
-
         close(0);
         close(1);
         close(2);
@@ -124,7 +124,7 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
     }
 
     char buffer[4096];
-    int fd = open(name, O_RDWR);
+    dbgln("Spawned process {} with PTY {} (fd={})", pid, name, fd);
 
     int status = 0;
     while (true) {
@@ -184,7 +184,6 @@ int main() {
         }
 
         dbgln("Received line '{}'", text);
-
         auto cmd = shell::parse_shell_command(text);
 
         size_t argc = cmd.argc();
@@ -220,7 +219,11 @@ int main() {
             continue;
         }
 
-        if (event.scancode & 0x80 || event.ascii == 0) {
+        if (event.scancode & 0x80) {
+            continue;
+        }
+
+        if (!event.ascii) {
             continue;
         }
 
