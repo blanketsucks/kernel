@@ -74,6 +74,18 @@ ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev) {
     return {};
 }
 
+ErrorOr<void> remove(StringView path, dev_t dev) {
+    auto* vfs = fs::vfs();
+    TRY(vfs->remove(path, s_root));
+
+    auto iterator = s_nodes.find(dev);
+    if (iterator != s_nodes.end()) {
+        s_nodes.remove(iterator);
+    }
+
+    return {};
+}
+
 Subsystem& create_subsystem(String name) {
     auto* vfs = fs::vfs();
     vfs->mkdir(name, 0755, s_root);
@@ -157,6 +169,10 @@ static void handle_device_event(DeviceEvent event) {
     switch (event.event_type) {
         case DeviceEvent::Added: {
             mknod(name, mode, Device::encode(event.major, event.minor));
+            break;
+        }
+        case DeviceEvent::Removed: {
+            remove(name, Device::encode(event.major, event.minor));
             break;
         }
     }

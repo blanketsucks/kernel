@@ -67,6 +67,7 @@ private:
 
 ErrorOr<void> mkdir(StringView path, mode_t mode);
 ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev);
+ErrorOr<void> remove(StringView path, dev_t dev);
 
 void init();
 ErrorOr<void> mount();
