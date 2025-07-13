@@ -52,12 +52,8 @@ RefPtr<Device> Device::get_device(DeviceMajor major, u32 minor) {
     return iterator->value;
 }
 
-RefPtr<Device> Device::as_ref() const {
-    return Device::get_device(m_major, m_minor);
-}
-
 RefPtr<fs::FileDescriptor> Device::open(int options) {
-    return fs::FileDescriptor::create(as_ref(), options);
+    return fs::FileDescriptor::create(this, options);
 }
 
 }
