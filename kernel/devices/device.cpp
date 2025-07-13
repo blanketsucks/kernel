@@ -27,6 +27,18 @@ void Device::after_device_creation(RefPtr<Device> device) {
     s_devices.set(dev, device);
 }
 
+void Device::remove() {
+    add_device_event(*this, DeviceEvent::Removed);
+    dev_t dev = encode(to_underlying(m_major), m_minor);
+
+    if (!s_devices.contains(dev)) {
+        dbgln("Device {}:{} does not exist.", (int)m_major, m_minor);
+        return;
+    }
+
+    s_devices.remove(dev);
+}
+
 Queue<DeviceEvent>& Device::event_queue() {
     return s_event_queue;
 }

@@ -81,6 +81,8 @@ public:
     static void after_device_creation(RefPtr<Device>);
     static void add_device_event(Device const&, DeviceEvent::Type);
 
+    void remove();
+
     virtual RefPtr<fs::FileDescriptor> open(int options);
 
     virtual ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override = 0;
