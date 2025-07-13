@@ -78,6 +78,17 @@ auto try_add_rvalue_reference(int) -> type_identity<T&&>;
 template<typename T>
 auto try_add_rvalue_reference(...) -> type_identity<T>;
 
+template<typename T>
+true_type test_ptr_conv(const volatile T*);
+
+template<typename T>
+false_type test_ptr_conv(const volatile void*);
+
+template<typename B, typename D>
+auto test_is_base_of(int) -> decltype(test_ptr_conv<B>(static_cast<D*>(nullptr)));
+template<typename, typename>
+auto test_is_base_of(...) -> true_type;
+
 }
 
 template<typename T>
@@ -118,6 +129,11 @@ public:
 template<typename T>
 using decay_t = typename decay<T>::type;
 
+template<typename B, typename D>
+struct is_base_of : decltype(detail::test_is_base_of<B, D>(0)) {};
+
+template<typename B, typename D>
+inline constexpr bool is_base_of_v = is_base_of<B, D>::value;
 
 #ifdef __clang__
 
