@@ -1,3 +1,4 @@
+#include "kernel/posix/errno.h"
 #include <kernel/fs/ext2fs/inode.h>
 #include <kernel/fs/ext2fs/filesystem.h>
 #include <kernel/fs/ext2fs/ext2.h>
@@ -525,6 +526,10 @@ ErrorOr<void> InodeEntry::add_entry(String name, RefPtr<fs::Inode> inode) {
     }
 
     return this->add_directory_entry(inode->id(), name, type);
+}
+
+ErrorOr<void> InodeEntry::remove_entry(StringView) {
+    return Error(ENOSYS); // TODO: Implement remove_entry for InodeEntry
 }
 
 RefPtr<fs::Inode> InodeEntry::create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) {

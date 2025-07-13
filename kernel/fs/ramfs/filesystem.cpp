@@ -80,6 +80,20 @@ ErrorOr<void> Inode::add_entry(String name, RefPtr<fs::Inode> inode) {
     return {};
 }
 
+ErrorOr<void> Inode::remove_entry(StringView name) {
+    if (!this->is_directory()) {
+        return Error(ENOTDIR);
+    }
+
+    auto iterator = m_children.find(name);
+    if (iterator == m_children.end()) {
+        return Error(ENOENT);
+    }
+
+    m_children.remove(iterator);
+    return {};
+}
+
 // TODO: Handle mode (correctly), uid, gid
 RefPtr<fs::Inode> Inode::create_entry(String name, mode_t mode, dev_t dev, uid_t, gid_t) {
     if (!this->is_directory()) {
