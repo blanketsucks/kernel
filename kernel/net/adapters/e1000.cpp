@@ -258,7 +258,7 @@ void E1000NetworkAdapter::receive() {
 
         descriptor.status = 0;
         write(RxDescriptorTail, current);
-    }    
+    }
 }
 
 }
