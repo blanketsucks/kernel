@@ -5,6 +5,7 @@
 #include <kernel/posix/sys/ioctl.h>
 #include <kernel/memory/manager.h>
 #include <kernel/arch/io.h>
+#include <kernel/fs/devfs/filesystem.h>
 
 #include <std/format.h>
 
@@ -73,6 +74,8 @@ AC97Device::AC97Device(pci::Address address) : CharacterDevice(DeviceMajor::Audi
     dbgln(" - Sample Rate: {} Hz", m_sample_rate);
     dbgln(" - Variable Sample Rate: {}", m_variable_rate);
     dbgln(" - Double Rate: {}", m_double_rate);
+
+    devfs::register_device_range("snd", DeviceMajor::Audio);
 }
 
 
