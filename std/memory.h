@@ -61,6 +61,19 @@ private:
     T* m_ptr = nullptr;
 };
 
+class RefCounted {
+public:
+    virtual ~RefCounted() = default;
+
+    void ref() { m_ref_count++; }
+    void unref() { m_ref_count--; }
+
+    u32 ref_count() const { return m_ref_count; }
+
+private:
+    u32 m_ref_count = 0;
+};
+
 class RefCount {
 public:
     RefCount() : m_ref_count(0) {}
@@ -178,6 +191,103 @@ public:
 private:
     T* m_ptr = nullptr;
     RefCount* m_ref_count = nullptr;
+};
+
+template<typename T> requires(std::is_base_of_v<RefCounted, T>)
+class RefPtr<T> {
+public:
+    RefPtr() = default;
+
+    RefPtr(T* ptr) : m_ptr(ptr) {
+        if (m_ptr) {
+            m_ptr->ref();
+        }
+    }
+
+    RefPtr(const RefPtr& other) : m_ptr(other.m_ptr) {
+        if (m_ptr) {
+            m_ptr->ref();
+        }
+    }
+
+    template<typename U>
+    RefPtr(const RefPtr<U>& other) {
+        m_ptr = static_cast<T*>(const_cast<U*>(other.ptr()));
+        if (m_ptr) {
+            m_ptr->ref();
+        }
+    }
+
+    RefPtr(RefPtr&& other) : m_ptr(other.m_ptr) {
+        other.m_ptr = nullptr;
+    }
+
+    template<typename... Args>
+    static inline RefPtr make(Args&&... args) {
+        return RefPtr(new T(std::forward<Args>(args)...));
+    }
+
+    ~RefPtr() {
+        if (!m_ptr) return;
+
+        m_ptr->unref();
+        if (m_ptr->ref_count() == 0) {
+            delete m_ptr;
+        }
+    }
+
+    RefPtr& operator=(const RefPtr& other) {
+        if (this == &other) {
+            return *this;
+        }
+
+        if (m_ptr) {
+            m_ptr->unref();
+        }
+
+        m_ptr = other.m_ptr;
+        if (m_ptr) {
+            m_ptr->ref();
+        }
+        
+        return *this;
+    }
+
+    RefPtr& operator=(RefPtr&& other) {
+        if (this == &other) {
+            return *this;
+        }
+
+        if (m_ptr) {
+            m_ptr->unref();
+        }
+
+        m_ptr = other.m_ptr;
+        other.m_ptr = nullptr;
+
+        return *this;
+    }
+
+    T* operator->() { return m_ptr; }
+    const T* operator->() const { return m_ptr; }
+
+    T& operator*() { return *m_ptr; }
+    const T& operator*() const { return *m_ptr; }
+
+    T* ptr() { return m_ptr; }
+    const T* ptr() const { return m_ptr; }
+
+    T* take() {
+        T* ptr = m_ptr;
+        m_ptr = nullptr;
+
+        return ptr;
+    }
+
+    operator bool() const { return m_ptr; }
+
+private:
+    T* m_ptr = nullptr;
 };
 
 }
