@@ -14,7 +14,7 @@ namespace kernel::fs {
 class Inode;
 class FileDescriptor;
 
-class File {
+class File : public std::RefCounted {
 public:
     virtual ~File() = default;
 
