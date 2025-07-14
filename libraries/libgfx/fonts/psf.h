@@ -15,6 +15,14 @@ public:
 
     u8* glyph_data() const { return m_data; }
 
+    u8* glyph(size_t index) const {
+        if (index >= m_glyph_count) {
+            return nullptr;
+        }
+        
+        return m_data + index * m_glyph_size;
+    }
+
     size_t glyph_count() const { return m_glyph_count; }
     size_t glyph_size() const { return m_glyph_size; }
 
