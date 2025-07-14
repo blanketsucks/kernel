@@ -258,9 +258,9 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
     if (!region || !region->is_file_backed() || !region->used()) {
 unrecoverable_fault:
         if (is_null_pointer_dereference) {
-            dbgln("\033[1;31mNull pointer dereference (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+            dbgln("\033[1;31mNull pointer dereference (address={:#p}) @ IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         } else {
-            dbgln("\033[1;31mPage fault (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
+            dbgln("\033[1;31mPage fault (address={:#p}) @ IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         }
         
         dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
@@ -287,7 +287,14 @@ unrecoverable_fault:
     m_page_directory->map(region->base() + index, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
 
     size_t size = std::min(file->size() - index, PAGE_SIZE);
-    file->read(reinterpret_cast<void*>(region->base() + index), size, index);
+    auto result = file->read(reinterpret_cast<void*>(region->base() + index), size, index);
+
+    if (result.is_err()) {
+        dbgln("\033[1;31mFailed to read file backed region (address={:#p}) @ IP={:#p}:\033[0m", address, regs->ip());
+        dbgln("  \033[1;31merrno={}\033[0m", result.error().code());
+
+        this->kill();
+    }
 }
 
 void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
@@ -295,9 +302,6 @@ void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
     dbgln("  \033[1;31mError code: {:#x}\033[0m", regs->errno);
 
     dbgln();
-    dbgln("Stack trace:");
-
-    kernel::print_stack_trace();
 
     this->kill();
 }
@@ -306,10 +310,10 @@ memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
     auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(ptr), true);
 
     if (!region) {
-        dbgln("Invalid memory access at {:#}. Killing.", ptr);
+        dbgln("Invalid memory access @ {:#}. Killing.", ptr);
         this->kill();
     } else if (write && !region->is_writable()) {
-        dbgln("Invalid memory access at {:#}. Killing.", ptr);
+        dbgln("Write to read-only region @ {:#}. Killing.", ptr);
         this->kill();
     }
     
@@ -433,7 +437,7 @@ ErrorOr<FlatPtr> Process::sys$close(int fd) {
     if (file) {
         file.~RefPtr();
     }
-        
+
     m_file_descriptors[fd] = nullptr;
     return 0;
 }
@@ -523,9 +527,13 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
 
     size = std::align_up(size, PAGE_SIZE);
 
-    PageFlags pflags = PageFlags::None;
+    PageFlags pflags = PageFlags::NoExecute;
     if (prot & PROT_WRITE) {
         pflags |= PageFlags::Write;
+    } 
+
+    if (prot & PROT_EXEC) {
+        pflags &= ~PageFlags::NoExecute;
     }
 
     void* address = nullptr;
