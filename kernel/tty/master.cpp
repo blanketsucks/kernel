@@ -1,5 +1,6 @@
 #include <kernel/tty/master.h>
 #include <kernel/tty/slave.h>
+#include <kernel/fs/ptsfs.h>
 #include <kernel/tty/multiplexer.h>
 #include <kernel/posix/sys/ioctl.h>
 #include <kernel/process/process.h>
@@ -33,10 +34,11 @@ ErrorOr<size_t> PTYMaster::read(void* buff, size_t size, size_t) {
 }
 
 void PTYMaster::close() {
-    // delete m_slave;
-    // m_slave = nullptr;
+    m_slave->remove();
+    this->remove();
 
     PTYMultiplexer::instance()->add_master_pts(m_pts);
+    fs::PTSFS::unregister_pty(m_pts);
 }
 
 ErrorOr<size_t> PTYMaster::write(const void* buffer, size_t size, size_t) {

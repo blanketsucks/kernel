@@ -9,6 +9,7 @@ class PTYMaster;
 class PTYSlave : public TTY {
 public:
     PTYSlave(u32 pts, PTYMaster* master);
+    ~PTYSlave() override;
 
     u32 pts() const { return m_pts; }
     PTYMaster* master() const { return m_master; }

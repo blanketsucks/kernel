@@ -9,6 +9,8 @@ PTYSlave::PTYSlave(u32 pts, PTYMaster* master) : TTY(DeviceMajor::SlavePTY, pts)
     fs::PTSFS::register_pty(pts);
 }
 
+PTYSlave::~PTYSlave() {}
+
 size_t PTYSlave::on_master_write(const u8* buffer, size_t size) {
     for (size_t i = 0; i < size; i++) {
         this->emit(buffer[i]);
