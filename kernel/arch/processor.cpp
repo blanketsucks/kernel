@@ -22,7 +22,7 @@ void Processor::preinit() {
     u32 max_extended_leaf = eax;
     if (max_extended_leaf >= 0x80000001) {
         arch::cpuid(0x80000001, eax, ebx, ecx, edx);
-        m_has_nx = (edx & (1 << 20)) != 0;
+        m_has_nx = (edx & (1 << 20));
     } else {
         m_has_nx = false;
     }
