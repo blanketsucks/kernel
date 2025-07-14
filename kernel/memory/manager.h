@@ -38,7 +38,7 @@ union PageFault {
 
         // 0 = The fault was not caused by an instruction fetch.
         // 1 = The fault was caused by an instruction fetch.
-        u8 id : 1; // 0 = instruction fetch, 1 = data access
+        u8 id : 1;
 
         // 0 = The fault was not caused protection keys.
         // 1 = There was a protection key violation.
