@@ -174,6 +174,21 @@ int memcmp(const void* ptr1, const void* ptr2, size_t n) {
     return 0;
 }
 
+void* memmove(void* dest, void const* src, size_t n) {
+    if (dest < src) {
+        return memcpy(dest, src, n);
+    }
+
+    u8* d = (u8*)dest;
+    u8 const* s = (u8 const*)src;
+
+    for (d += n, s += n; n--;) {
+        *--d = *--s;
+    }
+
+    return dest;
+}
+
 char* strerror(int errnum) {
     if (errnum < 0 || errnum >= EMAXERRNO) {
         return const_cast<char*>("Unkown error");
