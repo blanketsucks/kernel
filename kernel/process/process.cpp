@@ -183,7 +183,7 @@ void* Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags)
 
 void* Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
     ASSERT(address % PAGE_SIZE == 0, "Physical address must be page aligned.");
-    auto* region = m_allocator->allocate(size, PROT_READ | PROT_WRITE);
+    auto* region = m_allocator->allocate(size, prot);
     if (!region) {
         return nullptr;
     }
