@@ -42,7 +42,7 @@ namespace kernel::memory {
 
 namespace kernel::arch {
 
-constexpr u64 PHYSICAL_ADDRESS_MASK = 0xFFFFFFFFFFFFF000ull;
+constexpr u64 PHYSICAL_ADDRESS_MASK = 0x7FFFFFFFFFFFF000ull;
 
 constexpr void set_bit(u64& value, u64 bit, bool set) {
     if (set) {

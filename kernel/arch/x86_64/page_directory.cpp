@@ -1,6 +1,7 @@
 #include <kernel/arch/x86_64/page_directory.h>
-#include <kernel/arch/cpu.h>
 #include <kernel/memory/manager.h>
+#include <kernel/arch/processor.h>
+#include <kernel/arch/cpu.h>
 
 #include <std/format.h>
 
@@ -108,8 +109,11 @@ void PageDirectory::map(VirtualAddress virt, PhysicalAddress phys, PageFlags fla
     entry->set_writable(writable);
     entry->set_user(user);
     entry->set_cache_disable(cache_disable);
-    entry->set_no_execute(no_execute);
-    
+
+    if (Processor::instance().has_nx()) {
+        entry->set_no_execute(no_execute);
+    }
+
     entry->set_physical_address(phys);
 }
 

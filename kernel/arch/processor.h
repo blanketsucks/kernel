@@ -35,6 +35,8 @@ public:
     u8 max_virtual_address_width() const { return m_max_virtual_address_width; }
     VirtualAddress max_virtual_address() const { return (1ull << m_max_virtual_address_width) - 1; }
 
+    bool has_nx() const { return m_has_nx; }
+
     String const& brand() const { return m_brand; }
 
     String features_string() const;
@@ -51,6 +53,7 @@ private:
 
     u8 m_max_physical_address_width;
     u8 m_max_virtual_address_width;
+    bool m_has_nx = false;
 
     arch::CPUFeatures m_features;
 

@@ -27,8 +27,13 @@ void Processor::init() {
         arch::write_cr4(arch::read_cr4() | 0x600);            // Set CR4.OSFXSR and CR4.OSXMMEXCPT
     }
 
+    u64 efer = arch::rmsr(arch::MSR_EFER);
+    if (processor.has_nx()) {
+        efer |= (1 << 11);
+    }
+
     // Enable and setup the `syscall` instruction
-    wmsr(arch::MSR_EFER, rmsr(arch::MSR_EFER) | 1);
+    wmsr(arch::MSR_EFER, efer | 1);
     wmsr(arch::MSR_STAR, (0x28ul << 32) | (0x33ul << 48));
     wmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&_syscall_interrupt_handler));
 

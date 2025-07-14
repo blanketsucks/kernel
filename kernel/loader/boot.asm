@@ -179,7 +179,7 @@ _start:
     ; Enable long mode
     mov ecx, 0xC0000080
     rdmsr
-    or eax, 1 << 8
+    or eax, (1 << 8)
     wrmsr
 
     ; Enable paging
