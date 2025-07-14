@@ -6,6 +6,7 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
 #include <kernel/posix/sys/mman.h>
+#include <kernel/arch/cpu.h>
 
 #include <std/cstring.h>
 #include <std/utility.h>
@@ -237,20 +238,23 @@ void* MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress addr
 }
 
 ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, Region* region) {
-    ScopedSpinLock lock(m_lock);
-
     auto* page_directory = allocator.page_directory();
     if (!page_directory->is_mapped(region->base())) {
         return Error(EINVAL);
     }
 
     for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
-        PhysicalAddress physical = page_directory->get_physical_address(region->base() + i);
-        page_directory->unmap(region->base() + i);
+        auto* entry = page_directory->get_page_table_entry(region->base() + i);
+        PhysicalAddress physical = entry->physical_address();
 
+        page_directory->unmap(region->base() + i, entry);
+        
         PhysicalPage* page = this->get_physical_page(physical);
-        page->ref_count--;
+        if (!page) {
+            return Error(EINVAL);
+        }
 
+        page->ref_count--;
         if (page->ref_count == 0) {
             TRY(this->free_page_frame(reinterpret_cast<void*>(physical)));
         }

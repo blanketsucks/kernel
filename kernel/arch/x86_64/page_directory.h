@@ -187,14 +187,18 @@ public:
         User
     };
 
+    using Map = void(PageDirectory::*)(VirtualAddress, PhysicalAddress, PageFlags);
+
     static void create_kernel_page_directory(BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
     static PageDirectory* create_user_page_directory();
 
     bool is_user() const { return m_type == Type::User; }
     bool is_kernel() const { return m_type == Type::Kernel; }
 
-    void map(VirtualAddress virt, PhysicalAddress phys, PageFlags flags);
-    void unmap(VirtualAddress virt);
+    void map(VirtualAddress va, PhysicalAddress pa, PageFlags flags);
+
+    void unmap(VirtualAddress va);
+    void unmap(VirtualAddress va, PageTableEntry*);
 
     PhysicalAddress get_physical_address(VirtualAddress virt) const;
 

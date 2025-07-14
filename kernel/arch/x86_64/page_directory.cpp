@@ -92,13 +92,13 @@ template<> PageTableEntry* PageDirectory::walk_page_table(
     return entries + PageTable::index(virt);
 }
 
-void PageDirectory::map(VirtualAddress virt, PhysicalAddress phys, PageFlags flags) {
+void PageDirectory::map(VirtualAddress va, PhysicalAddress pa, PageFlags flags) {
     bool writable = std::has_flag(flags, PageFlags::Write);
     bool user = std::has_flag(flags, PageFlags::User);
     bool cache_disable = std::has_flag(flags, PageFlags::CacheDisable);
     bool no_execute = std::has_flag(flags, PageFlags::NoExecute);
 
-    auto* entry = this->walk_page_table(virt, true, user);
+    auto* entry = this->walk_page_table(va, true, user);
     if (!entry) {
         return;
     }
@@ -114,30 +114,35 @@ void PageDirectory::map(VirtualAddress virt, PhysicalAddress phys, PageFlags fla
         entry->set_no_execute(no_execute);
     }
 
-    entry->set_physical_address(phys);
+    entry->set_physical_address(pa);
 }
 
-void PageDirectory::unmap(VirtualAddress virt) {
-    auto* entry = this->walk_page_table(virt);
+void PageDirectory::unmap(VirtualAddress va) {
+    auto* entry = this->walk_page_table(va);
     if (!entry) {
         return;
     }
 
     entry->set_value(0);
-    arch::invlpg(virt);
+    arch::invlpg(va);
 }
 
-PageTableEntry* PageDirectory::get_page_table_entry(VirtualAddress virt) {
-    return this->walk_page_table(virt);
+void PageDirectory::unmap(VirtualAddress va, PageTableEntry* entry) {
+    entry->set_value(0);
+    arch::invlpg(va);
 }
 
-PageTableEntry const* PageDirectory::get_page_table_entry(VirtualAddress virt) const {
+PageTableEntry* PageDirectory::get_page_table_entry(VirtualAddress va) {
+    return this->walk_page_table(va);
+}
+
+PageTableEntry const* PageDirectory::get_page_table_entry(VirtualAddress va) const {
     // I know this is cursed but I also know for sure that walk_page_table won't modify anything so it is safe to do.
-    return (const_cast<PageDirectory*>(this))->walk_page_table(virt);
+    return (const_cast<PageDirectory*>(this))->walk_page_table(va);
 }
 
-PhysicalAddress PageDirectory::get_physical_address(VirtualAddress virt) const {
-    auto* entry = this->get_page_table_entry(virt);
+PhysicalAddress PageDirectory::get_physical_address(VirtualAddress va) const {
+    auto* entry = this->get_page_table_entry(va);
     if (!entry) {
         return {};
     }
@@ -145,8 +150,8 @@ PhysicalAddress PageDirectory::get_physical_address(VirtualAddress virt) const {
     return entry->physical_address();
 }
 
-bool PageDirectory::is_mapped(VirtualAddress virt) const {
-    auto* entry = this->get_page_table_entry(virt);
+bool PageDirectory::is_mapped(VirtualAddress va) const {
+    auto* entry = this->get_page_table_entry(va);
     return entry && entry->is_present();
 }
 
@@ -170,16 +175,16 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memo
     memset(dir.m_pml4.entries, 0, PAGE_SIZE);
     
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += PAGE_SIZE) {
-        VirtualAddress virt = boot_info.hhdm + i;
-        dir.map(virt, i, PageFlags::Write);
+        VirtualAddress va = boot_info.hhdm + i;
+        dir.map(va, i, PageFlags::Write);
     }
 
     // FIXME: This currently maps both the kernel text and data sections as writable
     for (size_t i = 0; i < boot_info.kernel_size; i += PAGE_SIZE) {
-        PhysicalAddress phys = boot_info.kernel_physical_base + i;
-        VirtualAddress virt = boot_info.kernel_virtual_base + i;
-        
-        dir.map(virt, phys, PageFlags::Write);
+        PhysicalAddress pa = boot_info.kernel_physical_base + i;
+        VirtualAddress va = boot_info.kernel_virtual_base + i;
+
+        dir.map(va, pa, PageFlags::Write);
     }
     
     dir.switch_to();
