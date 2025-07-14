@@ -12,7 +12,7 @@ FileSystem* FileSystem::create(BlockDevice* disk) {
     }
 
     auto* superblock = new Superblock;
-    disk->read_blocks(superblock, 2, 2);
+    MUST(disk->read_blocks(superblock, 2, 2));
 
     if (superblock->magic != MAGIC) {
         delete superblock;
@@ -28,7 +28,7 @@ FileSystem* FileSystem::create(BlockDevice* disk) {
 FileSystem::FileSystem(Superblock* superblock, BlockDevice* disk) : m_superblock(superblock), m_disk(disk) {}
 
 void FileSystem::flush_superblock() const {
-    m_disk->write_blocks(m_superblock, 2, 2);
+    MUST(m_disk->write_blocks(m_superblock, 2, 2));
 }
 
 void FileSystem::read_block(u32 block, u8* buffer) const {
@@ -39,7 +39,7 @@ void FileSystem::read_blocks(u32 block, u32 count, u8* buffer) const {
     u32 sector = block * (this->block_size() / SECTOR_SIZE);
     u32 sector_count = count * (this->block_size() / SECTOR_SIZE);
 
-    m_disk->read_blocks(buffer, sector_count, sector);
+    MUST(m_disk->read_blocks(buffer, sector_count, sector));
 }
 
 void FileSystem::write_block(u32 block, const u8* buffer) const {
@@ -50,7 +50,7 @@ void FileSystem::write_blocks(u32 block, u32 count, const u8* buffer) const {
     u32 sector = block * (this->block_size() / SECTOR_SIZE);
     u32 sector_count = count * (this->block_size() / SECTOR_SIZE);
 
-    m_disk->write_blocks(buffer, sector_count, sector);
+    MUST(m_disk->write_blocks(buffer, sector_count, sector));
 }
 
 void FileSystem::read_block_group(u32 index, BlockGroupDescriptor* group) const {

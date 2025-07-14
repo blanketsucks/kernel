@@ -107,7 +107,7 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
         memory::TemporaryMapping temp(*m_page_directory, region, size);
 
         file.seek(ph.p_offset, SEEK_SET);
-        file.read(temp.ptr() + (ph.p_vaddr - address), ph.p_filesz);
+        TRY(file.read(temp.ptr() + (ph.p_vaddr - address), ph.p_filesz));
     }
 
     auto entry = reinterpret_cast<void(*)(void*)>(elf.entry());

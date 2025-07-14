@@ -58,7 +58,12 @@ Vector<PartitionEntry> parse_gpt_partitions(BlockDevice*);
 
 Vector<PartitionEntry> enumerate_device_partitions(BlockDevice* device) {
     MasterBootRecord mbr = {};
-    device->read_blocks(reinterpret_cast<u8*>(&mbr), 1, 0);
+    auto result = device->read_blocks(reinterpret_cast<u8*>(&mbr), 1, 0);
+
+    if (result.is_err()) {
+        // TODO: Report the error
+        return {};
+    }
 
     if (mbr.signature != MasterBootRecord::SIGNATURE) {
         return {};
@@ -85,7 +90,12 @@ Vector<PartitionEntry> enumerate_device_partitions(BlockDevice* device) {
 
 Vector<PartitionEntry> parse_gpt_partitions(BlockDevice* device) {
     u8 block[device->block_size()];
-    device->read_blocks(block, 1, 1);
+    auto result = device->read_blocks(block, 1, 1);
+
+    if (result.is_err()) {
+        // TODO: Report the error
+        return {};
+    }
 
     GPTHeader* gpt = reinterpret_cast<GPTHeader*>(block);
     if (memcmp(gpt->signature, "EFI PART", 8) != 0) {
@@ -99,7 +109,12 @@ Vector<PartitionEntry> parse_gpt_partitions(BlockDevice* device) {
     entries.resize(gpt->partition_count);
 
     size_t blocks = (gpt->partition_count * gpt->partition_entry_size) / device->block_size();
-    device->read_blocks(reinterpret_cast<u8*>(entries.data()), blocks, gpt->partition_table_lba);
+    result = device->read_blocks(reinterpret_cast<u8*>(entries.data()), blocks, gpt->partition_table_lba);
+
+    if (result.is_err()) {
+        // TODO: Report the error
+        return {};
+    }
 
     for (size_t i = 0; i < gpt->partition_count; i++) {
         auto& entry = entries[i];

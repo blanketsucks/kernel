@@ -42,7 +42,7 @@ public:
     ErrorOr<void> load();
     ErrorOr<void> read_header();
 
-    void read_program_headers();
+    ErrorOr<void> read_program_headers();
 private:
     ELFHeader* m_header = nullptr;
     RefPtr<fs::FileDescriptor> m_file;

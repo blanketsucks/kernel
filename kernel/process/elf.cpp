@@ -21,7 +21,7 @@ ErrorOr<void> ELF::read_header() {
     auto* header = m_header = new ELFHeader;
 
     m_file->seek(0, SEEK_SET);
-    m_file->read(header, sizeof(ELFHeader));
+    TRY(m_file->read(header, sizeof(ELFHeader)));
 
     u32 magic = *reinterpret_cast<u32*>(header);
     if (magic != ELF_MAGIC) {
@@ -33,15 +33,15 @@ ErrorOr<void> ELF::read_header() {
     return {};
 }
 
-void ELF::read_program_headers() {
+ErrorOr<void> ELF::read_program_headers() {
     if (!m_header || !m_program_headers.empty()) {
-        return;
+        return {};
     }
 
     m_program_headers.resize(m_header->e_phnum);
 
     m_file->seek(m_header->e_phoff, SEEK_SET);
-    m_file->read(m_program_headers.data(), m_header->e_phentsize * m_header->e_phnum);
+    TRY(m_file->read(m_program_headers.data(), m_header->e_phentsize * m_header->e_phnum));
 
     for (auto& ph : m_program_headers) {
         if (ph.p_type != PT_INTERP) {
@@ -51,13 +51,15 @@ void ELF::read_program_headers() {
         m_interpreter.resize(ph.p_filesz - 1);
 
         m_file->seek(ph.p_offset, SEEK_SET);
-        m_file->read(m_interpreter.data(), ph.p_filesz - 1);
+        TRY(m_file->read(m_interpreter.data(), ph.p_filesz - 1));
     }
+
+    return {};
 }
 
 ErrorOr<void> ELF::load() {
     TRY(this->read_header());
-    this->read_program_headers();
+    TRY(this->read_program_headers());
 
     return {};
 }
