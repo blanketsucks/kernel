@@ -197,6 +197,7 @@ void* Process::allocate_with_physical_region(PhysicalAddress address, size_t siz
         m_page_directory->map(region->base() + i, address + i, pflags);
     }
 
+    region->set_kernel_managed(true);
     return reinterpret_cast<void*>(region->base());
 }
 
@@ -394,7 +395,7 @@ void Process::kill() {
         if (region->is_file_backed()) {
             // TODO
             return;
-        } else if (!region->used()) {
+        } else if (!region->used() || region->is_kernel_managed()) {
             return;
         }
 

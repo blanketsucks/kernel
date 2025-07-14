@@ -75,6 +75,10 @@ public:
 
     bool is_shared() const { return m_shared; }
     void set_shared(bool shared) { m_shared = shared; }
+
+    // true if the underlying physical memory that is pointed by this region is managed by the kernel.
+    bool is_kernel_managed() const { return m_kernel_managed; }
+    void set_kernel_managed(bool kernel_managed) { m_kernel_managed = kernel_managed; }
     
     void set_range(const Range& range) {
         m_range = range;
@@ -85,6 +89,7 @@ private:
 
     bool m_used = false;
     bool m_shared = false;
+    bool m_kernel_managed = false;
 
     int m_prot = 0;
 
