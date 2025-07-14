@@ -1,4 +1,5 @@
 #include <shell/terminal.h>
+#include <shell/commands.h>
 
 #include <sys/mman.h>
 #include <sys/ioctl.h>
@@ -175,9 +176,10 @@ int main() {
     KeyEvent event;
     
     auto font = gfx::PSFFont::create("/res/fonts/zap-light16.psf");
-    
-    shell::Terminal term(connector.width, connector.height, context, font->glyph_data(), font->width(), font->height());
-    term.on_line_flush = [&term](String text) {
+
+    shell::Terminal terminal(context, font, true);
+
+    terminal.on_line_flush = [&](String text) {
         if (text.empty()) {
             return;
         }
@@ -191,19 +193,19 @@ int main() {
         if (cmd.name() == "cd") {
             term_cd(argc, argv);
         } else if (cmd.name() == "ls") {
-            term_ls(term, argc, argv);
+            term_ls(terminal, argc, argv);
         } else if (cmd.name() == "cat") {
-            term_cat(term, argc, argv);
+            term_cat(terminal, argc, argv);
         } else if (cmd.name() == "clear") {
-            term.clear();
+            terminal.clear();
         } else {
             struct stat st;
             if (stat(cmd.pathname(), &st) < 0) {
-                term.writeln(std::format("{}: command not found", cmd.name()));
+                terminal.writeln(std::format("{}: command not found", cmd.name()));
                 return;
             }
 
-            spawn(term, cmd, argv);
+            spawn(terminal, cmd, argv);
         }
 
         for (size_t i = 1; i < argc - 1; i++) {
@@ -226,7 +228,7 @@ int main() {
             continue;
         }
 
-        term.on_char(event.ascii);
+        terminal.on_char(event.ascii);
     }
 
     close(gpu);

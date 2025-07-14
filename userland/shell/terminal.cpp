@@ -10,85 +10,34 @@ void _free(void* ptr, size_t) {
     free(ptr);
 }
 
-Command parse_shell_command(String line) {
-    Vector<String> args;
-    String name;
-
-    size_t index = line.find(' ');
-
-    if (index == StringView::npos) {
-        return { line, move(args) };
-    } else {
-        name = line.substr(0, index);
-        line = line.substr(index + 1);
-    }
-
-    while (!line.empty()) {
-        bool in_quotes = false;
-        if (line.startswith('"')) {
-            in_quotes = true;
-            line = line.substr(1);
-        }
-
-        if (in_quotes) {
-            index = line.find('"');
-        } else {
-            index = line.find(' ');
-        }
-
-        if (index == StringView::npos) {
-            args.append(line);
-            break;
-        }
-
-        args.append(line.substr(0, index));
-        line = line.substr(index + 1);
-    }
-
-    return { move(name), move(args) };
-}
-
-Command::Command(String name, Vector<String> args) : m_name(move(name)), m_args(move(args)) {
-    m_pathname = new char[m_name.size() + 1];
-    memcpy(m_pathname, m_name.data(), m_name.size());
-    m_pathname[m_name.size()] = '\0';
-}
-
-char** Command::argv() const {
-    char** argv = new char*[m_args.size() + 2];
-    for (size_t i = 0; i < m_args.size(); i++) {
-        auto& argument = m_args[i];
-
-        char* buffer = new char[m_args[i].size() + 1];
-        memcpy(buffer, argument.data(), argument.size());
-
-        buffer[argument.size()] = '\0';
-        argv[i + 1] = buffer;
-    }
-
-    argv[0] = m_pathname;
-    argv[m_args.size() + 1] = nullptr;
-
-    return argv;
-}
-
 Terminal::Terminal(
-    u32 width, u32 height, gfx::RenderContext& context, u8* font, size_t font_width, size_t font_height
-) : on_line_flush(nullptr), m_width(width), m_height(height), m_render_context(context) {
-    m_context = flanterm_fb_init(
-        malloc, _free,
-        context.framebuffer().buffer(), width, height, context.framebuffer().width() * sizeof(u32),
-        8, 16,
-        8, 8,
-        8, 0,
-        nullptr,
-        nullptr, nullptr,
-        nullptr, nullptr,
-        nullptr, nullptr,
-        font, font_width, font_height, 1,
-        0, 0,
-        0
-    );
+    gfx::RenderContext& context, RefPtr<gfx::PSFFont> font, bool use_flanterm
+) : on_line_flush(nullptr), m_render_context(context), m_font(move(font)) {
+    auto& fb = m_render_context.framebuffer();
+    
+    m_height = fb.height();
+    m_width = fb.width();
+    m_pitch = fb.pitch();
+
+    m_rows = m_height / m_font->height();
+    m_cols = m_width / m_font->width();
+
+    if (use_flanterm) {
+        m_flanterm_context = flanterm_fb_init(
+            malloc, _free,
+            fb.buffer(), fb.width(), fb.height(), fb.pitch(),
+            8, 16,
+            8, 8,
+            8, 0,
+            nullptr,
+            nullptr, nullptr,
+            nullptr, nullptr,
+            nullptr, nullptr,
+            m_font->glyph_data(), m_font->width(), m_font->height(), 1,
+            0, 0,
+            0
+        );
+    }
 
     this->add_line({});
 }
@@ -108,26 +57,26 @@ void Terminal::add_line(String text, bool newline_before) {
     size_t prompt_length = line.size() - text.size();
 
     if (newline_before) {
-        flanterm_write(m_context, "\n", 1);
+        this->render('\n');
     }
 
-    flanterm_write(m_context, line.data(), line.size());
+    this->render(line);
     m_lines.append({ move(line), prompt_length });
 }
 
 void Terminal::write(StringView text) {
-    flanterm_write(m_context, text.data(), text.size());
+    this->render(text);
 }
 
 void Terminal::writeln(StringView text) {
     write(text);
-    flanterm_write(m_context, "\n", 1);
+    this->render('\n');
 }
 
 void Terminal::on_char(char c) {
     auto& line = current_line();
     if (c == '\n') {
-        flanterm_write(m_context, "\n", 1);
+        this->render('\n');
 
         this->on_line_flush(line.text.substr(line.prompt));
         this->add_line({});
@@ -140,10 +89,10 @@ void Terminal::on_char(char c) {
         }
 
         line.text.pop();
-        flanterm_write(m_context, "\b \b", 3);
+        this->render("\b \b");
     } else {
         line.text.append(c);
-        flanterm_write(m_context, &c, 1);
+        this->render(c);
     }
 }
 
@@ -152,9 +101,87 @@ void Terminal::clear() {
     this->add_line({});
     
     m_current_line = 0;
+}
 
-    gfx::Rect rect = { 0, 0, (int)m_width, (int)m_height };
-    rect.draw(m_render_context, 0x000000);
+void Terminal::render(char c) {
+    if (m_flanterm_context) {
+        flanterm_write(m_flanterm_context, &c, 1);
+        return;
+    }
+
+    if (c == '\n') {
+        this->clear_cursor();
+
+        m_x = 0;
+        m_y += m_font->height();
+
+        if (m_y + m_font->height() > m_height) {
+            this->scroll();
+        }
+
+        this->render_cursor();
+        return;
+    } else if (c == '\b') {
+        this->clear_cursor();
+
+        if (m_x > 0) {
+            m_x -= m_font->width();
+        } else if (m_y > 0) {
+            m_y -= m_font->height();
+            m_x = m_render_context.framebuffer().width() - m_font->width();
+        }
+
+        this->render_cursor();
+        return;
+    } else if (c == '\r') {
+        m_x = 0;
+        return;
+    }
+
+    u8* glyph = m_font->glyph(c);
+
+    u32* framebuffer = m_render_context.framebuffer().buffer();
+    for (size_t y = 0; y < m_font->height(); y++) {
+        u8 byte = glyph[y];
+
+        for (size_t x = 0; x < m_font->width(); x++) {
+            u32 color = (byte & (1 << (7 - x))) ? 0x00AAAAAA : 0x00000000;
+            size_t index = (m_y + y) * m_pitch / 4 + (m_x + x);
+            
+            framebuffer[index] = color;
+        }
+    }
+
+    m_x += m_font->width();
+    this->render_cursor();
+}
+
+void Terminal::render(StringView text) {
+    for (char c : text) {
+        this->render(c);
+    }
+}
+
+void Terminal::render_cursor(u32 color) {
+    u32* framebuffer = m_render_context.framebuffer().buffer();
+    for (size_t y = 0; y < m_font->height(); y++) {
+        for (size_t x = 0; x < m_font->width() / 2; x++) {
+            size_t index = (m_y + y) * m_pitch / 4 + (m_x + x);
+            framebuffer[index] = color;
+        }
+    }
+}
+
+void Terminal::scroll() {
+    if (m_flanterm_context) {
+        return;
+    }
+
+    // TODO: Implement proper scrolling
+    u32* framebuffer = m_render_context.framebuffer().buffer();
+    memset(framebuffer, 0, m_height * m_pitch);
+
+    m_y = 0;
 }
 
 }

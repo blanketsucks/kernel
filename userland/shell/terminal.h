@@ -7,32 +7,12 @@
 #include <std/format.h>
 
 #include <libgfx/render_context.h>
+#include <libgfx/fonts/psf.h>
 #include <libgfx/font.h>
 
 #include <flanterm/backends/fb.h>
 
 namespace shell {
-
-class Command {
-public:
-    Command(String name, Vector<String> args);
-
-    StringView name() const { return m_name; }
-    Vector<String> const& args() const { return m_args; }
-
-    char* pathname() const { return m_pathname; }
-
-    char** argv() const;
-    size_t argc() const { return m_args.size() + 1; }
-
-private:
-    String m_name;
-    Vector<String> m_args;
-
-    char* m_pathname;
-};
-
-Command parse_shell_command(String line);
 
 struct Line {
     String text;
@@ -41,7 +21,7 @@ struct Line {
 
 class Terminal {
 public:
-    Terminal(u32 width, u32 height, gfx::RenderContext&, u8*, size_t, size_t);
+    Terminal(gfx::RenderContext& context, RefPtr<gfx::PSFFont> font, bool use_flanterm = false);
 
     static String cwd();
 
@@ -62,16 +42,33 @@ public:
 
     Function<void(String)> on_line_flush;
 
-private:
-    u32 m_width;
-    u32 m_height;
+    void render(char);
+    void render(StringView);
 
-    flanterm_context* m_context;
+    void render_cursor(u32 color = 0x00AAAAAA);
+    void clear_cursor() { this->render_cursor(0); }
+
+    void scroll();
+
+private:
     gfx::RenderContext& m_render_context;
+    RefPtr<gfx::PSFFont> m_font;
+
+    flanterm_context* m_flanterm_context = nullptr;
 
     Vector<Line> m_lines;
 
     u32 m_current_line = 0;
+
+    u32 m_x = 0;
+    u32 m_y = 0;
+
+    u32 m_width;
+    u32 m_height;
+    u32 m_pitch;
+
+    u32 m_rows;
+    u32 m_cols;
 };
 
 }
