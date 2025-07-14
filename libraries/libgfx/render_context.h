@@ -1,7 +1,5 @@
 #pragma once
 
-#include <libgfx/ssfn.h>
-
 #include <libgfx/framebuffer.h>
 
 namespace gfx {
