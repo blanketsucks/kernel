@@ -65,9 +65,11 @@ public:
     static constexpr u16 VENDOR_ID = 0x1234;
     static constexpr u16 DEVICE_ID = 0x1111;
 
+    static constexpr i32 DEFAULT_WIDTH = 640;
+    static constexpr i32 DEFAULT_HEIGHT = 480;
+
     static RefPtr<GPUDevice> create(pci::Device);
 
-    u32* framebuffer() const { return m_framebuffer; }
     PhysicalAddress physical_address() const { return m_physical_address; }
 
     i32 width() const { return m_width; }
@@ -80,10 +82,7 @@ public:
     void write_register(u16 index, u16 value);
     u16 read_register(u16 index);
 
-    void set_resolution(i32 width, i32 height, i32 bpp, bool map = true);
-
-    bool map();
-    bool remap();
+    void set_resolution(i32 width, i32 height, i32 bpp);
     
 private:
     friend class Device;
@@ -91,7 +90,6 @@ private:
     BochsGPUDevice(pci::Address);
 
     PhysicalAddress m_physical_address;
-    u32* m_framebuffer = nullptr;
 
     i32 m_height;
     i32 m_width;

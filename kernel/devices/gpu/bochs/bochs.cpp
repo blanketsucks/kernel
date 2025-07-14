@@ -35,18 +35,13 @@ RefPtr<GPUDevice> BochsGPUDevice::create(pci::Device pci_device) {
         return nullptr;
     }
 
-    auto device = Device::create<BochsGPUDevice>(pci_device.address());
-    if (!device->map()) {
-        return nullptr;
-    }
-
-    return device;
+    return Device::create<BochsGPUDevice>(pci_device.address());
 }
 
 BochsGPUDevice::BochsGPUDevice(pci::Address address) {
     m_physical_address = address.bar(0) & 0xfffffff0;
 
-    this->set_resolution(1024, 768, 32, false);
+    this->set_resolution(DEFAULT_WIDTH, DEFAULT_HEIGHT, 32);
     m_connectors.append(BochsGPUConnector::create(this));
 }
 
@@ -60,7 +55,7 @@ u16 BochsGPUDevice::read_register(u16 index) {
     return io::read<u16>(VBE_IOPORT_DATA);
 }
 
-void BochsGPUDevice::set_resolution(i32 width, i32 height, i32 bpp, bool map) {
+void BochsGPUDevice::set_resolution(i32 width, i32 height, i32 bpp) {
     if (width > MAX_RESOLUTION_WIDTH || height > MAX_RESOLUTION_HEIGHT) {
         return;
     }
@@ -77,30 +72,6 @@ void BochsGPUDevice::set_resolution(i32 width, i32 height, i32 bpp, bool map) {
     m_width = width;
     m_height = height;
     m_bpp = bpp;
-
-    if (map) {
-        this->remap();
-    }
-}
-
-bool BochsGPUDevice::map() {
-    void* framebuffer = MM->map_physical_region(reinterpret_cast<void*>(m_physical_address), this->size());
-    if (!framebuffer) {
-        return false;
-    }
-
-    m_framebuffer = reinterpret_cast<u32*>(framebuffer);
-    return true;
-}
-
-bool BochsGPUDevice::remap() {
-    // We just mark the old framebuffer as free for use and call map again.
-    if (m_framebuffer) {
-        auto& allocator = MM->kernel_region_allocator();
-        allocator.free(reinterpret_cast<VirtualAddress>(m_framebuffer));
-    }
-
-    return this->map();
 }
 
 }
