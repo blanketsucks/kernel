@@ -188,7 +188,7 @@ extern "C" void init(multiboot_info* info) {
     mmap_sort();
 
     boot_info.mmap.entries = mmap_entries;
-    boot_info.mmap.count = mmap_count;
+    boot_info.mmap.count = mmap_count - 1;
 
     void (*entry)(BootInfo const&) = reinterpret_cast<void(*)(BootInfo const&)>(header->e_entry);
     entry(boot_info);
