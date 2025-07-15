@@ -24,7 +24,10 @@ static void sort_entries(Vector<DirectoryEntry>& entries) {
 }
 
 int main(int argc, char** argv) {
-    auto* dir = opendir(argc > 1 ? argv[1] : ".");
+    char cwd[256];
+    getcwd(cwd, sizeof(cwd));
+
+    auto* dir = opendir(argc > 1 ? argv[1] : cwd);
     if (!dir) {
         dbgln("{}: {}: {}", argv[0], argv[1], strerror(errno));
         return 1;

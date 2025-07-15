@@ -125,6 +125,8 @@ Process* Process::fork(arch::Registers& registers) {
     process->m_allocator = m_allocator->clone(process->page_directory());
 
     process->m_file_descriptors.resize(m_file_descriptors.size());
+    process->m_cwd = m_cwd;
+
     for (size_t i = 0; i < m_file_descriptors.size(); i++) {
         process->m_file_descriptors[i] = m_file_descriptors[i];
     }
