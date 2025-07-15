@@ -26,6 +26,20 @@ struct VectorIterator {
         return iterator;
     }
 
+    VectorIterator& operator--() {
+        m_ptr--;
+        m_offset--;
+
+        return *this;
+    }
+
+    VectorIterator operator--(int) {
+        VectorIterator iterator = *this;
+        --(*this);
+
+        return iterator;
+    }
+
     bool operator==(const VectorIterator& other) const { return m_ptr == other.m_ptr; }
     bool operator!=(const VectorIterator& other) const { return !(*this == other); }
 
