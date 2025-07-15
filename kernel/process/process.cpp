@@ -625,6 +625,9 @@ ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
         }
 
         auto* new_region = memory::Region::create(address + size, region->end() - (address + size));
+        new_region->set_prot(region->prot());
+        new_region->set_shared(region->is_shared());
+
         region->set_range({ region->base(), address - region->base() });
 
         m_allocator->insert_after(region, new_region);
