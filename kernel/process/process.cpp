@@ -263,8 +263,25 @@ unrecoverable_fault:
         } else {
             dbgln("\033[1;31mPage fault (address={:#p}) @ IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         }
-        
-        dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+
+        StringView message;
+        if (fault.rsvd) {
+            message = "Reserved bit set in page table entry.";
+        } else if (!fault.present) {
+            message = "Page not present.";
+        } else if (fault.id && !region->is_executable()) {
+            message = "Attempt to execute non-executable region.";
+        } else if (!fault.rw && !region->is_readable()) {
+            message = "Attempt to read from non-readable region.";
+        } else if (fault.rw && !region->is_writable()) {
+            message = "Attempt to write to non-writable region.";
+        }
+
+        if (!message.empty()) {
+            dbgln("  \033[1;31mUnrecoverable page fault: {}\033[0m", message);
+        } else {
+            dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+        }
 
         dbgln("Process memory regions:");
         m_allocator->for_each_region([](memory::Region* region) {
