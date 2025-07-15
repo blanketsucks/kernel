@@ -177,14 +177,26 @@ int main() {
     
     auto font = gfx::PSFFont::create("/res/fonts/zap-light16.psf");
 
-    shell::Terminal terminal(context, font, true);
+    Vector<String> history;
+    history.reserve(64);
 
+    auto iterator = history.begin();
+
+    shell::Terminal terminal(context, font, true);
     terminal.on_line_flush = [&](String text) {
         if (text.empty()) {
             return;
         }
 
         dbgln("Received line '{}'", text);
+
+        history.append(text);
+        if (history.size() > 64) {
+            history.remove_first();
+        }
+
+        iterator = history.end();
+
         auto cmd = shell::parse_shell_command(text);
 
         size_t argc = cmd.argc();
@@ -225,6 +237,18 @@ int main() {
         }
 
         if (!event.ascii) {
+            if (event.scancode == 0x48) { // Up arrow
+                if (iterator != history.begin()) {
+                    iterator--;
+                    terminal.replace_current_line(*iterator);
+                }
+            } else if (event.scancode == 0x50) { // Down arrow
+                if (iterator != history.end() - 1) {
+                    iterator++;
+                    terminal.replace_current_line(*iterator);
+                }
+            }
+
             continue;
         }
 

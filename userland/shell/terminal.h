@@ -32,6 +32,7 @@ public:
     void clear();
     
     void add_line(String text, bool newline_before = false);
+    void replace_current_line(const String& text);
 
     void write(StringView text);
     void writeln(StringView text);

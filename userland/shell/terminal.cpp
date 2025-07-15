@@ -84,7 +84,7 @@ void Terminal::on_char(char c) {
         m_current_line++;
         return;
     } else if (c == '\b') {
-        if (line.text.size() <= line.prompt) {
+        if (line.text.size() == line.prompt) {
             return;
         }
 
@@ -101,6 +101,24 @@ void Terminal::clear() {
     this->add_line({});
     
     m_current_line = 0;
+}
+
+void Terminal::replace_current_line(const String& text) {
+    auto& line = this->current_line();
+    if (m_flanterm_context) {
+        for (size_t i = 0; i < line.text.size(); i++) {
+            flanterm_write(m_flanterm_context, "\b \b", 3);
+        }
+    } else {
+        for (size_t i = 0; i < line.text.size(); i++) {
+            this->render("\b \b");
+        }
+    }
+
+    line.text = format("{} $ {}", cwd(), text);
+    line.prompt = line.text.size() - text.size();
+
+    this->render(line.text);
 }
 
 void Terminal::render(char c) {
