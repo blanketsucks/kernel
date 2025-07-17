@@ -256,7 +256,7 @@ template<typename T> struct Formatter<T*> {
     }
 };
 
-struct has_fromatter_impl {
+struct has_formatter_impl {
     template<typename T>
     static std::true_type test(int, decltype(&Formatter<T>::format));
 
@@ -266,7 +266,7 @@ struct has_fromatter_impl {
 
 template<typename T>
 struct has_formatter {
-    static constexpr bool value = decltype(has_fromatter_impl::test<T>(0, nullptr))::value;
+    static constexpr bool value = decltype(has_formatter_impl::test<T>(0, nullptr))::value;
 };
 
 template<typename T>
