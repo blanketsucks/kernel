@@ -129,19 +129,60 @@ FlatPtr cpu_flags();
 
 CPUFeatures cpu_features();
 
-FlatPtr read_cr0();
-FlatPtr read_cr2();
-FlatPtr read_cr3();
-FlatPtr read_cr4();
+static inline FlatPtr read_cr0() {
+    FlatPtr cr0;
+    asm volatile("mov %%cr0, %0" : "=r"(cr0));
 
-void write_cr0(FlatPtr value);
-void write_cr2(FlatPtr value);
-void write_cr3(FlatPtr value);
-void write_cr4(FlatPtr value);
+    return cr0;
+}
 
-void invlpg(FlatPtr address);
+static inline FlatPtr read_cr2() {
+    FlatPtr cr2;
+    asm volatile("mov %%cr2, %0" : "=r"(cr2));
 
-void fxsave(FPUState& state);
-void fxrstor(FPUState& state);
+    return cr2;
+}
+
+static inline FlatPtr read_cr3() {
+    FlatPtr cr3;
+    asm volatile("mov %%cr3, %0" : "=r"(cr3));
+
+    return cr3;
+}
+
+static inline FlatPtr read_cr4() {
+    FlatPtr cr4;
+    asm volatile("mov %%cr4, %0" : "=r"(cr4));
+
+    return cr4;
+}
+
+static inline void write_cr0(FlatPtr value) {
+    asm volatile("mov %0, %%cr0" :: "r"(value));
+}
+
+static inline void write_cr2(FlatPtr value) {
+    asm volatile("mov %0, %%cr2" :: "r"(value));
+}
+
+static inline void write_cr3(FlatPtr value) {
+    asm volatile("mov %0, %%cr3" :: "r"(value));
+}
+
+static inline void write_cr4(FlatPtr value) {
+    asm volatile("mov %0, %%cr4" :: "r"(value));
+}
+
+static inline void invlpg(FlatPtr address) {
+    asm volatile("invlpg (%0)" :: "r"(address) : "memory");
+}
+
+static inline void fxsave(FPUState& state) {
+    asm volatile("fxsave %0" :: "m"(state) : "memory");
+}
+
+static inline void fxrstor(FPUState& state) {
+    asm volatile("fxrstor %0" :: "m"(state) : "memory");
+}
 
 }
