@@ -65,6 +65,10 @@
 
 namespace kernel::arch {
 
+struct FPUState {
+    u8 state[512];
+} ALIGNED(16);
+
 enum class CPUFeatures : u64 {
 #define Op(name, _, value) name = value,
     ENUMERATE_CPU_FEATURES(Op)
@@ -136,5 +140,8 @@ void write_cr3(FlatPtr value);
 void write_cr4(FlatPtr value);
 
 void invlpg(FlatPtr address);
+
+void fxsave(FPUState& state);
+void fxrstor(FPUState& state);
 
 }

@@ -110,8 +110,12 @@ void Scheduler::yield(bool if_idle) {
         Scheduler::queue(old);
     }
 
+    arch::fxsave(old->fpu_state());
+
     auto& processor = Processor::instance();
     processor.switch_context(old, next);
+
+    arch::fxrstor(next->fpu_state());
 }
 
 void Scheduler::add_process(Process* process) {

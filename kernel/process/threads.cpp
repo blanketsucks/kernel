@@ -24,6 +24,7 @@ Thread::Thread(
     String name, Process* process, pid_t id, Entry entry, void* entry_data, ProcessArguments& arguments
 ) : m_id(id), m_state(Running), m_entry(entry), m_entry_data(entry_data), m_name(move(name)), m_process(process), m_arguments(arguments) {
     this->create_stack();
+    m_fpu_state = new arch::FPUState();
 }
 
 Thread::Thread(
@@ -37,6 +38,8 @@ Thread::Thread(
 
     m_registers.set_syscall_return(0);
     this->set_initial_stack_state(m_registers.sp(), m_registers);
+
+    m_fpu_state = new arch::FPUState();
 }
 
 pid_t Thread::pid() const {

@@ -4,6 +4,7 @@
 #include <kernel/posix/time.h>
 #include <kernel/process/stack.h>
 #include <kernel/arch/registers.h>
+#include <kernel/arch/cpu.h>
 
 #include <std/format.h>
 #include <std/string.h>
@@ -49,6 +50,8 @@ public:
 
     bool is_kernel() const;
     arch::PageDirectory* page_directory() const;
+
+    arch::FPUState& fpu_state() const { return *m_fpu_state; }
 
     Process* process() { return m_process; }
     arch::ThreadRegisters& registers() { return m_registers; }
@@ -112,6 +115,8 @@ private:
     void* m_exit_value = nullptr;
 
     Blocker* m_blocker = nullptr;
+
+    arch::FPUState* m_fpu_state = nullptr;
 
     Thread* next = nullptr;
     Thread* prev = nullptr;

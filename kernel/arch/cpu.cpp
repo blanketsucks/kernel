@@ -96,4 +96,12 @@ void invlpg(FlatPtr address) {
     asm volatile("invlpg (%0)" :: "r"(address) : "memory");
 }
 
+void fxsave(FPUState& state) {
+    asm volatile("fxsave %0" :: "m"(state) : "memory");
+}
+
+void fxrstor(FPUState& state) {
+    asm volatile("fxrstor %0" :: "m"(state) : "memory");
+}
+
 }
