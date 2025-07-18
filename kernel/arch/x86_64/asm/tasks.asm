@@ -36,12 +36,12 @@ endstruc
 _switch_context_no_state:
     mov rsp, [rdi + ThreadRegisters.rsp]
 
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop rbp
     pop rbx
+    pop rbp
+    pop r12
+    pop r13
+    pop r14
+    pop r15
     popfq
 
     ret
