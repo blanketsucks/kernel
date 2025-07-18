@@ -186,22 +186,6 @@ template<> struct Formatter<i64> {
     }
 };
 
-template<> struct Formatter<f32> {
-    static void format(FormatBuffer& buffer, const f32& value, const FormatStyle&) {
-        char temp[64];
-        stbsp_sprintf(temp, "%f", value);
-        buffer.append(temp);
-    }
-};
-
-template<> struct Formatter<f64> {
-    static void format(FormatBuffer& buffer, const f64& value, const FormatStyle&) {
-        char temp[64];
-        stbsp_sprintf(temp, "%f", value);
-        buffer.append(temp);
-    }
-};
-
 template<> struct Formatter<String> {
     static void format(FormatBuffer& buffer, const String& value, const FormatStyle&) {
         buffer.append(value);
@@ -255,6 +239,26 @@ template<typename T> struct Formatter<T*> {
         buffer.append(temp);
     }
 };
+
+#ifndef __KERNEL__
+
+template<> struct Formatter<float> {
+    static void format(FormatBuffer& buffer, const float& value, const FormatStyle&) {
+        char temp[64];
+        stbsp_sprintf(temp, "%f", value);
+        buffer.append(temp);
+    }
+};
+
+template<> struct Formatter<double> {
+    static void format(FormatBuffer& buffer, const double& value, const FormatStyle&) {
+        char temp[64];
+        stbsp_sprintf(temp, "%f", value);
+        buffer.append(temp);
+    }
+};
+
+#endif
 
 struct has_formatter_impl {
     template<typename T>

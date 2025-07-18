@@ -1,4 +1,7 @@
 #define STB_SPRINTF_IMPLEMENTATION
-#define STB_SPRINTF_NOFLOAT
+
+#ifdef __KERNEL__
+    #define STB_SPRINTF_NOFLOAT
+#endif
 
 #include <std/stb_sprintf.h>
