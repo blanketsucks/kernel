@@ -155,6 +155,13 @@ void Thread::setup_thread_arguments() {
 
     m_user_stack.push<FlatPtr>(0xdeadbeef); // _start return address
 
+#ifdef __x86_64__
+    // TODO: This comparision should be != but something weird is happening and I don't want to fix it now.
+    if (m_user_stack.value() % 16 == 0) {
+        m_user_stack.push<FlatPtr>(0);
+    }
+#endif
+
     arch::PageDirectory::kernel_page_directory()->switch_to();
 }
 
