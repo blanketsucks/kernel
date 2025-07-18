@@ -39,15 +39,14 @@ void ThreadRegisters::set_initial_stack_state(Thread* thread) {
     // Argument for _thread_context_init
     stack.push(reinterpret_cast<FlatPtr>(thread));
     stack.push(reinterpret_cast<FlatPtr>(&_thread_first_enter));
-
+    
+    stack.push<FlatPtr>(0x2); // Start the thread with interrupts disabled
     stack.push(r15);
     stack.push(r14);
     stack.push(r13);
     stack.push(r12);
     stack.push<FlatPtr>(0);
     stack.push(rbx);
-
-    stack.push<FlatPtr>(0x2); // Start the thread with interrupts disabled
 
     rsp = stack.value();
     rsp0 = stack.top();
