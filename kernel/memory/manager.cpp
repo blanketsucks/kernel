@@ -237,59 +237,16 @@ void* MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress addr
     return reinterpret_cast<void*>(region->base());
 }
 
-ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, Region* region) {
-    auto* page_directory = allocator.page_directory();
-    if (!page_directory->is_mapped(region->base())) {
-        return Error(EINVAL);
-    }
-
-    for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
-        auto* entry = page_directory->get_page_table_entry(region->base() + i);
-        PhysicalAddress physical = entry->physical_address();
-
-        page_directory->unmap(region->base() + i, entry);
-        
-        PhysicalPage* page = this->get_physical_page(physical);
-        if (!page) {
-            return Error(EINVAL);
-        }
-
-        page->ref_count--;
-        if (page->ref_count == 0) {
-            TRY(this->free_page_frame(reinterpret_cast<void*>(physical)));
-        }
-    }
-
-    allocator.free(region);
-    return {};
-}
-
 ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t size) {
     ScopedSpinLock lock(m_lock);
 
     VirtualAddress address = reinterpret_cast<VirtualAddress>(ptr);
-    auto* page_directory = allocator.page_directory();
-
-    if (!page_directory->is_mapped(address)) {
-        return Error(EINVAL);
-    }
-
     auto* region = allocator.find_region(address);
     if (!region) {
         return Error(EINVAL);
     }
 
-    for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        PhysicalAddress physical = page_directory->get_physical_address(region->base() + i);
-        page_directory->unmap(region->base() + i);
-
-        PhysicalPage* page = this->get_physical_page(physical);
-        page->ref_count--;
-
-        if (page->ref_count == 0) {
-            TRY(this->free_page_frame(reinterpret_cast<void*>(physical)));
-        }
-    }
+    TRY(this->free(allocator.page_directory(), address, size));
 
     allocator.free(region);
     return {};
@@ -299,15 +256,22 @@ ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAd
     ScopedSpinLock lock(m_lock);
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        PhysicalAddress physical = page_directory->get_physical_address(address + i);
-        page_directory->unmap(address + i);
+        auto* entry = page_directory->get_page_table_entry(address + i);
+        if (!entry) {
+            return Error(EINVAL);
+        }
 
-        PhysicalPage* page = this->get_physical_page(physical);
+        PhysicalAddress pa = entry->physical_address();
+
+        PhysicalPage* page = this->get_physical_page(pa);
         page->ref_count--;
 
         if (page->ref_count == 0) {
-            TRY(this->free_page_frame(reinterpret_cast<void*>(physical)));
+            TRY(this->free_page_frame(reinterpret_cast<void*>(pa)));
         }
+
+        entry->set_value(0);
+        arch::invlpg(address + i);
     }
 
     return {};

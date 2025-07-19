@@ -104,7 +104,6 @@ public:
     
     ErrorOr<void> map_region(arch::PageDirectory*, Region*, PageFlags flags);
 
-    ErrorOr<void> free(RegionAllocator&, Region*);
     ErrorOr<void> free(RegionAllocator&, void* ptr, size_t size);
     ErrorOr<void> free(arch::PageDirectory*, VirtualAddress address, size_t size);
 

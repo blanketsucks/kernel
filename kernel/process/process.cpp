@@ -258,7 +258,7 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         return;
     }
 
-    if (!region || !region->is_file_backed() || !region->used()) {
+    if (!region || !region->is_file_backed() || !region->used()) {        
 unrecoverable_fault:
         if (is_null_pointer_dereference) {
             dbgln("\033[1;31mNull pointer dereference (address={:#p}) @ IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
@@ -418,7 +418,8 @@ void Process::kill() {
             return;
         }
 
-        MM->free(*m_allocator, region);
+        MM->free(m_allocator->page_directory(), region->base(), region->size());
+        m_allocator->free(region);
     });
 
     Scheduler::yield();
@@ -610,7 +611,9 @@ ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
 
     if (region->base() == address) {
         if (region->size() == size) {
-            MM->free(*m_allocator, region);
+            MM->free(m_allocator->page_directory(), region->base(), region->size());
+            m_allocator->free(region);
+
             return 0;
         }
 
