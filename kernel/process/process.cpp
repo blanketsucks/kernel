@@ -183,8 +183,29 @@ void* Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags)
     return MM->allocate_at(*m_allocator, address, size, flags | PageFlags::User);
 }
 
+void* Process::allocate_from_kernel_region(VirtualAddress address, size_t size, int prot) {
+    ASSERT(address % PAGE_SIZE == 0, "address must be page aligned.");
+    auto* region = m_allocator->allocate(size, prot);
+    if (!region) {
+        return nullptr;
+    }
+
+    PageFlags pflags = PageFlags::User;
+    if (prot & PROT_WRITE) {
+        pflags |= PageFlags::Write;
+    }
+
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+        PhysicalAddress pa = MM->get_physical_address(reinterpret_cast<void*>(address + i));
+        m_page_directory->map(region->base() + i, pa, pflags);
+    }
+
+    region->set_kernel_managed(true);
+    return reinterpret_cast<void*>(region->base());
+}
+
 void* Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
-    ASSERT(address % PAGE_SIZE == 0, "Physical address must be page aligned.");
+    ASSERT(address % PAGE_SIZE == 0, "address must be page aligned.");
     auto* region = m_allocator->allocate(size, prot);
     if (!region) {
         return nullptr;

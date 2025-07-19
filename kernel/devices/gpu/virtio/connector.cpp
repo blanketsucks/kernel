@@ -12,21 +12,17 @@ VirtIOGPUConnector::VirtIOGPUConnector(
 
 ErrorOr<void> VirtIOGPUConnector::initialize() {
     m_resource_id = TRY(m_device->create_resource_2d(GPUFormat::B8G8R8X8, m_rect.width, m_rect.height));
-    size_t size = m_rect.width * m_rect.height * 4;
+    size_t size = m_rect.width * m_rect.height * sizeof(u32);
 
     m_framebuffer = MM->allocate_kernel_region(size);
-    PhysicalAddress address = MM->get_physical_address(m_framebuffer);
 
-    TRY(m_device->attach_resource_backing(m_resource_id, address, size));
+    TRY(m_device->attach_resource_backing(m_resource_id, reinterpret_cast<VirtualAddress>(m_framebuffer), size));
     TRY(m_device->set_resource_scanout(m_id, m_resource_id, m_rect));
 
     u32* fb = reinterpret_cast<u32*>(m_framebuffer);
-    for (size_t i = 0; i < m_rect.width * m_rect.height; i++) {
-        fb[i] = 0x41414141;
-    }
+    memset(fb, 0x41, m_rect.width * m_rect.height * sizeof(u32));
 
     TRY(this->flush());
-
     return {};
 }
 
@@ -40,9 +36,9 @@ ErrorOr<GPUConnector::Resolution> VirtIOGPUConnector::get_resolution() const {
 }
 
 ErrorOr<void*> VirtIOGPUConnector::map_framebuffer(Process* process) {
-    size_t size = m_rect.width * m_rect.height * 4;
-    return process->allocate_with_physical_region(
-        MM->get_physical_address(m_framebuffer), size, PROT_READ | PROT_WRITE
+    size_t size = m_rect.width * m_rect.height * sizeof(u32);
+    return process->allocate_from_kernel_region(
+        reinterpret_cast<VirtualAddress>(m_framebuffer), size, PROT_READ | PROT_WRITE
     );
 }
 

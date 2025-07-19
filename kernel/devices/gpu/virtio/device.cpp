@@ -161,7 +161,7 @@ ErrorOr<u32> VirtIOGPUDevice::create_resource_2d(GPUFormat format, u32 width, u3
     return request->resource_id;
 }
 
-ErrorOr<void> VirtIOGPUDevice::attach_resource_backing(u32 resource_id, PhysicalAddress address, size_t size) {
+ErrorOr<void> VirtIOGPUDevice::attach_resource_backing(u32 resource_id, VirtualAddress address, size_t size) {
     auto buffer = this->get_command_buffer();
 
     auto* request = buffer.read<GPUResourceAttachBacking>();
@@ -174,7 +174,7 @@ ErrorOr<void> VirtIOGPUDevice::attach_resource_backing(u32 resource_id, Physical
     for (size_t i = 0; i < nr_entries; i++) {
         auto& entry = request->entries[i];
 
-        entry.address = address + (i * PAGE_SIZE);
+        entry.address = MM->get_physical_address(reinterpret_cast<void*>(address + (i * PAGE_SIZE)));
         entry.length = PAGE_SIZE;
     }
 
