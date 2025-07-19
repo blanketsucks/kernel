@@ -28,8 +28,8 @@ public:
         return address >= m_base && address < m_base + m_size;
     }
 
-    [[nodiscard]] ErrorOr<void*> allocate();
-    [[nodiscard]] ErrorOr<void*> allocate_contiguous(size_t count);
+    ErrorOr<void*> allocate();
+    ErrorOr<void*> allocate_contiguous(size_t count);
 
     ErrorOr<void> free(void* frame, size_t count);
     
