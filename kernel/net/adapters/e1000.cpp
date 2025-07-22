@@ -149,8 +149,8 @@ void E1000NetworkAdapter::read_mac_address() {
 }
 
 void E1000NetworkAdapter::rx_init() {
-    m_rx_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(NUM_RX_DESCRIPTORS * BUFFER_SIZE));
-    m_rx_descriptors = reinterpret_cast<RxDescriptor*>(MM->allocate_dma_region(NUM_RX_DESCRIPTORS * sizeof(RxDescriptor)));
+    m_rx_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_dma_region(NUM_RX_DESCRIPTORS * BUFFER_SIZE)));
+    m_rx_descriptors = reinterpret_cast<RxDescriptor*>(MUST(MM->allocate_dma_region(NUM_RX_DESCRIPTORS * sizeof(RxDescriptor))));
 
     for (size_t i = 0; i < NUM_RX_DESCRIPTORS; i++) {
         auto& descriptor = m_rx_descriptors[i];
@@ -184,8 +184,8 @@ void E1000NetworkAdapter::rx_init() {
 }
 
 void E1000NetworkAdapter::tx_init() {
-    m_tx_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(NUM_TX_DESCRIPTORS * BUFFER_SIZE));
-    m_tx_descriptors = reinterpret_cast<TxDescriptor*>(MM->allocate_dma_region(NUM_TX_DESCRIPTORS * sizeof(TxDescriptor)));
+    m_tx_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_dma_region(NUM_TX_DESCRIPTORS * BUFFER_SIZE)));
+    m_tx_descriptors = reinterpret_cast<TxDescriptor*>(MUST(MM->allocate_dma_region(NUM_TX_DESCRIPTORS * sizeof(TxDescriptor))));
 
     for (size_t i = 0; i < NUM_TX_DESCRIPTORS; i++) {
         auto& descriptor = m_tx_descriptors[i];

@@ -103,7 +103,7 @@ void OHCIController::initialize() {
 }
 
 void OHCIController::initialize_resources() {
-    m_hcca = reinterpret_cast<ohci::HCCA*>(MM->allocate_dma_region(sizeof(ohci::HCCA)));
+    m_hcca = reinterpret_cast<ohci::HCCA*>(MUST(MM->allocate_dma_region(sizeof(ohci::HCCA))));
     memset(m_hcca, 0, sizeof(ohci::HCCA));
 
     m_ed_pool = DescriptorPool<EndpointDescriptor>::create();

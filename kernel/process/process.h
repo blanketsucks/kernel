@@ -93,12 +93,12 @@ public:
 
     FlatPtr handle_syscall(arch::Registers*);
 
-    void* allocate(size_t size, PageFlags flags);
-    void* allocate_at(VirtualAddress address, size_t size, PageFlags flags);
+    ErrorOr<void*> allocate(size_t size, PageFlags flags);
+    ErrorOr<void*> allocate_at(VirtualAddress address, size_t size, PageFlags flags);
 
-    void* allocate_from_kernel_region(VirtualAddress, size_t size, int prot);
-    void* allocate_with_physical_region(PhysicalAddress, size_t size, int prot);
-    void* allocate_file_backed_region(fs::File* file, size_t size);
+    ErrorOr<void*> allocate_from_kernel_region(VirtualAddress, size_t size, int prot);
+    ErrorOr<void*> allocate_with_physical_region(PhysicalAddress, size_t size, int prot);
+    ErrorOr<void*> allocate_file_backed_region(fs::File* file, size_t size);
 
     void validate_read(const void* ptr, size_t size);
     void validate_write(const void* ptr, size_t size);

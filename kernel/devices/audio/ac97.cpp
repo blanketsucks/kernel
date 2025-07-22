@@ -53,9 +53,9 @@ AC97Device::AC97Device(pci::Address address) : CharacterDevice(DeviceMajor::Audi
     
     m_audio_mixer.write<u16>(SampleRate, m_sample_rate);
     this->reset();
-    
-    m_descriptors = reinterpret_cast<BufferDescriptor*>(MM->allocate_dma_region(sizeof(BufferDescriptor) * DESCRIPTOR_COUNT));
-    m_output_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(OUTPUT_BUFFER_SIZE));
+
+    m_descriptors = reinterpret_cast<BufferDescriptor*>(MUST(MM->allocate_dma_region(sizeof(BufferDescriptor) * DESCRIPTOR_COUNT)));
+    m_output_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_dma_region(OUTPUT_BUFFER_SIZE)));
 
     u16 extended_capabilities = m_audio_mixer.read<u16>(ExtendedCapabilities);
     if (extended_capabilities & 0x1) {

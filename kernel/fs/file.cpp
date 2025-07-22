@@ -23,12 +23,7 @@ size_t InodeFile::size() const {
 }
 
 ErrorOr<void*> InodeFile::mmap(Process& process, size_t size, int) {
-    auto* region = process.allocate_file_backed_region(this, size);
-    if (!region) {
-        return nullptr;
-    }
-
-    return region;
+    return process.allocate_file_backed_region(this, size);
 }
 
 ssize_t InodeFile::readdir(void* buf, size_t size) {

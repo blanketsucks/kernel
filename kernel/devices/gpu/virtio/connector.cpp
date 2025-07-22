@@ -14,7 +14,7 @@ ErrorOr<void> VirtIOGPUConnector::initialize() {
     m_resource_id = TRY(m_device->create_resource_2d(GPUFormat::B8G8R8X8, m_rect.width, m_rect.height));
     size_t size = m_rect.width * m_rect.height * sizeof(u32);
 
-    m_framebuffer = MM->allocate_kernel_region(size);
+    m_framebuffer = TRY(MM->allocate_kernel_region(size));
 
     TRY(m_device->attach_resource_backing(m_resource_id, reinterpret_cast<VirtualAddress>(m_framebuffer), size));
     TRY(m_device->set_resource_scanout(m_id, m_resource_id, m_rect));

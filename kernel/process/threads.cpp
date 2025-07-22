@@ -32,7 +32,7 @@ Thread::Thread(
 Thread::Thread(
     Process* process, arch::Registers& registers
 ) : m_id(process->id()), m_state(Running), m_name("main"), m_process(process), m_arguments(process->m_arguments) {
-    void* kernel_stack = MM->allocate_kernel_region(KERNEL_STACK_SIZE);
+    void* kernel_stack = MUST(MM->allocate_kernel_region(KERNEL_STACK_SIZE));
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
     memcpy(&m_registers, &registers, sizeof(arch::Registers));
@@ -58,12 +58,12 @@ arch::PageDirectory* Thread::page_directory() const {
 }
 
 void Thread::create_stack() {
-    void* kernel_stack = MM->allocate_kernel_region(KERNEL_STACK_SIZE);
+    void* kernel_stack = MUST(MM->allocate_kernel_region(KERNEL_STACK_SIZE));
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
     bool is_kernel_process = this->is_kernel();
     if (!is_kernel_process) {
-        void* user_stack = m_process->allocate(USER_STACK_SIZE, PageFlags::Write);
+        void* user_stack = MUST(m_process->allocate(USER_STACK_SIZE, PageFlags::Write));
         m_user_stack = Stack(user_stack, USER_STACK_SIZE);
 
         this->setup_thread_arguments();
@@ -118,7 +118,7 @@ void Thread::setup_thread_arguments() {
             }
 
             // FIXME: Maybe we should just use the stack for this?
-            void* address = m_process->allocate(argument.size() + 1, PageFlags::Write);
+            void* address = MUST(m_process->allocate(argument.size() + 1, PageFlags::Write));
             memcpy(address, argument.data(), argument.size());
 
             reinterpret_cast<char*>(address)[argument.size()] = '\0';

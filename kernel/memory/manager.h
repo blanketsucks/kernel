@@ -94,26 +94,26 @@ public:
     bool is_mapped(void* addr);
     PhysicalAddress get_physical_address(void* addr);
 
-    [[nodiscard]] void* allocate_page_frame();
-    [[nodiscard]] void* allocate_contiguous_frames(size_t count);
+    ErrorOr<void*> allocate_page_frame();
+    ErrorOr<void*> allocate_contiguous_frames(size_t count);
 
     ErrorOr<void> free_page_frame(void* frame);
-    
-    void* allocate(RegionAllocator&, size_t size, PageFlags flags);
-    void* allocate_at(RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags);
-    
+
+    ErrorOr<void*> allocate(RegionAllocator&, size_t size, PageFlags flags);
+    ErrorOr<void*> allocate_at(RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags);
+
     ErrorOr<void> map_region(arch::PageDirectory*, Region*, PageFlags flags);
 
     ErrorOr<void> free(RegionAllocator&, void* ptr, size_t size);
     ErrorOr<void> free(arch::PageDirectory*, VirtualAddress address, size_t size);
 
-    [[nodiscard]] void* allocate_heap_region(size_t size);
+    ErrorOr<void*> allocate_heap_region(size_t size);
     ErrorOr<void> free_heap_region(void* ptr, size_t size);
 
-    [[nodiscard]] void* allocate_kernel_region(size_t size);
+    ErrorOr<void*> allocate_kernel_region(size_t size);
     ErrorOr<void> free_kernel_region(void* ptr, size_t size);
 
-    [[nodiscard]] void* allocate_dma_region(size_t size);
+    ErrorOr<void*> allocate_dma_region(size_t size);
     ErrorOr<void> free_dma_region(void* ptr, size_t size);
 
     // Map an already existing physical region into the kernel's address space

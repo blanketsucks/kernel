@@ -46,7 +46,7 @@ ErrorOr<void> VirtIOGPUDevice::initialize() {
     TRY(this->set_accepted_features(accepted));
     this->post_init();
 
-    m_command_buffer = reinterpret_cast<u8*>(MM->allocate_kernel_region(10 * PAGE_SIZE));
+    m_command_buffer = reinterpret_cast<u8*>(TRY(MM->allocate_kernel_region(10 * PAGE_SIZE)));
     m_device_config = get_config(Configuration::Device);
 
     m_num_scanouts = m_device_config->read<u32>(GPUDeviceConfig::Scanouts);

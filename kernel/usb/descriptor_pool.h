@@ -33,7 +33,7 @@ public:
 
 private:
     DescriptorPool() {
-        m_region = reinterpret_cast<T*>(MM->allocate_kernel_region(PAGE_SIZE));
+        m_region = reinterpret_cast<T*>(MUST(MM->allocate_kernel_region(PAGE_SIZE)));
         
         PhysicalAddress address = MM->get_physical_address(m_region);
         for (size_t i = 0; i < PAGE_SIZE / sizeof(T); i++) {

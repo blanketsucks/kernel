@@ -88,8 +88,8 @@ PATADevice::PATADevice(
         u8 status = m_bus_master.read<u8>(ata::BMStatus);
         m_bus_master.write<u8>(ata::BMStatus, status | 0x04);
 
-        m_prdt = reinterpret_cast<PhysicalRegionDescriptor*>(mm->allocate_dma_region(sizeof(PhysicalRegionDescriptor)));
-        m_dma_buffer = reinterpret_cast<u8*>(mm->allocate_dma_region(DMA_BUFFER_SIZE));
+        m_prdt = reinterpret_cast<PhysicalRegionDescriptor*>(MUST(mm->allocate_dma_region(sizeof(PhysicalRegionDescriptor))));
+        m_dma_buffer = reinterpret_cast<u8*>(MUST(mm->allocate_dma_region(DMA_BUFFER_SIZE)));
 
         m_prdt->base = mm->get_physical_address(m_dma_buffer);
 

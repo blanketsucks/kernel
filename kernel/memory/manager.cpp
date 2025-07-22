@@ -61,7 +61,7 @@ void MemoryManager::create_physical_pages() {
     m_physical_pages_count = highest_address / PAGE_SIZE;
 
     size_t allocation_size = m_physical_pages_count * sizeof(PhysicalPage);
-    void* region = this->allocate_kernel_region(allocation_size);
+    void* region = MUST(this->allocate_kernel_region(allocation_size));
 
     memset(region, 0, allocation_size);
     m_physical_pages = reinterpret_cast<PhysicalPage*>(region);
@@ -123,22 +123,12 @@ arch::PageDirectory* MemoryManager::kernel_page_directory() {
     return arch::PageDirectory::kernel_page_directory();
 }
 
-void* MemoryManager::allocate_page_frame() {
-    auto result = m_pmm->allocate();
-    if (result.is_err()) {
-        return nullptr;
-    }
-
-    return result.value();
+ErrorOr<void*> MemoryManager::allocate_page_frame() {
+    return m_pmm->allocate();
 }
 
-void* MemoryManager::allocate_contiguous_frames(size_t count) {
-    auto result = m_pmm->allocate_contiguous(count);
-    if (result.is_err()) {
-        return nullptr;
-    }
-
-    return result.value();
+ErrorOr<void*> MemoryManager::allocate_contiguous_frames(size_t count) {
+    return m_pmm->allocate_contiguous(count);
 }
 
 ErrorOr<void> MemoryManager::free_page_frame(void* frame) {
@@ -152,10 +142,7 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
     }
 
     for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
-        void* frame = this->allocate_page_frame();
-        if (!frame) {
-            return Error(ENOMEM);
-        }
+        void* frame = TRY(this->allocate_page_frame());
 
         PhysicalPage* page = this->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
         page->ref_count++;
@@ -166,14 +153,14 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
     return {};
 }
 
-void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags) {
+ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags) {
     // FIXME: Acquiring the lock *sometimes* hangs when trying to allocate the DMA region for the control USB pipe.
     ScopedSpinLock lock(m_lock);
 
     size = std::align_up(size, PAGE_SIZE);
     auto* region = allocator.allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
-        return nullptr;
+        return Error(ENOMEM);
     }
 
     auto* page_directory = allocator.page_directory();
@@ -182,10 +169,7 @@ void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags
     }
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        void* frame = this->allocate_page_frame();
-        if (!frame) {
-            return nullptr;
-        }
+        void* frame = TRY(this->allocate_page_frame());
 
         PhysicalAddress physical_address = reinterpret_cast<PhysicalAddress>(frame);
         PhysicalPage* page = this->get_physical_page(physical_address);
@@ -198,12 +182,12 @@ void* MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags
 }
 
 bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory, Region* region, PageFlags flags) {
-    void* frame = this->allocate_contiguous_frames(region->size() / PAGE_SIZE);
-    if (!frame) {
+    auto result = this->allocate_contiguous_frames(region->size() / PAGE_SIZE);
+    if (result.is_err()) {
         return false;
     }
-    
-    PhysicalAddress physical_address = reinterpret_cast<PhysicalAddress>(frame);
+
+    PhysicalAddress physical_address = reinterpret_cast<PhysicalAddress>(result.value());
     for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
         PhysicalPage* page = this->get_physical_page(physical_address + i);
         page->ref_count++;
@@ -214,19 +198,16 @@ bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory,
     return true;
 }
 
-void* MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress address, size_t size, PageFlags flags) {
+ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress address, size_t size, PageFlags flags) {
     size = std::align_up(size, PAGE_SIZE);
     auto region = allocator.allocate_at(address, size, PROT_READ | PROT_WRITE);
     if (!region) {
-        return nullptr;
+        return Error(ENOMEM);
     }
 
     auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        void* frame = this->allocate_page_frame();
-        if (!frame) {
-            return nullptr;
-        }
+        void* frame = TRY(this->allocate_page_frame());
 
         PhysicalPage* page = this->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
         page->ref_count++;
@@ -277,7 +258,7 @@ ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAd
     return {};
 }
 
-void* MemoryManager::allocate_heap_region(size_t size) {
+ErrorOr<void*> MemoryManager::allocate_heap_region(size_t size) {
     return this->allocate(*m_heap_region_allocator, size, PageFlags::Write);
 }
 
@@ -285,7 +266,7 @@ ErrorOr<void> MemoryManager::free_heap_region(void* start, size_t size) {
     return this->free(*m_heap_region_allocator, start, size);
 }
 
-void* MemoryManager::allocate_kernel_region(size_t size) {
+ErrorOr<void*> MemoryManager::allocate_kernel_region(size_t size) {
     return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write);
 }
 
@@ -293,7 +274,7 @@ ErrorOr<void> MemoryManager::free_kernel_region(void* ptr, size_t size) {
     return this->free(*m_kernel_region_allocator, ptr, size);
 }
 
-void* MemoryManager::allocate_dma_region(size_t size) {
+ErrorOr<void*> MemoryManager::allocate_dma_region(size_t size) {
     return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write | PageFlags::CacheDisable);
 }
 
@@ -408,8 +389,8 @@ void* liballoc_alloc(size_t pages) {
 
         return ptr;
     }
-    
-    return MM->allocate_heap_region(size);
+
+    return MUST(MM->allocate_heap_region(size));
 }
 
 int liballoc_free(void* addr, size_t pages) {

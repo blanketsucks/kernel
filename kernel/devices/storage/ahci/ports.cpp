@@ -15,12 +15,12 @@ using namespace ahci;
 static constexpr size_t SIZE_OF_COMMAND_TABLES = (sizeof(CommandTable) + sizeof(PhysicalRegionDescriptor) * AHCIPort::MAX_PRDT_COUNT) * AHCIPort::COMMAND_LIST_SIZE;
 
 void AHCIPort::allocate_resources() {
-    m_command_headers = reinterpret_cast<CommandHeader*>(MM->allocate_dma_region(sizeof(CommandHeader) * COMMAND_LIST_SIZE));
-    m_command_tables = reinterpret_cast<CommandTable*>(MM->allocate_dma_region(SIZE_OF_COMMAND_TABLES));
-    m_fis_receive = MM->allocate_dma_region(PAGE_SIZE);
+    m_command_headers = reinterpret_cast<CommandHeader*>(MUST(MM->allocate_dma_region(sizeof(CommandHeader) * COMMAND_LIST_SIZE)));
+    m_command_tables = reinterpret_cast<CommandTable*>(MUST(MM->allocate_dma_region(SIZE_OF_COMMAND_TABLES)));
+    m_fis_receive = MUST(MM->allocate_dma_region(PAGE_SIZE));
 
-    m_prdt_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(PRDT_BUFFER_SIZE * MAX_PRDT_COUNT));
-    m_identify_buffer = reinterpret_cast<u8*>(MM->allocate_kernel_region(PAGE_SIZE));
+    m_prdt_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_dma_region(PRDT_BUFFER_SIZE * MAX_PRDT_COUNT)));
+    m_identify_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_kernel_region(PAGE_SIZE)));
 
     for (size_t i = 0; i < COMMAND_LIST_SIZE; i++) {
         auto& header = m_command_headers[i];

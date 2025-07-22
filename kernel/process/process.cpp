@@ -9,6 +9,7 @@
 #include <kernel/time/manager.h>
 #include <kernel/posix/unistd.h>
 #include <kernel/arch/cpu.h>
+#include <kernel/arch/interrupts.h>
 
 #include <std/format.h>
 
@@ -103,7 +104,7 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
         uintptr_t address = std::align_down(ph.p_vaddr, PAGE_SIZE);
         size_t size = std::align_up(ph.p_memsz, PAGE_SIZE);
 
-        u8* region = reinterpret_cast<u8*>(this->allocate_at(address, size, PageFlags::Write));
+        u8* region = reinterpret_cast<u8*>(TRY(this->allocate_at(address, size, PageFlags::Write)));
         memory::TemporaryMapping temp(*m_page_directory, region, size);
 
         file.seek(ph.p_offset, SEEK_SET);
@@ -167,7 +168,7 @@ Thread* Process::spawn(String name, void (*entry)(void*), void* data) {
     return thread;
 }
 
-void* Process::allocate(size_t size, PageFlags flags) {
+ErrorOr<void*> Process::allocate(size_t size, PageFlags flags) {
     if (this->is_kernel()) {
         return MM->allocate_kernel_region(size);
     }
@@ -175,7 +176,7 @@ void* Process::allocate(size_t size, PageFlags flags) {
     return MM->allocate(*m_allocator, size, flags | PageFlags::User);
 }
 
-void* Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags) {
+ErrorOr<void*> Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags) {
     if (this->is_kernel()) {
         return MM->allocate_kernel_region(size);
     }
@@ -183,11 +184,11 @@ void* Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags)
     return MM->allocate_at(*m_allocator, address, size, flags | PageFlags::User);
 }
 
-void* Process::allocate_from_kernel_region(VirtualAddress address, size_t size, int prot) {
+ErrorOr<void*> Process::allocate_from_kernel_region(VirtualAddress address, size_t size, int prot) {
     ASSERT(address % PAGE_SIZE == 0, "address must be page aligned.");
     auto* region = m_allocator->allocate(size, prot);
     if (!region) {
-        return nullptr;
+        return Error(ENOMEM);
     }
 
     PageFlags pflags = PageFlags::User;
@@ -204,11 +205,11 @@ void* Process::allocate_from_kernel_region(VirtualAddress address, size_t size, 
     return reinterpret_cast<void*>(region->base());
 }
 
-void* Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
+ErrorOr<void*> Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
     ASSERT(address % PAGE_SIZE == 0, "address must be page aligned.");
     auto* region = m_allocator->allocate(size, prot);
     if (!region) {
-        return nullptr;
+        return Error(ENOMEM);
     }
 
     PageFlags pflags = PageFlags::User;
@@ -224,11 +225,11 @@ void* Process::allocate_with_physical_region(PhysicalAddress address, size_t siz
     return reinterpret_cast<void*>(region->base());
 }
 
-void* Process::allocate_file_backed_region(fs::File* file, size_t size) {
+ErrorOr<void*> Process::allocate_file_backed_region(fs::File* file, size_t size) {
     ASSERT(size % PAGE_SIZE == 0, "size must be page aligned");
     auto* region = m_allocator->create_file_backed_region(file, size);
     if (!region) {
-        return nullptr;
+        return Error(ENOMEM);
     }
 
     return reinterpret_cast<void*>(region->base());
@@ -261,7 +262,7 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         if (page->ref_count > 1) {
             page->ref_count--;
 
-            void* frame = MM->allocate_page_frame();
+            void* frame = MUST(MM->allocate_page_frame());
 
             // TODO: Move this to a function in MemoryManager
             page = MM->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
@@ -324,7 +325,7 @@ unrecoverable_fault:
 
     size_t index = std::align_down(offset, PAGE_SIZE);
 
-    void* frame = MM->allocate_page_frame();
+    void* frame = MUST(MM->allocate_page_frame());
     m_page_directory->map(region->base() + index, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
 
     size_t size = std::min(file->size() - index, PAGE_SIZE);
@@ -581,13 +582,9 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
     void* address = nullptr;
     if (flags & MAP_ANONYMOUS) {
         if (flags & MAP_FIXED) {
-            address = this->allocate_at(hint, size, pflags);
+            address = TRY(this->allocate_at(hint, size, pflags));
         } else {
-            address = this->allocate(size, pflags);
-        }
-
-        if (!address) {
-            return Error(ENOMEM);
+            address = TRY(this->allocate(size, pflags));
         }
     } else {
         if (fileno < 0 || static_cast<size_t>(fileno) >= m_file_descriptors.size()) {

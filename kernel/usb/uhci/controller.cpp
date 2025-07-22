@@ -74,7 +74,7 @@ void UHCIController::initialize() {
 }
 
 void UHCIController::create_resources() {
-    m_frame_list = reinterpret_cast<FrameListEntry*>(MM->allocate_dma_region(PAGE_SIZE));
+    m_frame_list = reinterpret_cast<FrameListEntry*>(MUST(MM->allocate_dma_region(PAGE_SIZE)));
     for (size_t i = 0; i < FRAME_COUNT; i++) {
         m_frame_list[i].enable = 0;
     }
@@ -152,7 +152,7 @@ void UHCIController::setup_transfer() {
     m_control_anchor_qh->link(m_bulk_anchor_qh);
     m_control_anchor_qh->terminate_element_link();
 
-    m_iso_tds = reinterpret_cast<TransferDescriptor*>(MM->allocate_dma_region(PAGE_SIZE));
+    m_iso_tds = reinterpret_cast<TransferDescriptor*>(MUST(MM->allocate_dma_region(PAGE_SIZE)));
     PhysicalAddress address = MM->get_physical_address(m_iso_tds);
 
     for (size_t i = 0; i < ISO_TD_COUNT; i++) {

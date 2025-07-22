@@ -15,7 +15,7 @@ OwnPtr<ControlPipe> ControlPipe::create(Device* device, u8 endpoint, u8 max_pack
 ControlPipe::ControlPipe(
     Device* device, u8 endpoint, u8 max_packet_size
 ) : Pipe(device, Pipe::In, Pipe::Control, endpoint, max_packet_size) {
-    m_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(PAGE_SIZE));
+    m_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_dma_region(PAGE_SIZE)));
 }
 
 void ControlPipe::submit_transfer(u8 request_type, u8 req, u16 value, u16 index, u16 length, void* data) {
@@ -49,7 +49,7 @@ OwnPtr<BulkPipe> BulkPipe::create(Device* device, Direction direction, u8 endpoi
 BulkPipe::BulkPipe(
     Device* device, Direction direction, u8 endpoint, u8 max_packet_size
 ) : Pipe(device, direction, Pipe::Bulk, endpoint, max_packet_size) {
-    m_buffer = reinterpret_cast<u8*>(MM->allocate_dma_region(PAGE_SIZE));
+    m_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_dma_region(PAGE_SIZE)));
 }
 
 void BulkPipe::submit_transfer(void* data, size_t length) {
