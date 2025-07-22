@@ -13,7 +13,9 @@ Queue::Queue(u16 size, u16 notify_offset) : m_size(size), m_notify_offset(notify
     size_t device_size = sizeof(QueueDevice) + sizeof(QueueDeviceElement) * size;
 
     size_t total_size = std::align_up(descriptor_size + driver_size + device_size, PAGE_SIZE);
-    m_buffer = reinterpret_cast<u8*>(MM->allocate_kernel_region(total_size));
+
+    m_buffer = reinterpret_cast<u8*>(MUST(MM->allocate_kernel_region(total_size)));
+    memset(m_buffer, 0, total_size);
 
     m_descriptors = reinterpret_cast<QueueDescriptor*>(m_buffer);
     m_driver = reinterpret_cast<QueueDriver*>(m_buffer + descriptor_size);
@@ -21,6 +23,7 @@ Queue::Queue(u16 size, u16 notify_offset) : m_size(size), m_notify_offset(notify
 
     for (size_t i = 0; i < size; ++i) {
         m_descriptors[i].next = (i + 1) % size;
+        m_free_descriptors.push(size - i - 1);
     }
 
     m_driver->flags = 0;
@@ -46,10 +49,11 @@ PhysicalAddress Queue::get_physical_address(void* ptr) {
 }
 
 u16 Queue::find_free_descriptor() {
-    u16 index = m_free_index;
-    m_free_index = m_descriptors[m_free_index].next;
+    if (m_free_descriptors.empty()) {
+        return -1; // TODO: Return an Optional
+    }
 
-    return index;
+    return m_free_descriptors.pop();
 }
 
 Queue::Chain Queue::dequeue() {
@@ -58,29 +62,34 @@ Queue::Chain Queue::dequeue() {
     }
 
     QueueDeviceElement item = m_device->ring[m_used_index];
-    auto& descriptor = m_descriptors[item.id];
 
     u16 start = item.id;
     u16 end = item.id;
 
-    size_t length = 0;
+    size_t length = 1;
 
-    while (descriptor.flags & QueueDescriptor::Next) {
+    while (true) {
+        auto& descriptor = m_descriptors[end];
+        if (!(descriptor.flags & QueueDescriptor::Next)) {
+            break;
+        }
+
         end = descriptor.next;
         length++;
-
-        descriptor = m_descriptors[descriptor.next];
     }
 
     m_used_index = (m_used_index + 1) % m_size;
-    m_free_index = item.id;
-
     return Chain(this, start, end, length);
 }
 
-void Queue::reclaim(u16 start, u16 end, size_t) {
-    m_descriptors[end].next = m_free_index;
-    m_free_index = start;   
+void Queue::reclaim(u16 start, u16, size_t length) {
+    u16 index = start;
+    for (size_t i = 0; i < length; i++) {
+        auto& descriptor = m_descriptors[index];
+
+        m_free_descriptors.push(index);
+        index = descriptor.next;
+    }
 }
 
 void Queue::Chain::reset() {

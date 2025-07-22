@@ -4,6 +4,7 @@
 
 #include <std/memory.h>
 #include <std/optional.h>
+#include <std/stack.h>
 
 namespace kernel::virtio {
 
@@ -42,9 +43,9 @@ public:
     private:
         Queue* m_queue;
 
-        Optional<u16> m_start;
-        u16 m_end;
-        size_t m_length;
+        Optional<u16> m_start = {};
+        u16 m_end = 0;
+        size_t m_length = 0;
     };
 
     static OwnPtr<Queue> create(u16 size, u16 notify_offset);
@@ -67,16 +68,17 @@ public:
     QueueDevice* device() { return m_device; }
 
     PhysicalAddress get_physical_address(void* ptr);
-private:
 
+private:
     Queue(u16 size, u16 notify_offset);
 
     u16 m_size;
     u16 m_notify_offset;
 
-    u16 m_free_index;
     u16 m_driver_index;
     u16 m_used_index;
+
+    std::Stack<u16> m_free_descriptors;
 
     u8* m_buffer;
 
