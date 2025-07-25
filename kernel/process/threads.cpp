@@ -111,18 +111,26 @@ void Thread::setup_thread_arguments() {
     envp.reserve(m_arguments.envp.size());
 
     auto prepare_argument_vector = [this](Vector<String>& src, Vector<VirtualAddress>& dst) {
+        char* address = reinterpret_cast<char*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
+        size_t offset = 0;
+
         for (auto& argument : src) {
             if (argument.empty()) {
                 dst.append(0);
                 continue;
             }
 
-            // FIXME: Maybe we should just use the stack for this?
-            void* address = MUST(m_process->allocate(argument.size() + 1, PageFlags::Write));
-            memcpy(address, argument.data(), argument.size());
+            size_t size = argument.size() + 1;
+            if (offset + size > PAGE_SIZE) {
+                address = reinterpret_cast<char*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
+                offset = 0;
+            }
 
-            reinterpret_cast<char*>(address)[argument.size()] = '\0';
-            dst.append(reinterpret_cast<VirtualAddress>(address));
+            memcpy(address + offset, argument.data(), argument.size());
+            address[offset + argument.size()] = '\0';
+
+            dst.append(reinterpret_cast<VirtualAddress>(address + offset));
+            offset += size;
         }
 
         dst.append(0); // Null-terminate the argument vector (argv/envp)
