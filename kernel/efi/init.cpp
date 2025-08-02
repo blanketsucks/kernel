@@ -7,8 +7,6 @@
 
 #define GET_PAGE(x, index) reinterpret_cast<u64*>(x + (index * PAGE_SIZE))
 
-using namespace kernel;
-
 static EFISystemTable* ST = nullptr;
 
 static void println(const char16_t* str) {
@@ -22,9 +20,48 @@ static void println(const char16_t* str) {
     stdout->OutputString(stdout, u"\r\n");
 }
 
+struct EFIMemoryMap {
+    EFIMemoryDescriptor descriptors[512]; // FIXME: Dynamically allocate the descriptors based on the count returned by GetMemoryMap
+    size_t count;
+    size_t descriptor_size;
+};
+
+struct MemoryMap {
+    kernel::MemoryMapEntry entries[512];
+    size_t count;
+};
+
+static EFIMemoryMap s_efi_mmap;
+static MemoryMap s_mmap;
+
 static constexpr char16_t DEFAULT_KERNEL_PATH[] = u"\\kernel";
 
+static EFIStatus parse_memory_map() {
+    u64 map_key = 0;
+    u64 count = sizeof(EFIMemoryMap::descriptors);
+    u32 descriptor_version = 0;
+
+    EFIStatus status = ST->boot_services->GetMemoryMap(&count, s_efi_mmap.descriptors, &map_key, &s_efi_mmap.descriptor_size, &descriptor_version);
+    if (EFI_ERROR(status)) {
+        println(u"Failed get the memory map");
+        return status;
+    }
+
+    s_efi_mmap.count = count / s_efi_mmap.descriptor_size;
+    return EFI_SUCCESS;
+}
+
+static inline EFIMemoryDescriptor* get_memory_descriptor(size_t index) {
+    if (index >= s_efi_mmap.count) {
+        return nullptr;
+    }
+
+    return reinterpret_cast<EFIMemoryDescriptor*>((u8*)s_efi_mmap.descriptors + index * s_efi_mmap.descriptor_size);
+}
+
 extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
+    using namespace kernel;
+
     ST = sys_table;
 
     EFIGUID loaded_image_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
@@ -175,7 +212,9 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     }
 
     kernel_virtual_end = std::align_up(kernel_virtual_end, 2 * MB);
+
     size_t kernel_size = kernel_virtual_end - kernel_virtual_base;
+    size_t kernel_pages = kernel_size / PAGE_SIZE;
 
     u32 pml4e = ((kernel_virtual_base >> 39) & 0x1ff);
     pml4t[pml4e] = reinterpret_cast<u64>(kernel_pdpt) | 0x3;
@@ -185,18 +224,74 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
         kernel_pdpt[pdpte] = reinterpret_cast<u64>(kernel_pd[i]) | 0x3;
     }
 
-    PhysicalAddress kernel_physical_base = 0;
-    status = sys_table->boot_services->AllocatePages(AllocateAnyPages, EfiLoaderData, kernel_size / PAGE_SIZE, &kernel_physical_base);
-
+    status = parse_memory_map();
     if (EFI_ERROR(status)) {
-        println(u"Failed to allocate physical memory for kernel");
-
         sys_table->boot_services->FreePages(memory, 9);
         sys_table->boot_services->FreePages(address, pages);
 
         return status;
     }
 
+    // We can't use AllocatePages to allocate memory directly since that only gives us 4Kb aligned pages while we need
+    // 2Mb aligned pages.
+    PhysicalAddress kernel_physical_base = 0;
+    for (size_t i = 0; i < s_efi_mmap.count; i++) {
+        auto* descriptor = get_memory_descriptor(i);
+        if (descriptor->type != EfiConventionalMemory && descriptor->type != EfiLoaderData) {
+            continue;
+        }
+
+        if (descriptor->number_of_pages < kernel_pages) {
+            continue;
+        }
+
+        if (descriptor->physical_start % (2 * MB)) {
+            size_t aligned = std::align_up(descriptor->physical_start, 2 * MB);
+            size_t offset = aligned - descriptor->physical_start;
+
+            if (descriptor->number_of_pages < (kernel_pages + offset / PAGE_SIZE)) {
+                continue;
+            }
+        
+            kernel_physical_base = aligned;
+            EFIStatus status = sys_table->boot_services->AllocatePages(
+                AllocateAddress,
+                EfiLoaderData,
+                kernel_pages,
+                &kernel_physical_base
+            );
+
+            if (EFI_ERROR(status)) {
+                continue;
+            }
+
+            break;
+        }
+
+        kernel_physical_base = descriptor->physical_start;
+        EFIStatus status = sys_table->boot_services->AllocatePages(
+            AllocateAddress,
+            EfiLoaderData,
+            kernel_pages,
+            &kernel_physical_base
+        );
+
+        if (EFI_ERROR(status)) {
+            continue;
+        }
+
+        break;
+    }
+
+    if (!kernel_physical_base) {
+        println(u"Failed to find a suitable physical address for the kernel");
+        sys_table->boot_services->FreePages(memory, 9);
+        sys_table->boot_services->FreePages(address, pages);
+        
+        return EFI_LOAD_ERROR;
+    }
+    
+    parse_memory_map();
     for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address += 2 * MB) {
         PhysicalAddress physical = kernel_physical_base + (address - kernel_virtual_base);
 
@@ -219,15 +314,24 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
         std::memcpy(reinterpret_cast<void*>(dst), reinterpret_cast<void*>(src), size);
         std::memset(reinterpret_cast<void*>(dst + size), 0, ph.p_memsz - size);
     }
-
-    asm volatile("mov %0, %%cr3" : : "r"(pml4t));
-
-    // TODO: Fix crash after we print this line.
-    println(u"Loaded CR3 with new page tables");
+    
+    asm volatile("mov %0, %%cr3" :: "r"(pml4t));
 
     BootInfo boot_info;
+    std::memset(&boot_info, 0, sizeof(BootInfo));
 
-    while (1) {}
+    boot_info.kernel_virtual_base = kernel_virtual_base;
+    boot_info.kernel_physical_base = kernel_physical_base;
+    boot_info.kernel_size = kernel_size;
+    boot_info.kernel_heap_base = kernel_virtual_base + 1 * GB;
+
+    std::memset(&s_mmap, 0, sizeof(::MemoryMap));
+
+    boot_info.mmap.entries = s_mmap.entries;
+    boot_info.mmap.count = s_mmap.count;
+
+    void (*entry)(BootInfo const&) = reinterpret_cast<void(*)(BootInfo const&)>(header->e_entry);
+    entry(boot_info);
 
     return EFI_SUCCESS;
 }
