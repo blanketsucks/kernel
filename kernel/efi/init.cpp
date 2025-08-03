@@ -59,6 +59,29 @@ static inline EFIMemoryDescriptor* get_memory_descriptor(size_t index) {
     return reinterpret_cast<EFIMemoryDescriptor*>((u8*)s_efi_mmap.descriptors + index * s_efi_mmap.descriptor_size);
 }
 
+static inline kernel::MemoryType efi_to_kernel_memory_type(u32 efi) {
+    switch (efi) {
+        case EfiReservedMemoryType:      return kernel::MemoryType::Reserved;
+        case EfiLoaderCode:              return kernel::MemoryType::Reserved;
+        case EfiLoaderData:              return kernel::MemoryType::Reserved;
+        case EfiBootServicesCode:        return kernel::MemoryType::BootloaderReclaimable;
+        case EfiBootServicesData:        return kernel::MemoryType::BootloaderReclaimable;
+        case EfiRuntimeServicesCode:     return kernel::MemoryType::BootloaderReclaimable;
+        case EfiRuntimeServicesData:     return kernel::MemoryType::BootloaderReclaimable;
+        case EfiConventionalMemory:      return kernel::MemoryType::Available;
+        case EfiUnusableMemory:          return kernel::MemoryType::BadMemory;
+        case EfiACPIReclaimMemory:       return kernel::MemoryType::ACPI;
+        case EfiACPIMemoryNVS:           return kernel::MemoryType::NVS;
+        case EfiMemoryMappedIO:          return kernel::MemoryType::Reserved;
+        case EfiMemoryMappedIOPortSpace: return kernel::MemoryType::Reserved;
+        case EfiPalCode:                 return kernel::MemoryType::Reserved;
+        case EfiPersistentMemory:        return kernel::MemoryType::Reserved;
+        case EfiUnacceptedMemoryType:    return kernel::MemoryType::Reserved;
+
+        default: return kernel::MemoryType::Reserved;
+    }
+}
+
 extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     using namespace kernel;
 
@@ -175,7 +198,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     }
 
     u64* pml4t = reinterpret_cast<u64*>(memory);
-    std::memset(pml4t, 0, PAGE_SIZE * 9); // Clear everything
+    std::memset(pml4t, 0, PAGE_SIZE * 9);
 
     u64* pdpt = GET_PAGE(memory, 1);
     u64* pd[4] = { GET_PAGE(memory, 2), GET_PAGE(memory, 3), GET_PAGE(memory, 4), GET_PAGE(memory, 5) };
@@ -198,6 +221,10 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
 
     VirtualAddress kernel_virtual_base = 0xffffffff80000000;
     VirtualAddress kernel_virtual_end = kernel_virtual_base;
+    VirtualAddress hhdm = 0xffff800000000000;
+
+    u32 pml4e = (hhdm >> 39) & 0x1ff;
+    pml4t[pml4e] = reinterpret_cast<u64>(pdpt) | 0x3;
 
     for (size_t i = 0; i < header->e_phnum; i++) {
         auto& ph = kernel_program_headers[i];
@@ -216,7 +243,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     size_t kernel_size = kernel_virtual_end - kernel_virtual_base;
     size_t kernel_pages = kernel_size / PAGE_SIZE;
 
-    u32 pml4e = ((kernel_virtual_base >> 39) & 0x1ff);
+    pml4e = ((kernel_virtual_base >> 39) & 0x1ff);
     pml4t[pml4e] = reinterpret_cast<u64>(kernel_pdpt) | 0x3;
 
     for (size_t i = 0; i < 2; i++) {
@@ -324,11 +351,43 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     boot_info.kernel_physical_base = kernel_physical_base;
     boot_info.kernel_size = kernel_size;
     boot_info.kernel_heap_base = kernel_virtual_base + 1 * GB;
+    boot_info.hhdm = hhdm;
 
     std::memset(&s_mmap, 0, sizeof(::MemoryMap));
+    for (size_t i = 0; i < s_efi_mmap.count; i++) {
+        
+        auto* descriptor = get_memory_descriptor(i);
+        if (!descriptor->number_of_pages || !descriptor->physical_start) {
+            continue;
+        }
+
+        PhysicalAddress base = descriptor->physical_start;
+        size_t length = descriptor->number_of_pages * PAGE_SIZE;
+
+        kernel::MemoryType type = efi_to_kernel_memory_type(descriptor->type);
+        while (true) {
+            auto* descriptor = get_memory_descriptor(i + 1);
+            if (!descriptor) {
+                break;
+            }
+
+            if (efi_to_kernel_memory_type(descriptor->type) == type) {
+                length += descriptor->number_of_pages * PAGE_SIZE;
+                i++;
+
+                continue;
+            }
+
+            break;
+        }
+
+        s_mmap.entries[s_mmap.count++] = { base, length, type };
+    }
 
     boot_info.mmap.entries = s_mmap.entries;
     boot_info.mmap.count = s_mmap.count;
+
+    boot_info.pml4t = pml4t;
 
     void (*entry)(BootInfo const&) = reinterpret_cast<void(*)(BootInfo const&)>(header->e_entry);
     entry(boot_info);
