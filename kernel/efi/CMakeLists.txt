@@ -14,7 +14,7 @@ target_include_directories(efi-loader PRIVATE ${CMAKE_SOURCE_DIR}/)
 target_compile_options(
     efi-loader PRIVATE
     -fpic -fPIC -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -mno-red-zone
-    -D__KERNEL_LOADER__
+    -D__KERNEL_LOADER__ -g
 )
 
 target_link_options(
