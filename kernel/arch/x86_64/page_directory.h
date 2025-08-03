@@ -29,7 +29,9 @@ enum class PageFlags : u32 {
     Write = 1 << 1,
     User = 1 << 2,
     CacheDisable = 1 << 3,
-    NoExecute = 1 << 4
+    NoExecute = 1 << 4,
+    Huge = 1 << 5,
+    Create = 1 << 6
 };
 
 MAKE_ENUM_BITWISE_OPS(PageFlags)
@@ -212,10 +214,10 @@ public:
 
     static PageDirectory* kernel_page_directory();
 
-    PageTableEntry* walk_page_table(VirtualAddress virt, bool create = false, bool user = false);
+    PageTableEntry* walk_page_table(VirtualAddress virt, PageFlags flags = PageFlags::None);
 
     template<typename T>
-    PageTableEntry* walk_page_table(T table, VirtualAddress virt, bool create = false, bool user = false);
+    PageTableEntry* walk_page_table(T table, VirtualAddress virt, PageFlags flags = PageFlags::None);
 
 private:
     void set_type(Type type) { m_type = type; }
@@ -225,6 +227,6 @@ private:
 };
 
 template<>
-PageTableEntry* PageDirectory::walk_page_table(PageDirectoryTable, VirtualAddress, bool create, bool user);
+PageTableEntry* PageDirectory::walk_page_table(PageDirectoryTable, VirtualAddress, PageFlags flags);
 
 }
