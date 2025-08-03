@@ -55,6 +55,8 @@ public:
     fs::File* file() { return m_file; }
     fs::File const* file() const { return m_file; }
 
+    off_t offset() const { return m_offset; }
+
     bool is_file_backed() const { return m_file != nullptr; }
 
     size_t size() const { return m_range.size(); }
@@ -65,26 +67,25 @@ public:
     bool used() const { return m_used; }
 
     int prot() const { return m_prot; }
-    void set_prot(int prot) { m_prot = prot; }
-
+    
     bool contains(VirtualAddress address) const { return m_range.contains(address); }
-
+    
     bool is_readable() const { return m_prot & PROT_READ; }
     bool is_writable() const { return m_prot & PROT_WRITE; }
     bool is_executable() const { return m_prot & PROT_EXEC; }
-
+    
     bool is_shared() const { return m_shared; }
     void set_shared(bool shared) { m_shared = shared; }
-
+    
     // true if the underlying physical memory that is pointed by this region is managed by the kernel.
     bool is_kernel_managed() const { return m_kernel_managed; }
-    void set_kernel_managed(bool kernel_managed) { m_kernel_managed = kernel_managed; }
-    
-    void set_range(const Range& range) {
-        m_range = range;
-    }
-private:
 
+    void set_kernel_managed(bool kernel_managed) { m_kernel_managed = kernel_managed; }
+    void set_range(const Range& range) { m_range = range; }
+    void set_prot(int prot) { m_prot = prot; }
+    void set_offset(off_t offset) { m_offset = offset; }
+
+private:
     Range m_range;
 
     bool m_used = false;
@@ -94,6 +95,7 @@ private:
     int m_prot = 0;
 
     fs::File* m_file = nullptr;
+    off_t m_offset = 0;
 
     Region* next = nullptr;
     Region* prev = nullptr;

@@ -320,7 +320,7 @@ unrecoverable_fault:
         this->kill();
     }
 
-    size_t offset = address - region->base();
+    size_t offset = (address - region->base()) + region->offset();
     auto* file = region->file();
 
     size_t index = std::align_down(offset, PAGE_SIZE);
@@ -600,8 +600,10 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
     }
 
     auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
+
     region->set_prot(prot);
-    
+    region->set_offset(args->offset);
+
     if (flags & MAP_SHARED) {
         region->set_shared(true);
     }
