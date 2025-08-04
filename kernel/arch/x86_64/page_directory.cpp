@@ -63,7 +63,7 @@ template<> PageTableEntry* PageDirectory::walk_page_table(
     u32 pt = PageDirectoryTable::index(virt);
     auto& entry = table.entries[pt];
 
-    if (std::has_flag(flags, PageFlags::Huge)) {
+    if (std::has_flag(flags, PageFlags::Huge) || entry.is_huge()) {
         return reinterpret_cast<PageTableEntry*>(&entry);
     }
 
