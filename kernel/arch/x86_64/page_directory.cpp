@@ -13,11 +13,9 @@ static PageDirectory s_kernel_page_directory;
 
 PageDirectory* PageDirectory::create_user_page_directory() {
     PageDirectory* dir = new PageDirectory();
-    dir->set_type(User);
 
-    dir->m_pml4 = {
-        reinterpret_cast<PML4Entry*>((u8*)MUST(MM->allocate_page_frame()) + g_boot_info->hhdm)
-    };
+    dir->set_type(User);
+    dir->create_pml4_table();
 
     size_t hhdm_pml4e = PML4::index(g_boot_info->hhdm);
     dir->m_pml4.entries[hhdm_pml4e] = s_kernel_page_directory.m_pml4.entries[hhdm_pml4e];
@@ -169,12 +167,19 @@ PageDirectory* PageDirectory::kernel_page_directory() {
     return &s_kernel_page_directory;
 }
 
+void PageDirectory::create_pml4_table() {
+    u8* frame = reinterpret_cast<u8*>(MUST(MM->allocate_page_frame()));
+    auto* entries = reinterpret_cast<PML4Entry*>(frame + g_boot_info->hhdm);
+
+    m_pml4.entries = entries;
+    memset(entries, 0, PAGE_SIZE);
+}
+
 void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memory::RegionAllocator&) {
     auto& dir = s_kernel_page_directory;
-    dir.set_type(Kernel);
 
-    dir.m_pml4 = { reinterpret_cast<PML4Entry*>((u8*)MUST(MM->allocate_page_frame()) + boot_info.hhdm) };
-    memset(dir.m_pml4.entries, 0, PAGE_SIZE);
+    dir.set_type(Kernel);
+    dir.create_pml4_table();
     
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += 2 * MB) {
         VirtualAddress va = boot_info.hhdm + i;

@@ -220,6 +220,8 @@ public:
     PageTableEntry* walk_page_table(T table, VirtualAddress virt, PageFlags flags = PageFlags::None);
 
 private:
+    void create_pml4_table();
+
     void set_type(Type type) { m_type = type; }
 
     PML4 m_pml4;
