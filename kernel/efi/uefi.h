@@ -17,6 +17,8 @@
 
 #define EFI_FILE_INFO_ID { 0x9576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b} }
 
+#define EFI_ACPI_TABLE_GUID { 0x8868e871, 0xe4f1, 0x11d3, {0xbc, 0x22, 0x00, 0x80, 0xc7, 0x3c, 0x88, 0x81} }
+
 #define EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL  0x00000001
 #define EFI_OPEN_PROTOCOL_GET_PROTOCOL        0x00000002
 #define EFI_OPEN_PROTOCOL_TEST_PROTOCOL       0x00000004
@@ -96,6 +98,11 @@ struct EFIFileInfo {
     EFITime modification_time;
     u64 attribute;
     char16_t filename[0];
+};
+
+struct EFIConfigurationTable {
+    EFIGUID vendor_guid;
+    void* vendor_table;
 };
 
 struct EFISimpleTextOutputProtocol;
@@ -270,8 +277,6 @@ struct EFIBootServices {
     void* SetMem;
     void* CreateEventEx;
 };
-
-struct EFIConfigurationTable {};
 
 struct EFISystemTable {
     EFITableHeader header;

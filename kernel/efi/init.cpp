@@ -66,6 +66,13 @@ static inline EFIMemoryDescriptor* get_memory_descriptor(size_t index) {
     return reinterpret_cast<EFIMemoryDescriptor*>((u8*)s_efi_mmap.descriptors + index * s_efi_mmap.descriptor_size);
 }
 
+#define GUID_LOW(guid) *reinterpret_cast<const u64*>(&guid)
+#define GUID_HIGH(guid) *reinterpret_cast<const u64*>((u8*)&guid + sizeof(u64))
+
+static bool is_guid_equal(const EFIGUID& a, const EFIGUID& b) {
+    return GUID_LOW(a) == GUID_LOW(b) && GUID_HIGH(a) == GUID_HIGH(b);
+}
+
 static inline kernel::MemoryType efi_to_kernel_memory_type(u32 efi) {
     switch (efi) {
         case EfiReservedMemoryType:      return kernel::MemoryType::Reserved;
@@ -396,11 +403,19 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
 
     boot_info.pml4t = pml4t;
 
+    for (size_t i = 0; i < sys_table->number_of_table_entries; i++) {
+        auto& config = sys_table->configuration_table[i];
+        if (is_guid_equal(config.vendor_guid, EFI_ACPI_TABLE_GUID)) {
+            boot_info.rsdp = (u8*)config.vendor_table + hhdm; // TODO: Fix all the horrendous stuff related to HHDM
+            continue;
+        }
+    }
+
     _call_kernel_main(
         reinterpret_cast<BootInfo*>((u8*)&boot_info + hhdm),
         hhdm, 
         reinterpret_cast<void*>(header->e_entry)
     );
-    
+
     return EFI_SUCCESS;
 }
