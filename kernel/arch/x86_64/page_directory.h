@@ -29,9 +29,10 @@ enum class PageFlags : u32 {
     Write = 1 << 1,
     User = 1 << 2,
     CacheDisable = 1 << 3,
-    NoExecute = 1 << 4,
-    Huge = 1 << 5,
-    Create = 1 << 6
+
+    NoExecute = 1 << 12,
+    Huge = 1 << 13,
+    Create = 1 << 14
 };
 
 MAKE_ENUM_BITWISE_OPS(PageFlags)
