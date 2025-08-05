@@ -45,6 +45,8 @@ SECTIONS {
         *(.bss)
         *(COMMON)
         *(.rel.local)
+        
+        *(.kernel_stack)
     }
 
     .note.gnu.build-id : { *(.note.gnu.build-id) }

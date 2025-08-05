@@ -95,8 +95,10 @@ void Parser::parse_acpi_tables() {
     size_t entries = 0;
     if (m_xsdt) {
         entries = (m_xsdt->header.length - sizeof(SDTHeader)) / 8;
-    } else {
+    } else if (m_rsdt) {
         entries = (m_rsdt->header.length - sizeof(SDTHeader)) / 4;
+    } else {
+        return;
     }
 
     m_tables.reserve(entries);

@@ -34,6 +34,13 @@ struct MemoryMap {
 static EFIMemoryMap s_efi_mmap;
 static MemoryMap s_mmap;
 
+__attribute__((naked)) void _call_kernel_main(const kernel::BootInfo*, u64 hhdm, void* entry) {
+    asm volatile(
+        "add %rsi, %rsp\n"
+        "call *%rdx\n"
+    );
+}
+
 static constexpr char16_t DEFAULT_KERNEL_PATH[] = u"\\kernel";
 
 static EFIStatus parse_memory_map() {
@@ -389,8 +396,11 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
 
     boot_info.pml4t = pml4t;
 
-    void (*entry)(BootInfo const&) = reinterpret_cast<void(*)(BootInfo const&)>(header->e_entry);
-    entry(boot_info);
-
+    _call_kernel_main(
+        reinterpret_cast<BootInfo*>((u8*)&boot_info + hhdm),
+        hhdm, 
+        reinterpret_cast<void*>(header->e_entry)
+    );
+    
     return EFI_SUCCESS;
 }

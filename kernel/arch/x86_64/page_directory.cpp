@@ -180,7 +180,7 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memo
 
     dir.set_type(Kernel);
     dir.create_pml4_table();
-    
+
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += 2 * MB) {
         VirtualAddress va = boot_info.hhdm + i;
         dir.map(va, i, PageFlags::Write | PageFlags::Huge);
