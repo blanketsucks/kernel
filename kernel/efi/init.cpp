@@ -406,8 +406,8 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     for (size_t i = 0; i < sys_table->number_of_table_entries; i++) {
         auto& config = sys_table->configuration_table[i];
         if (is_guid_equal(config.vendor_guid, EFI_ACPI_TABLE_GUID)) {
-            boot_info.rsdp = (u8*)config.vendor_table + hhdm; // TODO: Fix all the horrendous stuff related to HHDM
-            continue;
+            boot_info.rsdp = config.vendor_table;
+            break;
         }
     }
 

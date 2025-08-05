@@ -55,10 +55,10 @@ SDTHeader* Parser::map_acpi_table(PhysicalAddress addr) {
 
 bool Parser::find_root_table() {
     if (g_boot_info->rsdp) {
-        m_rsdp = reinterpret_cast<RSDP*>(g_boot_info->rsdp);
+        m_rsdp = reinterpret_cast<RSDP*>(MM->map_physical_region(g_boot_info->rsdp, PAGE_SIZE));
+
         if (m_rsdp->revision == 2) {
-            
-            m_xsdp = reinterpret_cast<XSDP*>(g_boot_info->rsdp);
+            m_xsdp = reinterpret_cast<XSDP*>(m_rsdp);
             m_xsdt = reinterpret_cast<XSDT*>(this->map_acpi_table(m_xsdp->xsdt_address));
 
             return true;
