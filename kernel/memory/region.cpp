@@ -62,12 +62,21 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
         if (!region->is_shared()) {
             entry->set_writable(false);
             page->flags |= PhysicalPage::CoW;
-
+            
             arch::invlpg(address);
+        }
+
+        PageFlags flags = PageFlags::User;
+        if (entry->is_writable()) {
+            flags |= PageFlags::Write;
+        }
+
+        if (entry->is_no_execute()) {
+            flags |= PageFlags::NoExecute;
         }
         
         page->ref_count++;
-        page_directory->map(address, dst, entry->flags());
+        page_directory->map(address, dst, flags);
     }
 }
 
