@@ -18,7 +18,7 @@ class Section {
 
 class Image {
 public:
-    static constexpr u32 ELF_64_MAGIC = 0x7f454c46;
+    static constexpr u32 ELF_64_MAGIC = 0x464C457F;
 
     Image(const u8* data, size_t size) : m_data(data), m_size(size) {}
     Image() = default;
