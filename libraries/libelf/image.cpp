@@ -4,7 +4,7 @@ namespace elf {
 
 bool Image::parse() {
     u32 magic = *offset<u32>(0);
-    if (magic != ELF_32_MAGIC) {
+    if (magic != ELF_64_MAGIC) {
         return false;
     }
 
@@ -34,18 +34,18 @@ size_t Image::program_headers() const {
     return header().e_phnum;
 }
 
-Elf32_Ehdr const& Image::header() const {
-    return *offset<Elf32_Ehdr>(0);
+Elf64_Ehdr const& Image::header() const {
+    return *offset<Elf64_Ehdr>(0);
 }
 
-const Elf32_Shdr& Image::section_header(size_t index) const {
+const Elf64_Shdr& Image::section_header(size_t index) const {
     auto& header = this->header();
-    return *offset<Elf32_Shdr>(header.e_shoff + index * header.e_shentsize);
+    return *offset<Elf64_Shdr>(header.e_shoff + index * header.e_shentsize);
 }
 
-const Elf32_Phdr& Image::program_header(size_t index) const {
+const Elf64_Phdr& Image::program_header(size_t index) const {
     auto& header = this->header();
-    return *offset<Elf32_Phdr>(header.e_phoff + index * header.e_phentsize);
+    return *offset<Elf64_Phdr>(header.e_phoff + index * header.e_phentsize);
 }
 
 StringView Image::string_table(u32 index) const {

@@ -18,9 +18,10 @@ class Section {
 
 class Image {
 public:
-    static constexpr u32 ELF_32_MAGIC = 0x464C457F;
+    static constexpr u32 ELF_64_MAGIC = 0x7f454c46;
 
     Image(const u8* data, size_t size) : m_data(data), m_size(size) {}
+    Image() = default;
 
     bool parse();
 
@@ -28,10 +29,10 @@ public:
     size_t sections() const;
     size_t program_headers() const;
 
-    Elf32_Ehdr const& header() const;
+    Elf64_Ehdr const& header() const;
 
-    const Elf32_Shdr& section_header(size_t index) const;
-    const Elf32_Phdr& program_header(size_t index) const;
+    const Elf64_Shdr& section_header(size_t index) const;
+    const Elf64_Phdr& program_header(size_t index) const;
 
     StringView string_table(u32 index) const;
     StringView section_header_string_table(u32 index) const;
@@ -42,11 +43,11 @@ private:
         return reinterpret_cast<T const*>(m_data + offset);
     }
 
-    const u8* m_data;
-    size_t m_size;
+    const u8* m_data = nullptr;
+    size_t m_size = 0;
 
-    size_t m_string_table_offset;
-    size_t m_symbol_table_offset;
+    size_t m_string_table_offset = 0;
+    size_t m_symbol_table_offset = 0;
 };
 
 }
