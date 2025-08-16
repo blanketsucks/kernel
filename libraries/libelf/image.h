@@ -25,6 +25,9 @@ public:
 
     bool parse();
 
+    const u8* data() const { return m_data; }
+    size_t size() const { return m_size; }
+
     size_t symbols() const;
     size_t sections() const;
     size_t program_headers() const;
