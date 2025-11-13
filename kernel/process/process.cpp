@@ -120,7 +120,7 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
 }
 
 Process* Process::fork(arch::Registers& registers) {
-    auto* process = new Process(generate_id(), m_name, false, nullptr, nullptr, nullptr, {}, m_tty);
+    auto* process = new Process(generate_id(), m_name, false, nullptr, nullptr, nullptr, {}, m_tty, this);
 
     process->m_parent_id = m_id;
     process->m_allocator = m_allocator->clone(process->page_directory());
@@ -580,12 +580,20 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
     }
 
     void* address = nullptr;
+    memory::Region* region = nullptr;
+
     if (flags & MAP_ANONYMOUS) {
         if (flags & MAP_FIXED) {
             address = TRY(this->allocate_at(hint, size, pflags));
         } else {
             address = TRY(this->allocate(size, pflags));
         }
+
+        if (!address) {
+            return Error(ENOMEM);
+        }
+
+        region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
     } else {
         if (fileno < 0 || static_cast<size_t>(fileno) >= m_file_descriptors.size()) {
             return Error(EBADF);
@@ -596,10 +604,18 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
             return Error(EBADF);
         }
 
-        address = TRY(fd->mmap(*this, size, prot));
-    }
+        if (flags & MAP_FIXED) {
+            region = m_allocator->create_file_backed_region(fd->file(), size, hint);
+        } else {
+            region = m_allocator->create_file_backed_region(fd->file(), size);
+        }
 
-    auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
+        if (!region) {
+            return Error(ENOMEM);
+        }
+
+        address = reinterpret_cast<void*>(region->base());
+    }
 
     region->set_prot(prot);
     region->set_offset(args->offset);
