@@ -55,6 +55,8 @@ public:
     fs::File* file() { return m_file; }
     fs::File const* file() const { return m_file; }
 
+    void set_file(fs::File* file) { m_file = file; }
+
     off_t offset() const { return m_offset; }
 
     bool is_file_backed() const { return m_file != nullptr; }
