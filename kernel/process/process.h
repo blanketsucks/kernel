@@ -111,12 +111,13 @@ public:
     ErrorOr<FlatPtr> sys$getppid();
     ErrorOr<FlatPtr> sys$gettid();
 
-    ErrorOr<FlatPtr> sys$open(const char* path, int flags, mode_t mode);
+    ErrorOr<FlatPtr> sys$open(const char* pathname, size_t pathname_length, int flags, mode_t mode);
     ErrorOr<FlatPtr> sys$close(int fd);
     ErrorOr<FlatPtr> sys$read(int fd, void* buffer, size_t size);
     ErrorOr<FlatPtr> sys$write(int fd, const void* buffer, size_t size);
     ErrorOr<FlatPtr> sys$lseek(int fd, off_t offset, int whence);
     ErrorOr<FlatPtr> sys$readdir(int fd, void* buffer, size_t size);
+    ErrorOr<FlatPtr> sys$stat(const char* path, size_t path_length, stat* buffer);
     ErrorOr<FlatPtr> sys$fstat(int fd, stat* buffer);
     ErrorOr<FlatPtr> sys$dup(int old_fd);
     ErrorOr<FlatPtr> sys$dup2(int old_fd, int new_fd);
@@ -160,6 +161,7 @@ private:
     void validate_pointer_access(const void* ptr, size_t size, bool write);
 
     StringView validate_string(const char* ptr);
+    StringView validate_string(const char* ptr, size_t length);
 
     RefPtr<fs::FileDescriptor> get_file_descriptor(int fd);
 

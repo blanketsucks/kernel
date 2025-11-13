@@ -409,6 +409,11 @@ StringView Process::validate_string(const char* ptr) {
     return { ptr - length, length };
 }
 
+StringView Process::validate_string(const char* ptr, size_t length) {
+    this->validate_pointer_access(ptr, length, false);
+    return { ptr, length };
+}
+
 RefPtr<fs::FileDescriptor> Process::get_file_descriptor(int fd) {
     if (fd < 0 || static_cast<size_t>(fd) >= m_file_descriptors.size()) {
         return nullptr;
@@ -461,8 +466,8 @@ ErrorOr<FlatPtr> Process::sys$getpid() { return m_id; }
 ErrorOr<FlatPtr> Process::sys$getppid() { return m_parent_id; }
 ErrorOr<FlatPtr> Process::sys$gettid() { return Thread::current()->id(); }
 
-ErrorOr<FlatPtr> Process::sys$open(const char* pathname, int flags, mode_t mode) {
-    StringView path = this->validate_string(pathname);
+ErrorOr<FlatPtr> Process::sys$open(const char* pathname, size_t pathname_length, int flags, mode_t mode) {
+    StringView path = this->validate_string(pathname, pathname_length);
     auto vfs = fs::vfs();
 
     auto fd = TRY(vfs->open(path, flags, mode, m_cwd));
@@ -503,6 +508,17 @@ ErrorOr<FlatPtr> Process::sys$write(int fd, const void* buffer, size_t size) {
 
     this->validate_write(buffer, size);
     return file->write(buffer, size);
+}
+
+ErrorOr<FlatPtr> Process::sys$stat(const char* path, size_t path_length, stat* buffer) {
+    StringView pathname = this->validate_string(path, path_length);
+    auto vfs = fs::vfs();
+
+    auto resolved = TRY(vfs->resolve(pathname, nullptr, m_cwd));
+    this->validate_write(buffer, sizeof(stat));
+
+    *buffer = resolved->inode().stat();
+    return 0;
 }
 
 ErrorOr<FlatPtr> Process::sys$fstat(int fd, stat* buffer) {

@@ -8,6 +8,7 @@
     Op(write)                   \
     Op(lseek)                   \
     Op(readdir)                 \
+    Op(stat)                    \
     Op(fstat)                   \
     Op(mmap)                    \
     Op(munmap)                  \
