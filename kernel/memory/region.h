@@ -130,7 +130,7 @@ public:
     void free(VirtualAddress address);
     void free(Region* region);
 
-    Region* create_file_backed_region(fs::File* file, size_t size);
+    Region* create_file_backed_region(fs::File* file, size_t size, VirtualAddress hint = 0);
 
     Region* find_region(void* address, bool contains = false) const {
         return find_region(VirtualAddress(address), contains);

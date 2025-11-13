@@ -227,8 +227,14 @@ void RegionAllocator::free(Region* region) {
     m_usage -= region->size();
 }
 
-Region* RegionAllocator::create_file_backed_region(fs::File* file, size_t size) {
-    auto* region = this->allocate(size, PROT_READ);
+Region* RegionAllocator::create_file_backed_region(fs::File* file, size_t size, VirtualAddress hint) {
+    Region* region = nullptr;
+    if (hint) {
+        region = this->allocate_at(hint, size, PROT_READ | PROT_WRITE);
+    } else {
+        region = this->allocate(size, PROT_READ | PROT_WRITE);
+    }
+
     if (!region) {
         return nullptr;
     }
