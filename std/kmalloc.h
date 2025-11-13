@@ -33,5 +33,9 @@
     inline void operator delete(void* p, size_t) {
         free(p);
     }
+
+    inline void operator delete[](void* p, size_t) {
+        free(p);
+    }
 #endif
 
