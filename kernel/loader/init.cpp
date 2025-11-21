@@ -111,8 +111,6 @@ extern "C" void init(multiboot_info* info) {
             continue;
         }
 
-        // TODO: Change the linker.ld script for the kernel to just use a base address of 0 instead of 0xffffffff80000000
-        //       which will allow us to be more flexible about where to actually put the kernel in virtual memory.
         if (ph.p_vaddr < kernel_virtual_base) {
             abort("Kernel program header is below kernel virtual base. Halting.");
         }
