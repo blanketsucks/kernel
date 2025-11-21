@@ -3,7 +3,7 @@
 
 constexpr u32 ATEXIT_MAX_FUNCS = 32;
 
-extern "C" void* __dso_handle = nullptr;
+extern "C" { void* __dso_handle = nullptr; }
 
 namespace kernel {
 
