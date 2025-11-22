@@ -10,10 +10,11 @@ namespace kernel {
 
 class CommandLine {
 public:
-    static void init();
+    static void initialize();
     static CommandLine* instance();
 
     [[nodiscard]] StringView root() const;
+    [[nodiscard]] StringView init() const;
 
 private:
     void parse(StringView cmdline);

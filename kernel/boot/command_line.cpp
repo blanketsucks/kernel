@@ -5,7 +5,7 @@ namespace kernel {
 
 CommandLine s_instance;
 
-void CommandLine::init() {
+void CommandLine::initialize() {
     if (g_boot_info->cmdline == nullptr) {
         return;
     }
@@ -52,6 +52,10 @@ bool CommandLine::has(StringView key) const {
 
 StringView CommandLine::root() const {
     return this->get("root").value_or("/dev/hda1");
+}
+
+StringView CommandLine::init() const {
+    return this->get("init").value_or("/bin/shell");
 }
 
 }

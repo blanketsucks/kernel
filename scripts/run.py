@@ -49,6 +49,8 @@ class QemuArgs(NamedTuple):
 
     ovmf: str
 
+    cmdline: List[str] = []
+
     netdev: str = 'user,id=net0,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888'
     devices: List[str] = ['ac97', 'e1000,netdev=net0']
 
@@ -101,11 +103,12 @@ class QemuArgs(NamedTuple):
             args.extend(['-kernel', self.kernel])
         elif self.use_loader and not self.uefi:
             args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
-            args.extend(['-append', 'root=/dev/hda2'])
+            self.cmdline.append(f'root=/dev/hda2')
 
         if self.uefi:
             args.extend(['-bios', self.ovmf])
 
+        args.extend(['-append', ' '.join(self.cmdline)])
         return args
 
 def main():
@@ -123,8 +126,9 @@ def main():
     parser.add_argument('--usb', action='store_true', help='Enable USB support.')
     parser.add_argument('--usb-controller', type=USBController, default='uhci', help='USB controller type (default: uhci).')
     parser.add_argument('--enable-virtio-gpu', action='store_true', help='Enable VirtIO GPU support.')
-    
+    parser.add_argument('--init', type=str, default='/bin/shell', help='Initial process to run.')
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
+
     action = parser.add_argument('--ovmf', type=str, default=None, help='Path to OVMF firmware')
 
     if sys.platform == 'linux':
@@ -154,6 +158,8 @@ def main():
         use_loader=not args.disable_loader,
         virtio_gpu=args.enable_virtio_gpu,
     )
+
+    qemu_args.cmdline.append(f'init={args.init}')
 
     if not args.qemu:
         args.qemu = 'qemu-system-i386' if args.x86 else 'qemu-system-x86_64'
