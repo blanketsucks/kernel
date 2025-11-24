@@ -205,7 +205,7 @@ public:
     }
 
     template<typename F>
-    ConstIterator find(unsigned hash, F&& finder) const {
+    ConstIterator find(size_t hash, F&& finder) const {
         if (this->empty()) {
             return this->end();
         }
