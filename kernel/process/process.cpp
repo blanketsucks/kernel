@@ -506,7 +506,7 @@ ErrorOr<FlatPtr> Process::sys$write(int fd, const void* buffer, size_t size) {
         return Error(EBADF);
     }
 
-    this->validate_write(buffer, size);
+    this->validate_read(buffer, size);
     return file->write(buffer, size);
 }
 
