@@ -23,7 +23,7 @@ extern "C" void _default_interrupt_handler();
 extern "C" void _interrupt_exception_handler(InterruptRegisters* regs) {
     switch (regs->intno) {
         case Interrupt::PageFault:
-            memory::MemoryManager::page_fault_handler(regs);
+            MemoryManager::page_fault_handler(regs);
             break;
         case Interrupt::GeneralProtectionFault: {
             auto* process = Process::current();

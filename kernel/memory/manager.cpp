@@ -12,7 +12,9 @@
 #include <std/utility.h>
 #include <std/format.h>
 
-namespace kernel::memory {
+namespace kernel {
+
+using namespace memory;
 
 static u8 s_kernel_heap[INITIAL_KERNEL_HEAP_SIZE];
 static u32 s_kernel_heap_offset = 0;
@@ -84,6 +86,26 @@ PhysicalPage* MemoryManager::get_physical_page(PhysicalAddress address) {
     return &m_physical_pages[index];
 }
 
+StringView MemoryManager::get_fault_message(PageFault fault, Region* region) {
+    if (!region) {
+        return {};
+    }
+        
+    if (fault.rsvd) {
+        return "Reserved bit set in page table entry.";
+    } else if (!fault.present) {
+        return "Page not present.";
+    } else if (fault.id && !region->is_executable()) {
+        return "Attempt to execute non-executable region.";
+    } else if (!fault.rw && !region->is_readable()) {
+        return "Attempt to read from non-readable region.";
+    } else if (fault.rw && !region->is_writable()) {
+        return "Attempt to write to non-writable region.";
+    }
+
+    return {};
+}
+
 void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
     VirtualAddress address = 0;
     asm volatile("mov %%cr2, %0" : "=r"(address));
@@ -96,13 +118,19 @@ void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
     if (!thread || thread->is_kernel()) {
         PageFault fault = regs->errno;
 
+        Region* region = MM->kernel_region_allocator().find_region(address, true);
         if (is_null_pointer_dereference) {
             dbgln("\033[1;31mNull pointer dereference (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         } else {
             dbgln("\033[1;31mPage fault (address={:#p}) at IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         }
 
-        dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+        StringView message = get_fault_message(fault, region);
+        if (!message.empty()) {
+            dbgln("  \033[1;31mUnrecoverable page fault: {}\033[0m", message);
+        } else {
+            dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+        }
 
         kernel::print_stack_trace();
         
@@ -362,7 +390,7 @@ TemporaryMapping::~TemporaryMapping() {
 
 // FIXME: Implement
 int liballoc_lock() {
-    using namespace kernel::memory;
+    using namespace kernel;
     if (s_mm) {
         s_mm->liballoc_lock().lock();
     }
@@ -371,7 +399,7 @@ int liballoc_lock() {
 }
 
 int liballoc_unlock() {
-    using namespace kernel::memory;
+    using namespace kernel;
     if (s_mm) {
         s_mm->liballoc_lock().unlock();
     }
@@ -380,10 +408,10 @@ int liballoc_unlock() {
 }
 
 void* liballoc_alloc(size_t pages) {
-    using namespace kernel::memory;
+    using namespace kernel;
 
-    size_t size = pages * kernel::PAGE_SIZE;
-    if (s_kernel_heap_offset + size < kernel::INITIAL_KERNEL_HEAP_SIZE) {
+    size_t size = pages * PAGE_SIZE;
+    if (s_kernel_heap_offset + size < INITIAL_KERNEL_HEAP_SIZE) {
         void* ptr = &s_kernel_heap[s_kernel_heap_offset];
         s_kernel_heap_offset += size;
 
@@ -394,15 +422,23 @@ void* liballoc_alloc(size_t pages) {
 }
 
 int liballoc_free(void* addr, size_t pages) {
-    using namespace kernel::memory;
+    using namespace kernel;
 
     // No need to do anything if the address is in the initial kernel heap
-    if (addr >= &s_kernel_heap && addr < &s_kernel_heap[kernel::INITIAL_KERNEL_HEAP_SIZE]) {
+    if (addr >= &s_kernel_heap && addr < &s_kernel_heap[INITIAL_KERNEL_HEAP_SIZE]) {
         return 0;
     }
 
-    auto result = MM->free_heap_region(addr, pages * kernel::PAGE_SIZE);
+    auto result = MM->free_heap_region(addr, pages * PAGE_SIZE);
     return result.is_err();
+}
+
+void* operator new(size_t, void* p) {
+    return p;
+}
+
+void* operator new[](size_t, void* p) {
+    return p;
 }
 
 void* operator new(size_t size) {

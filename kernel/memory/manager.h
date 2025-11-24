@@ -10,12 +10,14 @@
 
 #include <std/result.h>
 
-#define MM kernel::memory::MemoryManager::instance()
+#define MM kernel::MemoryManager::instance()
 
-namespace kernel::memory {
+namespace kernel {
 
-class PhysicalMemoryManager;
-class PageDirectory;
+namespace memory {
+    class PhysicalMemoryManager;
+    class PageDirectory;
+}
 
 union PageFault {
     // Comments taken from Intel's manual (Vol. 3A 4-37)
@@ -88,8 +90,10 @@ public:
 
     static size_t current_kernel_heap_offset();
 
-    RegionAllocator& heap_region_allocator() { return *m_heap_region_allocator; }
-    RegionAllocator& kernel_region_allocator() { return *m_kernel_region_allocator; }
+    static StringView get_fault_message(PageFault fault, memory::Region* region);
+
+    memory::RegionAllocator& heap_region_allocator() { return *m_heap_region_allocator; }
+    memory::RegionAllocator& kernel_region_allocator() { return *m_kernel_region_allocator; }
 
     bool is_mapped(void* addr);
     PhysicalAddress get_physical_address(void* addr);
@@ -99,12 +103,12 @@ public:
 
     ErrorOr<void> free_page_frame(void* frame);
 
-    ErrorOr<void*> allocate(RegionAllocator&, size_t size, PageFlags flags);
-    ErrorOr<void*> allocate_at(RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags);
+    ErrorOr<void*> allocate(memory::RegionAllocator&, size_t size, PageFlags flags);
+    ErrorOr<void*> allocate_at(memory::RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags);
 
-    ErrorOr<void> map_region(arch::PageDirectory*, Region*, PageFlags flags);
+    ErrorOr<void> map_region(arch::PageDirectory*, memory::Region*, PageFlags flags);
 
-    ErrorOr<void> free(RegionAllocator&, void* ptr, size_t size);
+    ErrorOr<void> free(memory::RegionAllocator&, void* ptr, size_t size);
     ErrorOr<void> free(arch::PageDirectory*, VirtualAddress address, size_t size);
 
     ErrorOr<void*> allocate_heap_region(size_t size);
@@ -132,12 +136,12 @@ private:
     void initialize();
     void create_physical_pages();
 
-    bool try_allocate_contiguous(arch::PageDirectory*, Region*, PageFlags flags);
+    bool try_allocate_contiguous(arch::PageDirectory*, memory::Region*, PageFlags flags);
 
-    PhysicalMemoryManager* m_pmm;
+    memory::PhysicalMemoryManager* m_pmm;
 
-    RefPtr<RegionAllocator> m_heap_region_allocator;
-    RefPtr<RegionAllocator> m_kernel_region_allocator;
+    RefPtr<memory::RegionAllocator> m_heap_region_allocator;
+    RefPtr<memory::RegionAllocator> m_kernel_region_allocator;
 
     PhysicalPage* m_physical_pages = nullptr;
     size_t m_physical_pages_count = 0;

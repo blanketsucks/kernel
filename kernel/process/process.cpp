@@ -105,7 +105,7 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
         size_t size = std::align_up(ph.p_memsz, PAGE_SIZE);
 
         u8* region = reinterpret_cast<u8*>(TRY(this->allocate_at(address, size, PageFlags::Write)));
-        memory::TemporaryMapping temp(*m_page_directory, region, size);
+        TemporaryMapping temp(*m_page_directory, region, size);
 
         file.seek(ph.p_offset, SEEK_SET);
         TRY(file.read(temp.ptr() + (ph.p_vaddr - address), ph.p_filesz));
@@ -241,7 +241,7 @@ void Process::notify_exit(Thread* thread) {
 
 void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress address) {
     // TODO: Send proper signal once that is implemented
-    memory::PageFault fault = regs->errno;
+    PageFault fault = regs->errno;
     bool is_null_pointer_dereference = address < PAGE_SIZE;
 
     auto* region = m_allocator->find_region(address, true);
@@ -254,7 +254,7 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
             goto unrecoverable_fault;
         }
 
-        bool is_cow = page->flags & memory::PhysicalPage::CoW;
+        bool is_cow = page->flags & PhysicalPage::CoW;
         if (!is_cow) {
             goto unrecoverable_fault;
         }
@@ -271,7 +271,7 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
             MM->copy_physical_memory(frame, reinterpret_cast<void*>(entry->physical_address()), PAGE_SIZE);
             entry->set_physical_address(reinterpret_cast<PhysicalAddress>(frame));
         } else {
-            page->flags &= ~memory::PhysicalPage::CoW;
+            page->flags &= ~PhysicalPage::CoW;
         }
 
         entry->set_writable(true);
@@ -288,19 +288,7 @@ unrecoverable_fault:
             dbgln("\033[1;31mPage fault (address={:#p}) @ IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
         }
 
-        StringView message;
-        if (fault.rsvd) {
-            message = "Reserved bit set in page table entry.";
-        } else if (!fault.present) {
-            message = "Page not present.";
-        } else if (fault.id && !region->is_executable()) {
-            message = "Attempt to execute non-executable region.";
-        } else if (!fault.rw && !region->is_readable()) {
-            message = "Attempt to read from non-readable region.";
-        } else if (fault.rw && !region->is_writable()) {
-            message = "Attempt to write to non-writable region.";
-        }
-
+        StringView message = MemoryManager::get_fault_message(fault, region);
         if (!message.empty()) {
             dbgln("  \033[1;31mUnrecoverable page fault: {}\033[0m", message);
         } else {

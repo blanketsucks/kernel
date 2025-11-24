@@ -80,7 +80,7 @@ PATADevice::PATADevice(
     }
 
     if (m_has_dma) {
-        auto* mm = memory::MemoryManager::instance();
+        auto* mm = MemoryManager::instance();
 
         address.set_bus_master(true);
         address.set_interrupt_line(true);

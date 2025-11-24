@@ -82,7 +82,7 @@ extern "C" void main(BootInfo const& boot_info) {
 
     pic::init();
     
-    memory::MemoryManager::init();
+    MemoryManager::init();
     TimeManager::init();
 
     devfs::init();
