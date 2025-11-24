@@ -84,12 +84,12 @@ public:
     Iterator end() { return m_table.end(); }
 
     Iterator find(const K& key) {
-        return m_table.find(Hash::hash(key), [&](auto& entry) { return key == entry.key; });
+        return m_table.find(Hash::hash(key), [key](auto& entry) { return key == entry.key; });
     }
 
     template<typename F>
-    Iterator find(unsigned hash, F&& finder) {
-        return m_table.find(hash, finder);
+    Iterator find(size_t hash, F&& finder) {
+        return m_table.find(hash, move(finder));
     }
 
     ConstIterator begin() const { return m_table.begin(); }
@@ -101,7 +101,7 @@ public:
 
     template<typename F>
     ConstIterator find(size_t hash, F&& finder) const {
-        return m_table.find(hash, finder);
+        return m_table.find(hash, move(finder));
     }
 
     void reserve(size_t capacity) { m_table.reserve(capacity); }
@@ -116,10 +116,11 @@ public:
 
     Optional<V> get(const K& key) const {
         auto iterator = this->find(key);
-        if (iterator == this->end())
-            return {};
+        if (iterator != this->end()) {
+            return iterator->value;
+        }
 
-        return iterator->value;
+        return {};
     }
 
     V& ensure(const K& key) {
