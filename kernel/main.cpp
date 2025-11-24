@@ -137,7 +137,7 @@ void stage2() {
 
     auto* fs = ext2fs::FileSystem::create(disk);
     if (!fs) {
-        dbgln("Could not create main ext2 filesystem.\n");
+        dbgln("Could not create main ext2 filesystem for '{}'.\n", cmdline->root());
         process->sys$exit(1);
     }
 
