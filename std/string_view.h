@@ -197,9 +197,9 @@ namespace traits {
 template<>
 struct Hash<StringView> {
     static size_t hash(const StringView& value) {
-        size_t hash = 0;
+        size_t hash = 5381;
         for (size_t i = 0; i < value.size(); i++) {
-            hash += value[i];
+            hash = ((hash << 5) + hash) + value[i];
         }
 
         return hash;

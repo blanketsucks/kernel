@@ -142,12 +142,7 @@ namespace traits {
 template<>
 struct Hash<String> {
     static size_t hash(const String& value) {
-        size_t hash = 0;
-        for (size_t i = 0; i < value.size(); i++) {
-            hash += value[i];
-        }
-
-        return hash;
+        return Hash<StringView>::hash(value);
     }
 };
 
