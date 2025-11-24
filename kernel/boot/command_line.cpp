@@ -35,7 +35,7 @@ void CommandLine::parse(StringView cmdline) {
 
             m_args.set(key, value);
         } else {
-            m_args.set(arg, "");
+            m_args.set(arg, {});
         }
 
         start = ++end;
