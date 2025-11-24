@@ -64,6 +64,9 @@ public:
         return *this;
     }
 
+    T* operator->() { return reinterpret_cast<T*>(&m_storage); }
+    const T* operator->() const { return reinterpret_cast<const T*>(&m_storage); }
+
     bool has_value() const { return m_has_value; }
     explicit operator bool() const { return m_has_value; }
 
