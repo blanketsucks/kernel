@@ -320,16 +320,14 @@ unrecoverable_fault:
         this->kill();
     }
 
-    size_t offset = (address - region->base()) + region->offset();
     auto* file = region->file();
-
-    size_t index = std::align_down(offset, PAGE_SIZE);
+    size_t offset = std::align_down(address - region->base(), PAGE_SIZE);
 
     void* frame = MUST(MM->allocate_page_frame());
-    m_page_directory->map(region->base() + index, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
+    m_page_directory->map(region->base() + offset, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
 
-    size_t size = std::min(file->size() - index, PAGE_SIZE);
-    auto result = file->read(reinterpret_cast<void*>(region->base() + index), size, index);
+    size_t size = std::min(file->size() - offset, PAGE_SIZE);
+    auto result = file->read(reinterpret_cast<void*>(region->base() + offset), size, region->offset() + offset);
 
     if (result.is_err()) {
         dbgln("\033[1;31mFailed to read file backed region (address={:#p}) @ IP={:#p}:\033[0m", address, regs->ip());
