@@ -1,8 +1,8 @@
 #pragma once
 
-#include <kernel/common.h>
 #include <std/utility.h>
 #include <std/traits.h>
+#include <std/kmalloc.h>
 
 namespace std {
 
