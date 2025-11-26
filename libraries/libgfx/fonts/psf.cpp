@@ -11,7 +11,7 @@ RefPtr<PSFFont> PSFFont::create(const u8* data) {
 }
 
 RefPtr<PSFFont> PSFFont::create(StringView path) {
-    int fd = open(path.data(), O_RDONLY);  
+    int fd = open_length(path.data(), path.size(), O_RDONLY, 0);
     if (fd < 0) {
         return nullptr;
     }
@@ -23,7 +23,7 @@ RefPtr<PSFFont> PSFFont::create(StringView path) {
     read(fd, data, st.st_size);
 
     close(fd);
-    auto font =  RefPtr<PSFFont>(new PSFFont(data));
+    auto font = RefPtr<PSFFont>(new PSFFont(data));
 
     delete[] data;
     return font;
