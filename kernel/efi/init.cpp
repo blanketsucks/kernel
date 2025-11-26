@@ -34,7 +34,7 @@ struct MemoryMap {
 static EFIMemoryMap s_efi_mmap;
 static MemoryMap s_mmap;
 
-__attribute__((naked)) void _call_kernel_main(const kernel::BootInfo*, u64 hhdm, void* entry) {
+[[gnu::naked]] void _call_kernel_main(const kernel::BootInfo*, u64 hhdm, void* entry) {
     asm volatile(
         "add %rsi, %rsp\n"
         "call *%rdx\n"
