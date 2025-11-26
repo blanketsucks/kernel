@@ -11,7 +11,7 @@ void _free(void* ptr, size_t) {
 }
 
 Terminal::Terminal(
-    gfx::RenderContext& context, RefPtr<gfx::PSFFont> font, bool use_flanterm
+    gfx::RenderContext& context, RefPtr<gfx::PSFFont> font
 ) : on_line_flush(nullptr), m_render_context(context), m_font(move(font)) {
     auto& fb = m_render_context.framebuffer();
     
@@ -22,23 +22,7 @@ Terminal::Terminal(
     m_rows = m_height / m_font->height();
     m_cols = m_width / m_font->width();
 
-    if (use_flanterm) {
-        m_flanterm_context = flanterm_fb_init(
-            malloc, _free,
-            fb.buffer(), fb.width(), fb.height(), fb.pitch(),
-            8, 16,
-            8, 8,
-            8, 0,
-            nullptr,
-            nullptr, nullptr,
-            nullptr, nullptr,
-            nullptr, nullptr,
-            m_font->glyph_data(), m_font->width(), m_font->height(), 1,
-            0, 0,
-            0
-        );
-    }
-
+    m_cells.resize(m_rows * m_cols);
     this->add_line({});
 }
 
@@ -57,43 +41,49 @@ void Terminal::add_line(String text, bool newline_before) {
     size_t prompt_length = line.size() - text.size();
 
     if (newline_before) {
-        this->render('\n');
+        this->push('\n');
     }
 
-    this->render(line);
+    this->push(line);
     m_lines.append({ move(line), prompt_length });
+
+    this->render();
 }
 
 void Terminal::write(StringView text) {
-    this->render(text);
+    this->push(text);
+    this->render();
 }
 
 void Terminal::writeln(StringView text) {
-    write(text);
-    this->render('\n');
+    this->push(text);
+    this->push('\n');
+
+    this->render();
 }
 
 void Terminal::on_char(char c) {
     auto& line = current_line();
     if (c == '\n') {
-        this->render('\n');
+        this->push('\n');
 
         this->on_line_flush(line.text.substr(line.prompt));
         this->add_line({});
 
         m_current_line++;
-        return;
     } else if (c == '\b') {
         if (line.text.size() == line.prompt) {
             return;
         }
 
         line.text.pop();
-        this->render("\b \b");
+        this->push("\b \b");
     } else {
         line.text.append(c);
-        this->render(c);
+        this->push(c);
     }
+
+    this->render();
 }
 
 void Terminal::clear() {
@@ -105,101 +95,113 @@ void Terminal::clear() {
 
 void Terminal::replace_current_line(const String& text) {
     auto& line = this->current_line();
-    if (m_flanterm_context) {
-        for (size_t i = 0; i < line.text.size(); i++) {
-            flanterm_write(m_flanterm_context, "\b \b", 3);
-        }
-    } else {
-        for (size_t i = 0; i < line.text.size(); i++) {
-            this->render("\b \b");
-        }
+    for (size_t i = 0; i < line.text.size(); i++) {
+        this->push("\b \b");
     }
 
     line.text = format("{} $ {}", cwd(), text);
     line.prompt = line.text.size() - text.size();
 
-    this->render(line.text);
+    this->push(line.text);
+    this->render();
 }
 
-void Terminal::render(char c) {
-    if (m_flanterm_context) {
-        flanterm_write(m_flanterm_context, &c, 1);
-        return;
-    }
-
-    if (c == '\n') {
-        this->clear_cursor();
-
-        m_x = 0;
-        m_y += m_font->height();
-
-        if (m_y + m_font->height() > m_height) {
-            this->scroll();
-        }
-
-        this->render_cursor();
-        return;
-    } else if (c == '\b') {
-        this->clear_cursor();
-
-        if (m_x > 0) {
-            m_x -= m_font->width();
-        } else if (m_y > 0) {
-            m_y -= m_font->height();
-            m_x = m_render_context.framebuffer().width() - m_font->width();
-        }
-
-        this->render_cursor();
-        return;
-    } else if (c == '\r') {
-        m_x = 0;
-        return;
-    }
-
-    u8* glyph = m_font->glyph(c);
-
+void Terminal::render_cell(size_t row, size_t col, const Cell& cell) {
+    u8* glyph = m_font->glyph(cell.c);
     u32* framebuffer = m_render_context.framebuffer().buffer();
-    for (size_t y = 0; y < m_font->height(); y++) {
-        u8 byte = glyph[y];
 
-        for (size_t x = 0; x < m_font->width(); x++) {
-            u32 color = (byte & (1 << (7 - x))) ? 0x00AAAAAA : 0x00000000;
-            size_t index = (m_y + y) * m_pitch / 4 + (m_x + x);
+    size_t y = row * m_font->height();
+    size_t x = col * m_font->width();
+
+    for (size_t dy = 0; dy < m_font->height(); dy++) {
+        u8 byte = glyph[dy];
+
+        for (size_t dx = 0; dx < m_font->width(); dx++) {
+            u32 color = (byte & (1 << (7 - dx))) ? cell.fg : cell.bg;
+            size_t index = (y + dy) * m_pitch / 4 + (x + dx);
             
             framebuffer[index] = color;
         }
     }
-
-    m_x += m_font->width();
-    this->render_cursor();
 }
 
-void Terminal::render(StringView text) {
-    for (char c : text) {
-        this->render(c);
+void Terminal::render() {
+    for (size_t row = 0; row < m_rows; row++) {
+        for (size_t col = 0; col < m_cols; col++) {
+            size_t index = col + row * m_cols;
+            this->render_cell(row, col, m_cells[index]);
+        }
     }
+
+    this->render_cursor();
 }
 
 void Terminal::render_cursor(u32 color) {
     u32* framebuffer = m_render_context.framebuffer().buffer();
-    for (size_t y = 0; y < m_font->height(); y++) {
-        for (size_t x = 0; x < m_font->width() / 2; x++) {
-            size_t index = (m_y + y) * m_pitch / 4 + (m_x + x);
+
+    size_t x = m_current_col * m_font->width();
+    size_t y = m_current_row * m_font->height();
+
+    for (size_t dy = 0; dy < m_font->height(); dy++) {
+        for (size_t dx = 0; dx < m_font->width() / 2; dx++) {
+            size_t index = (y + dy) * m_pitch / 4 + (x + dx);
             framebuffer[index] = color;
         }
     }
 }
 
 void Terminal::scroll() {
-    if (m_flanterm_context) {
+    memmove(m_cells.data(), m_cells.data() + m_cols, (m_rows - 1) * m_cols * sizeof(Cell));
+    memset(m_cells.data() + (m_rows - 1) * m_cols, 0, m_cols * sizeof(Cell));
+
+    this->render();
+}
+
+void Terminal::push(char c, u32 fg, u32 bg) {
+    switch (c) {
+        case '\n': {
+            m_current_col = 0;
+            m_current_row++;
+            if (m_current_row >= m_rows) {
+                m_current_row = m_rows - 1;
+                this->scroll();
+            }
+
+            return;
+        }
+        case '\r': {
+            m_current_col = 0;
+            return;
+        }
+        case '\b': {
+            if (m_current_col > 0) {
+                m_current_col--;
+            }
+            return;
+        }
+    }
+
+    Cell cell { bg, fg, c };
+    m_cells[m_current_col + m_current_row * m_cols] = cell;
+
+    m_current_col++;
+    if (m_current_col < m_cols) {
         return;
     }
 
-    // TODO: Implement proper scrolling
-    u32* framebuffer = m_render_context.framebuffer().buffer();
-    memset(framebuffer, 0, m_height * m_pitch);
+    m_current_col = 0;
+    m_current_row++;
 
-    m_y = 0;
+    if (m_current_row >= m_rows) {
+        m_current_row = m_rows - 1;
+        this->scroll();
+    }
+}
+
+void Terminal::push(StringView text) {
+    for (char c : text) {
+        this->push(c);
+    }
 }
 
 }

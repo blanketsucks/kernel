@@ -10,8 +10,6 @@
 #include <libgfx/fonts/psf.h>
 #include <libgfx/font.h>
 
-#include <flanterm/backends/fb.h>
-
 namespace shell {
 
 struct Line {
@@ -19,9 +17,19 @@ struct Line {
     size_t prompt;
 };
 
+struct Cell {
+    u32 bg, fg;
+    char c;
+};
+
 class Terminal {
 public:
-    Terminal(gfx::RenderContext& context, RefPtr<gfx::PSFFont> font, bool use_flanterm = false);
+    static constexpr u32 DEFAULT_FG = 0x00AAAAAA;
+    static constexpr u32 DEFAULT_BG = 0x00000000;
+
+    Terminal(gfx::RenderContext& context, RefPtr<gfx::PSFFont> font);
+    
+    Function<void(String)> on_line_flush;
 
     static String cwd();
 
@@ -37,36 +45,30 @@ public:
     void write(StringView text);
     void writeln(StringView text);
 
-    void advance_line() {
-        m_current_line++;
-    }
-
-    Function<void(String)> on_line_flush;
-
-    void render(char);
-    void render(StringView);
-
-    void render_cursor(u32 color = 0x00AAAAAA);
-    void clear_cursor() { this->render_cursor(0); }
+    void render_cell(size_t row, size_t col, Cell const& cell);
+    void render_cursor(u32 color = DEFAULT_FG);
+    void render();
 
     void scroll();
+
+    void push(StringView text);
+    void push(char c, u32 fg = DEFAULT_FG, u32 bg = DEFAULT_BG);
 
 private:
     gfx::RenderContext& m_render_context;
     RefPtr<gfx::PSFFont> m_font;
 
-    flanterm_context* m_flanterm_context = nullptr;
-
     Vector<Line> m_lines;
+    Vector<Cell> m_cells;
 
     u32 m_current_line = 0;
-
-    u32 m_x = 0;
-    u32 m_y = 0;
 
     u32 m_width;
     u32 m_height;
     u32 m_pitch;
+
+    size_t m_current_row = 0;
+    size_t m_current_col = 0;
 
     u32 m_rows;
     u32 m_cols;

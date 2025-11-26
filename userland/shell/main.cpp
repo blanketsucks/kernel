@@ -16,6 +16,7 @@
 #include <std/types.h>
 #include <std/vector.h>
 #include <std/function.h>
+#include <std/kmalloc.h>
 
 #include <libgfx/render_context.h>
 #include <libgfx/framebuffer.h>
@@ -111,6 +112,13 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
     char* name = ptsname(tty);
     int fd = open(name, O_RDWR);
 
+    if (fd < 0) {
+        terminal.writeln(std::format("Failed to open PTY slave {}: {}", name, strerror(errno)));
+        close(tty);
+
+        return;
+    }
+
     pid_t pid = fork();
     if (!pid) {
         close(0);
@@ -155,10 +163,10 @@ int main() {
         dbgln("Failed to open GPU device: {}", strerror(errno));
         return 1;
     }
-
+    
     struct gpu_connector connector;
     ioctl(gpu, GPU_GET_CONNECTORS, &connector);
-
+    
     struct gpu_connector_map_fb map_fb;
     map_fb.id = connector.id;
 
@@ -166,15 +174,15 @@ int main() {
     
     u32* buffer = reinterpret_cast<u32*>(map_fb.framebuffer);
     memset(buffer, 0x00, connector.height * connector.pitch);
-    
+
     gfx::FrameBufferResolution resolution(connector.width, connector.height, connector.pitch);
-    
     gfx::FrameBuffer framebuffer(buffer, resolution);
+
     gfx::RenderContext context(framebuffer);
     
     int kb = open("/dev/input/keyboard0", O_RDONLY);
     KeyEvent event;
-    
+
     auto font = gfx::PSFFont::create("/res/fonts/zap-light16.psf");
 
     Vector<String> history;
@@ -182,7 +190,7 @@ int main() {
 
     auto iterator = history.begin();
 
-    shell::Terminal terminal(context, font, true);
+    shell::Terminal terminal(context, font);
     terminal.on_line_flush = [&](String text) {
         if (text.empty()) {
             return;
@@ -253,6 +261,11 @@ int main() {
         }
 
         terminal.on_char(event.ascii);
+
+        struct gpu_connector_flush flush;
+        flush.id = connector.id;
+
+        ioctl(gpu, GPU_CONNECTOR_FLUSH, &flush);
     }
 
     close(gpu);
