@@ -1,7 +1,9 @@
 file(GLOB_RECURSE CPP_SOURCES *.cpp)
 
+set(LOADER_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld)
+
 add_compile_options(-static -g -fno-exceptions)
-add_link_options(-static -nostdlib++ -g)
+add_link_options(-static -nostdlib++ -g -T ${LOADER_LINKER_SCRIPT})
 
 add_executable(dyn-loader.so ${CPP_SOURCES})
 

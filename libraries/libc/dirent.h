@@ -15,7 +15,6 @@ __BEGIN_DECLS
 #define DT_SOCK 6
 #define DT_LNK 7
 
-
 struct dirent {
     ino_t d_ino;
     off_t d_off;

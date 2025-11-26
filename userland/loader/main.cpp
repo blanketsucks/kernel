@@ -1,27 +1,56 @@
-#include <unistd.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include <loader/object.h>
+#include <loader/loader.h>
 
-#include <libelf/image.h>
+#include <string.h>
 
-// TODO: Implement
-int main(int argc, char** argv) {
-    if (argc < 2) {
-        return EXIT_FAILURE;
+using Entry = int(*)(int, char**, char**);
+
+[[gnu::naked]] void _invoke_entry(int argc, char** argv, char** environ, Entry entry) {
+    asm volatile(
+        "andq $-16, %rsp\n"
+        "pushq $0\n"
+        "jmp *%rcx\n"
+    );
+}
+
+void __call_fini_functions() {
+    auto executable = DynamicLoader::executable();
+    executable->invoke_fini();
+}
+
+ErrorOr<Entry> link_main_executable(StringView name) {
+    auto object = TRY(DynamicLoader::open_main_executable(name));
+
+    TRY(object->perform_relocations());
+    TRY(object->perform_plt_relocations());
+
+    for (auto& [_, library] : DynamicLoader::libraries()) {
+        library->invoke_init();
     }
 
-    int fd = open(argv[1], O_RDONLY);
+    object->invoke_init();
+    return reinterpret_cast<Entry>(object->entry());
+}
 
-    struct stat st;
-    fstat(fd, &st);
+int main(int argc, char** argv, char** environ) {
+    if (argc < 2) {
+        dbgln("Usage: {} <executable>", argv[0]);
+        return 1;
+    }
 
-    write(1, "Hello, World!\n", 14);
+    DynamicLoader::add_symbol("__call_fini_functions", reinterpret_cast<uintptr_t>(&__call_fini_functions));
+    auto result = link_main_executable(argv[1]);
 
-    void* buffer = mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    *(reinterpret_cast<u8*>(buffer) + 0x1200) = 0x42; 
+    if (result.is_err()) {
+        auto error = result.error();
+        StringView message = error.message() ? error.message() : strerror(error.code());
 
-    auto image = elf::Image(reinterpret_cast<u8*>(buffer), st.st_size);
-    return 420;
+        dbgln("Error loading dynamic object: {}", message);
+        return 1;
+    }
+
+    Entry entry = result.value();
+    _invoke_entry(argc - 1, argv + 1, environ, entry);
+    
+    return 0;
 }

@@ -13,12 +13,14 @@ extern int __cxa_atexit(void (*func)(void*), void* arg, void* dso_handle);
 extern void __cxa_finalize(void* dso_handle);
 extern void _fini();
 
+[[gnu::weak]] void __call_fini_functions() { _fini(); }
+
 char** environ;
 
 [[gnu::noreturn]] void exit(int status) {
     // TODO: Do extra cleanup tasks once we can actually do them.
     __cxa_finalize(nullptr);
-    _fini();
+    __call_fini_functions();
 
     _exit(status);
 }
@@ -29,7 +31,7 @@ void abort(void) {
 }
 
 static void __atexit_wrapper(void* function) {
-    reinterpret_cast<void (*)(void)>(function)();
+    reinterpret_cast<void(*)(void)>(function)();
 }
 
 int atexit(void (*function)(void)) {
