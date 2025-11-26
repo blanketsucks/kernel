@@ -76,7 +76,7 @@ index 000000000..568aadab5
 +/* Files that are linked before user code.
 +   The %s tells GCC to look for these files in the library directory. */
 +#undef STARTFILE_SPEC
-+#define STARTFILE_SPEC "%{!shared: %{!pg:crt0.o%s}} crti.o%s %{!shared:crtbegin.o%s}"
++#define STARTFILE_SPEC "crt0.o%s crti.o%s %{!shared:crtbegin.o%s}"
 +
 +/* Files that are linked after user code. */
 +#undef ENDFILE_SPEC
@@ -92,7 +92,7 @@ index 000000000..568aadab5
 +    builtin_assert ("system=unix");   \
 +    builtin_assert ("system=posix");  \
 +  } while(0);
-\ No newline at end of file
++
 diff --git a/libgcc/config.host b/libgcc/config.host
 index e75a7af64..d6146d17b 100644
 --- a/libgcc/config.host
