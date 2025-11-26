@@ -52,7 +52,7 @@ void print_stack_trace(StackFrame* frame) {
     }
 }
 
-[[noreturn]] void panic(std::StringView message) {
+[[noreturn]] void panic(StringView message) {
     panic(message, nullptr, 0);
 }
 
@@ -60,7 +60,7 @@ void print_stack_trace(StackFrame* frame) {
     panic({});
 }
 
-[[noreturn]] void panic(std::StringView message, const char* file, u32 line) {
+[[noreturn]] void panic(StringView message, const char* file, u32 line) {
     dbgln();
 
     if (message.empty()) {
