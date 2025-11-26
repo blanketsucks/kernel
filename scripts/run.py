@@ -46,6 +46,7 @@ class QemuArgs(NamedTuple):
     usb_controller: USBController
     use_loader: bool
     virtio_gpu: bool
+    kvm: bool
 
     ovmf: str
 
@@ -108,6 +109,9 @@ class QemuArgs(NamedTuple):
         if self.uefi:
             args.extend(['-bios', self.ovmf])
 
+        if self.kvm:
+            args.extend(['-accel', 'kvm'])
+
         args.extend(['-append', ' '.join(self.cmdline)])
         return args
 
@@ -128,6 +132,7 @@ def main():
     parser.add_argument('--enable-virtio-gpu', action='store_true', help='Enable VirtIO GPU support.')
     parser.add_argument('--init', type=str, default='/bin/shell', help='Initial process to run.')
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
+    parser.add_argument('--kvm', action='store_true', help='Enable KVM.')
 
     action = parser.add_argument('--ovmf', type=str, default=None, help='Path to OVMF firmware')
 
@@ -152,6 +157,7 @@ def main():
         x86_64=not args.x86,
         uefi=args.uefi,
         ovmf=args.ovmf,
+        kvm=args.kvm,
         serial=True,
         usb=args.usb,
         usb_controller=args.usb_controller,
