@@ -42,10 +42,9 @@ int posix_openpt(int flags) {
     return open("/dev/ptmx", flags);
 }
 
-
-static char s_ptsname_buffer[32];
+static char s_ptsname_buffer[64];
 char* ptsname(int fd) {
-    if (ptsname_r(fd, s_ptsname_buffer, 32) < 0) {
+    if (ptsname_r(fd, s_ptsname_buffer, sizeof(s_ptsname_buffer)) < 0) {
         return nullptr;
     }
 
@@ -58,21 +57,25 @@ int ptsname_r(int fd, char* buffer, size_t size) {
         return -1;
     }
 
+    std::FormatBuffer devfs;
+    devfs.append("/dev/pts/");
+
     if (pts < 0) {
         errno = EINVAL;
         return -1;
     }
 
-    String fmt = std::format("/dev/pts/{}", pts);
-    if (fmt.size() > size) {
+    devfs.appendf("%d", pts);
+    if (devfs.position() > size) {
         errno = ERANGE;
         return -1;
     }
 
-    memset(buffer, 0, fmt.size() + 1);
-    memcpy(buffer, fmt.data(), fmt.size());
+    StringView path = devfs.view();
 
-    buffer[fmt.size()] = '\0';
+    memset(buffer, 0, path.size() + 1);
+    memcpy(buffer, path.data(), path.size());
+
     return 0;
 }
 
