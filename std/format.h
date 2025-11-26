@@ -21,11 +21,16 @@ struct FormatStyle {
     u16 integer_padding = 0;
 };
 
-struct FormatBuffer {
-    FormatBuffer() : m_position(0) {}
+class FormatBuffer {
+public:
+    FormatBuffer() = default;
 
-    size_t position() const { return m_position; }
-    String value() const { return m_buffer; }
+    size_t position() const { return m_buffer.size(); }
+
+    String& str() { return m_buffer; }
+    String const& str() const { return m_buffer; }
+
+    StringView view() const { return m_buffer; }
 
     void append(char ch) { m_buffer.append(ch); }
     
@@ -55,7 +60,6 @@ struct FormatBuffer {
 
 private:
     String m_buffer;
-    size_t m_position;
 };
 
 template<typename T>
@@ -316,7 +320,7 @@ String format(const char* fmt, Args const&... args) {
     VariadicFormatParameters<Args...> params(args...);
 
     _format_impl(buffer, fmt, params);
-    return buffer.value();
+    return buffer.str();
 }
 
 template<typename... Args> requires(std::conjunction<has_formatter<Args>...>::value)

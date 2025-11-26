@@ -140,8 +140,8 @@ void _dbg_impl(const char* fmt, FormatParameters& params, bool newline) {
         buffer.append('\n');
     }
 
-    String value = buffer.value();
-    
+    StringView value = buffer.view();
+
 #ifdef __KERNEL__
     kernel::serial::write(value.data(), value.size());
 #else
