@@ -5,12 +5,12 @@ extern "C" {
 int main(int, char**, char**);
 
 extern void _init();
-
 extern char** environ;
 
 void _start(int argc, char** argv, char** envp) {
     environ = envp;
 
+    // FIXME: When statically linked, this does not call constructors.
     _init();
 
     int status = main(argc, argv, envp);
