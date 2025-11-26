@@ -41,6 +41,7 @@ set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> ${CMAKE_ASM_NASM_FL
 
 enable_language(ASM_NASM)
 
+# TODO: Maybe build std as a shared/static library
 file(GLOB_RECURSE STD_CPP_SOURCES ${CMAKE_SOURCE_DIR}/std/*.cpp)
 
 set(DISK_IMAGE ${CMAKE_SOURCE_DIR}/scripts/disk.img)
