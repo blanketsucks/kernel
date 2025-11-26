@@ -1,9 +1,9 @@
 #!/bin/bash
 
 BINUTILS_VERSION="2.44"
-BRANCH_NAME="binutils-${BINUTILS_VERSION//./_}"
-
-BINUTILS_GIT_URL="https://sourceware.org/git/binutils-gdb.git"
+BINUTILS_NAME="binutils-${BINUTILS_VERSION}"
+BINUTILS_PACKAGE="${BINUTILS_NAME}.tar.xz"
+BINUTILS_URL="https://ftpmirror.gnu.org/gnu/binutils"
 
 function build_binutils() {
     echo "Building Binutils version $BINUTILS_VERSION..."
@@ -13,18 +13,21 @@ function build_binutils() {
         rm -rf binutils-gdb
     fi
 
-    git clone --depth 1 --branch $BRANCH_NAME $BINUTILS_GIT_URL
+    mkdir binutils-gdb
+
+    curl -LO $BINUTILS_URL/$BINUTILS_PACKAGE
+    tar -xf $BINUTILS_PACKAGE --strip-components=1 -C binutils-gdb
+
     cd binutils-gdb
 
-    git checkout $BRANCH_NAME
-    git apply ../binutils-$BINUTILS_VERSION.patch
+    patch -p1 < ../binutils-$BINUTILS_VERSION.patch
 
     mkdir build
     cd build
 
     ../configure --prefix="$PREFIX" --target="$TARGET-corn" --with-sysroot="$SYSROOT" --disable-werror --disable-nls
 
-    make -j8
+    make -j16
     make install
 
     echo "Binutils build completed successfully."

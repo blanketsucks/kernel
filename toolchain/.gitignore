@@ -1,2 +1,5 @@
 binutils-gdb
 gcc
+
+binutils-*.tar.xz
+gcc-*.tar.xz
