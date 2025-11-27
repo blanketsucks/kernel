@@ -1,5 +1,6 @@
 #include <loader/object.h>
 #include <loader/loader.h>
+#include <loader/dlfcn.h>
 
 #include <string.h>
 
@@ -24,8 +25,11 @@ ErrorOr<Entry> link_main_executable(StringView name) {
     TRY(object->perform_relocations());
     TRY(object->perform_plt_relocations());
 
-    for (auto& [_, library] : DynamicLoader::libraries()) {
+    dbgln("Main executable {} @ {:#p}", name, object->base());
+    dbgln("Loaded libraries:");
+    for (auto& [name, library] : DynamicLoader::libraries()) {
         library->invoke_init();
+        dbgln(" - {} @ {:#p}", name, library->base());
     }
 
     object->invoke_init();
@@ -39,6 +43,11 @@ int main(int argc, char** argv, char** environ) {
     }
 
     DynamicLoader::add_symbol("__call_fini_functions", reinterpret_cast<uintptr_t>(&__call_fini_functions));
+
+    DynamicLoader::add_symbol("__dlopen", reinterpret_cast<uintptr_t>(&__dlopen));
+    DynamicLoader::add_symbol("__dlsym", reinterpret_cast<uintptr_t>(&__dlsym));
+    DynamicLoader::add_symbol("__dlclose", reinterpret_cast<uintptr_t>(&__dlclose));
+
     auto result = link_main_executable(argv[1]);
 
     if (result.is_err()) {
