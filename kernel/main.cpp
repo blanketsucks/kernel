@@ -143,7 +143,7 @@ void stage2() {
     auto* vfs = fs::vfs();
     vfs->mount_root(fs);
 
-    parse_symbols_from_fs();
+    parse_symbols();
 
     devfs::mount();
 

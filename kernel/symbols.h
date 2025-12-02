@@ -6,16 +6,15 @@
 namespace kernel {
 
 struct Symbol {
-    char* name;
+    StringView name;
     FlatPtr address;
 };
 
 bool has_loaded_symbols();
 
-void parse_symbols(StringView buffer);
-void parse_symbols_from_fs();
+void parse_symbols();
 
-Symbol* resolve_symbol(const char* name);
+Symbol* resolve_symbol(StringView name);
 Symbol* resolve_symbol(FlatPtr address);
 
 }

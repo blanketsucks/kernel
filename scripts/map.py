@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import pathlib
+import struct
 
 CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
@@ -17,7 +18,7 @@ process = subprocess.Popen(['nm', '-n', '-C', binary], stdout=subprocess.PIPE, s
 stdout, _ = process.communicate()
 stdout = stdout.decode('utf-8')
 
-map = open('kernel.map', 'w')
+map = open('kernel.map', 'wb')
 
 for line in stdout.split('\n'):
     if not line:
@@ -27,6 +28,12 @@ for line in stdout.split('\n'):
     if type not in ('T', 'W'):
         continue
 
-    map.write(f'{address} {name}\n')
+    entry = struct.pack('QI', int(address, 16), len(name));
+
+    map.write(entry)
+    map.write(name.encode('ascii'))
+
+null_entry = struct.pack('QI', 0, 0)
+map.write(null_entry)
 
 map.close()

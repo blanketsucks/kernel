@@ -6,6 +6,12 @@
 
 namespace kernel {
 
+struct MapEntry {
+    u64 address;
+    u32 length;
+    char name[];
+} PACKED;
+
 static Vector<Symbol> s_symbols;
 static bool s_loaded_symbols = false;
 
@@ -13,13 +19,13 @@ bool has_loaded_symbols() {
     return s_loaded_symbols;
 }
 
-Symbol* resolve_symbol(const char* name) {
+Symbol* resolve_symbol(StringView name) {
     if (!s_loaded_symbols) {
         return nullptr;
     }
 
     for (auto& symbol : s_symbols) {
-        if (std::strcmp(symbol.name, name) == 0) {
+        if (symbol.name == name) {
             return &symbol;
         }
     }
@@ -41,37 +47,27 @@ Symbol* resolve_symbol(FlatPtr address) {
     return nullptr;
 }
 
-void parse_symbols(StringView symbols) {
-    while (!symbols.empty()) {
-        size_t newline = symbols.find('\n');
-        if (newline == StringView::npos) {
-            break;
-        }
+void parse_symbols_from_inode(fs::Inode& inode) {
+    u8* buffer = new u8[inode.size()];
+    inode.read(buffer, inode.size(), 0);
 
-        StringView line = symbols.substr(0, newline);
-        symbols = symbols.substr(newline + 1);
+    MapEntry* entry = reinterpret_cast<MapEntry*>(buffer);
+    size_t offset = 0;
 
-        size_t index = line.find(' ');
-        if (index == StringView::npos) {
-            continue;
-        }
+    while (entry->address) {
+        char* name = new char[entry->length];
+        memcpy(name, entry->name, entry->length);
 
-        StringView address = line.substr(0, index);
-        StringView name = line.substr(index + 1);
+        s_symbols.append(Symbol { { name, entry->length }, static_cast<FlatPtr>(entry->address) });
 
-        char* buffer = new char[name.size() + 1];
-        memcpy(buffer, name.data(), name.size());
-
-        buffer[name.size()] = '\0';
-
-        FlatPtr addr = std::strntoull(address.data(), address.size(), nullptr, 16);
-        s_symbols.append(Symbol { buffer, addr });
+        offset += sizeof(MapEntry) + entry->length;
+        entry = reinterpret_cast<MapEntry*>(buffer + offset);
     }
 
     s_symbols.shrink_to_fit();
 }
 
-void parse_symbols_from_fs() {
+void parse_symbols() {
     auto vfs = fs::vfs();
 
     auto result = vfs->resolve("/boot/kernel.map");
@@ -82,10 +78,7 @@ void parse_symbols_from_fs() {
     auto resolved = result.value();
     auto& inode = resolved->inode();
 
-    char* buffer = new char[inode.size()];
-    inode.read(buffer, inode.size(), 0);
-
-    parse_symbols({ buffer, inode.size() });
+    parse_symbols_from_inode(inode);
     s_loaded_symbols = true;
 }
 
