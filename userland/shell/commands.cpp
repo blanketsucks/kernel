@@ -53,6 +53,10 @@ Command::Command(String name, Vector<String> args) : m_name(move(name)), m_args(
 Command::~Command() {
     delete[] m_pathname;
     for (size_t i = 0; i < m_args.size() + 1; i++) {
+        if (!m_argv[i]) {
+            continue;
+        }
+
         delete[] m_argv[i];
     }
 
