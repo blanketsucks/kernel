@@ -65,8 +65,8 @@ public:
     static constexpr u16 VENDOR_ID = 0x1234;
     static constexpr u16 DEVICE_ID = 0x1111;
 
-    static constexpr i32 DEFAULT_WIDTH = 640;
-    static constexpr i32 DEFAULT_HEIGHT = 480;
+    static constexpr i32 DEFAULT_WIDTH = 800;
+    static constexpr i32 DEFAULT_HEIGHT = 600;
 
     static RefPtr<GPUDevice> create(pci::Device);
 

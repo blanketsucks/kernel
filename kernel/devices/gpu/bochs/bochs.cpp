@@ -21,7 +21,7 @@ ErrorOr<GPUConnector::Resolution> BochsGPUConnector::get_resolution() const {
 
 ErrorOr<void*> BochsGPUConnector::map_framebuffer(Process* process) {
     PhysicalAddress address = m_device->physical_address();
-    size_t size = m_device->size();
+    size_t size = std::align_up(m_device->size(), PAGE_SIZE);
 
     return process->allocate_with_physical_region(address, size, PROT_READ | PROT_WRITE);
 }
