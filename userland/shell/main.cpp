@@ -17,6 +17,7 @@
 #include <std/vector.h>
 #include <std/function.h>
 #include <std/kmalloc.h>
+#include <std/hash_map.h>
 
 #include <libgfx/render_context.h>
 #include <libgfx/framebuffer.h>
@@ -28,7 +29,11 @@ struct KeyEvent {
     u8 modifiers;
 };
 
-static int term_cd(int argc, char** argv) {
+struct BuiltinCommand {
+    int(*function)(shell::Terminal&, int, char**);
+};
+
+static int term_cd(shell::Terminal&, int argc, char** argv) {
     if (argc < 2) {
         return 1;
     }
@@ -38,32 +43,6 @@ static int term_cd(int argc, char** argv) {
         return 1;
     }
 
-    return 0;
-}
-
-static int term_ls(shell::Terminal& terminal, int argc, char** argv) {
-    auto* dir = opendir(argc > 1 ? argv[1] : ".");
-    if (!dir) {
-        terminal.writeln(std::format("ls: {}: {}", argv[1], strerror(errno)));
-        return 1;
-    }
-
-    for (;;) {
-        struct dirent* entry = readdir(dir);
-        if (!entry) {
-            break;
-        }
-        
-        String line;
-        if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            line.append('/');
-        }
-
-        line.append(entry->d_name);
-        terminal.writeln(line);
-    };
-
-    closedir(dir);
     return 0;
 }
 
@@ -105,6 +84,11 @@ static int term_cat(shell::Terminal& terminal, int argc, char** argv) {
     
     return 0;
 }
+
+static HashMap<String, BuiltinCommand> BUILTIN_COMMANDS = {
+    { "cd", { .function = term_cd } },
+    { "cat", { .function = term_cat } }
+};
 
 static void spawn(shell::Terminal& terminal, shell::Command const& command, char** argv) {
     int tty = posix_openpt(O_RDWR);
@@ -157,6 +141,54 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
     close(fd);
 }
 
+static void run_command(shell::Terminal& terminal, String line) {
+    String name = shell::parse_command_name(line);
+    line = line.substr(name.size() + 1);
+
+    static Vector<String> DEFAULT_BIN_SEARCH_PATH = {
+        "/bin", "/usr/bin"
+    };
+
+    struct stat st;
+    if (name.startswith("./")) {
+        int rc = stat_length(name.data(), name.size(), &st);
+        if (rc < 0) {
+            terminal.writeln(std::format("{}: {}", name, strerror(errno)));
+            return;
+        }
+    } else {
+        bool found = false;
+        for (auto& path : DEFAULT_BIN_SEARCH_PATH) {
+            String fullpath = std::format("{}/{}", path, name);
+            int rc = stat_length(fullpath.data(), fullpath.size(), &st);
+
+            if (rc < 0) {
+                continue;
+            }
+
+            found = true;
+            name = fullpath;
+
+            break;
+        }
+
+        if (!found) {
+            auto iterator = BUILTIN_COMMANDS.find(name);
+            if (iterator == BUILTIN_COMMANDS.end()) {
+                terminal.writeln(std::format("{}: command not found", name));
+            }
+
+            shell::Command command = shell::parse_command_arguments(name, line);
+            iterator->value.function(terminal, command.argc(), command.argv());
+
+            return;
+        }
+    }
+
+    shell::Command command = shell::parse_command_arguments(name, line);
+    spawn(terminal, command, command.argv());
+}
+
 int main() {
     int gpu = open("/dev/gpu/card0", O_RDONLY);
     if (gpu < 0) {
@@ -204,35 +236,7 @@ int main() {
         }
 
         iterator = history.end();
-
-        auto cmd = shell::parse_shell_command(text);
-
-        size_t argc = cmd.argc();
-        char** argv = cmd.argv();
-
-        if (cmd.name() == "cd") {
-            term_cd(argc, argv);
-        } else if (cmd.name() == "ls") {
-            term_ls(terminal, argc, argv);
-        } else if (cmd.name() == "cat") {
-            term_cat(terminal, argc, argv);
-        } else if (cmd.name() == "clear") {
-            terminal.clear();
-        } else {
-            struct stat st;
-            if (stat(cmd.pathname(), &st) < 0) {
-                terminal.writeln(std::format("{}: command not found", cmd.name()));
-                return;
-            }
-
-            spawn(terminal, cmd, argv);
-        }
-
-        for (size_t i = 1; i < argc - 1; i++) {
-            delete[] argv[i];
-        }
-
-        delete[] cmd.pathname();
+        run_command(terminal, text);
     };
 
     while (true) {

@@ -4,19 +4,19 @@
 
 namespace shell {
 
-Command parse_shell_command(String line) {
-    Vector<String> args;
-    String name;
-
+StringView parse_command_name(StringView line) {
     size_t index = line.find(' ');
-
     if (index == StringView::npos) {
-        return { line, move(args) };
-    } else {
-        name = line.substr(0, index);
-        line = line.substr(index + 1);
+        return line;
     }
 
+    return line.substr(0, index);
+}
+
+Command parse_command_arguments(StringView name, StringView line) {
+    Vector<String> args;
+
+    size_t index = 0;
     while (!line.empty()) {
         bool in_quotes = false;
         if (line.startswith('"')) {
@@ -39,7 +39,7 @@ Command parse_shell_command(String line) {
         line = line.substr(index + 1);
     }
 
-    return { move(name), move(args) };
+    return { name, move(args) };
 }
 
 Command::Command(String name, Vector<String> args) : m_name(move(name)), m_args(move(args)) {
@@ -47,9 +47,19 @@ Command::Command(String name, Vector<String> args) : m_name(move(name)), m_args(
     memcpy(m_pathname, m_name.data(), m_name.size());
 
     m_pathname[m_name.size()] = '\0';
+    m_argv = this->create_argv();
 }
 
-char** Command::argv() const {
+Command::~Command() {
+    delete[] m_pathname;
+    for (size_t i = 0; i < m_args.size() + 1; i++) {
+        delete[] m_argv[i];
+    }
+
+    delete[] m_argv;
+}
+
+char** Command::create_argv() const {
     char** argv = new char*[m_args.size() + 2];
     for (size_t i = 0; i < m_args.size(); i++) {
         auto& argument = m_args[i];
