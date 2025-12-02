@@ -102,3 +102,10 @@ private:
 };
 
 }
+
+template<>
+struct std::Formatter<kernel::DeviceMajor> {
+    static void format(FormatBuffer& buffer, const kernel::DeviceMajor& value, const FormatStyle& style) {
+        Formatter<u32>::format(buffer, to_underlying(value), style);
+    }
+};
