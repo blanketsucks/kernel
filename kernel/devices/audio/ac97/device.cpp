@@ -1,4 +1,4 @@
-#include <kernel/devices/audio/ac97.h>
+#include <kernel/devices/audio/ac97/device.h>
 #include <kernel/arch/interrupts.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
@@ -11,25 +11,15 @@
 
 namespace kernel {
 
-AC97Device* AC97Device::create() {
-    pci::Address address = {};
-    bool found = false;
-
-    PCI::enumerate([&found, &address](pci::Device device) {
-        if (device.is_audio_device()) {
-            address = device.address();
-            found = true;
-        }
-    });
-
-    if (!found) {
+RefPtr<AC97Device> AC97Device::create(pci::Device device) {
+    if (!device.is_audio_device()) {
         return nullptr;
     }
 
-    return Device::create<AC97Device>(address).take();
+    return Device::create<AC97Device>(device.address());
 }
 
-AC97Device::AC97Device(pci::Address address) : CharacterDevice(DeviceMajor::Audio, 0), IRQHandler(address.interrupt_line()) {
+AC97Device::AC97Device(pci::Address address) : IRQHandler(address.interrupt_line()) {
     m_audio_mixer = address.bar(0) & ~1;
     m_audio_bus = address.bar(1) & ~1;
 
@@ -74,8 +64,7 @@ AC97Device::AC97Device(pci::Address address) : CharacterDevice(DeviceMajor::Audi
     dbgln(" - Sample Rate: {} Hz", m_sample_rate);
     dbgln(" - Variable Sample Rate: {}", m_variable_rate);
     dbgln(" - Double Rate: {}", m_double_rate);
-
-    devfs::register_device_range("snd", DeviceMajor::Audio);
+    dbgln();
 }
 
 
@@ -181,9 +170,9 @@ void AC97Device::write_single(const void* buffer, size_t count, size_t offset) {
     m_current_page = (m_current_page + 1) % OUTPUT_BUFFER_PAGES;
 }
 
-bool AC97Device::set_sample_rate(u16 sample_rate) {
+ErrorOr<void> AC97Device::set_sample_rate(u16 sample_rate) {
     if (sample_rate == m_sample_rate) {
-        return true;
+        return {};
     }
 
     if (m_double_rate) {
@@ -191,45 +180,15 @@ bool AC97Device::set_sample_rate(u16 sample_rate) {
     }
 
     if (!m_variable_rate && (sample_rate != DEFAULT_SAMPLE_RATE)) {
-        return false;
+        return Error(EINVAL);
     } else if (MIN_SAMPLE_RATE > sample_rate || sample_rate > MAX_SAMPLE_RATE) {
-        return false;
+        return Error(EINVAL);
     }
 
     m_audio_mixer.write<u16>(SampleRate, sample_rate);
     m_sample_rate = m_audio_mixer.read<u16>(SampleRate);
 
-    return true;
-}
-
-ErrorOr<int> AC97Device::ioctl(unsigned request, unsigned arg) {
-    auto* process = Process::current();
-    switch (request) {
-        // FIXME: Support the rest (SOUNDCARD_SET_VOLUME, SOUNDCARD_GET_VOLUME)
-        case SOUNDCARD_GET_CHANNELS: {
-            int* argp = reinterpret_cast<int*>(arg);
-            process->validate_write(argp, sizeof(int));
-
-            *argp = m_channels;
-            return 0;
-        }
-        case SOUNDCARD_GET_SAMPLE_RATE: {
-            int* argp = reinterpret_cast<int*>(arg);
-            process->validate_write(argp, sizeof(int));
-
-            *argp = m_sample_rate;
-            return 0;
-        }
-        case SOUNDCARD_SET_SAMPLE_RATE: {
-            if (!this->set_sample_rate(arg)) {
-                return -EINVAL;
-            }
-
-            return 0;
-        }
-        default:
-            return -EINVAL;
-    }
+    return {};
 }
 
 }

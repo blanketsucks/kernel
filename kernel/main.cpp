@@ -27,7 +27,7 @@
 #include <kernel/devices/null.h>
 #include <kernel/devices/zero.h>
 #include <kernel/devices/devctl.h>
-#include <kernel/devices/audio/ac97.h>
+#include <kernel/devices/audio/manager.h>
 #include <kernel/devices/input/mouse.h>
 #include <kernel/devices/gpu/manager.h>
 #include <kernel/devices/input/keyboard.h>
@@ -117,11 +117,10 @@ void stage2() {
     ZeroDevice::create();
     DeviceControl::create();
     
-    AC97Device::create();
-
     usb::UHCIController::create();
     usb::OHCIController::create();
 
+    AudioManager::initialize();
     InputManager::initialize();
     GPUManager::initialize();
     NetworkManager::initialize();

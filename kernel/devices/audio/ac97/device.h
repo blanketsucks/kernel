@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/devices/character_device.h>
+#include <kernel/devices/audio/device.h>
 #include <kernel/arch/irq.h>
 #include <kernel/process/blocker.h>
 #include <kernel/pci/pci.h>
@@ -8,7 +8,7 @@
 
 namespace kernel {
 
-class AC97Device : public CharacterDevice, public IRQHandler {
+class AC97Device : public AudioDevice, public IRQHandler {
 public:
     static constexpr u16 DEFAULT_SAMPLE_RATE = 48000;
 
@@ -100,12 +100,14 @@ public:
         u8 interrupt_on_completion : 1;
     } PACKED;
 
-    static AC97Device* create();
+    static RefPtr<AC97Device> create(pci::Device);
+
+    io::Port audio_mixer() { return m_audio_mixer; }
+    io::Port audio_bus() { return m_audio_bus; }
+    io::Port audio_output() { return m_audio_output; }
 
     ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) override;
     ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
-
-    ErrorOr<int> ioctl(unsigned request, unsigned arg) override;
 
     bool can_read(fs::FileDescriptor const&) const override { return false; }
     bool can_write(fs::FileDescriptor const&) const override { return true; }
@@ -114,7 +116,8 @@ public:
 
     void write_single(const void* data, size_t count, size_t offset);
 
-    bool set_sample_rate(u16 sample_rate);
+    ErrorOr<void> set_sample_rate(u16 sample_rate) override;
+    u16 sample_rate() const override { return m_sample_rate; }
 
 private:
     friend class Device;
