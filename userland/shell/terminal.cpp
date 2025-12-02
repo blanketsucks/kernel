@@ -151,10 +151,9 @@ void Terminal::render_cursor(u32 color) {
 }
 
 void Terminal::scroll() {
+    // We don't have to re-render everything here, since we know what ever calls push() will call render() later.
     memmove(m_cells.data(), m_cells.data() + m_cols, (m_rows - 1) * m_cols * sizeof(Cell));
     memset(m_cells.data() + (m_rows - 1) * m_cols, 0, m_cols * sizeof(Cell));
-
-    this->render();
 }
 
 void Terminal::push(char c, u32 fg, u32 bg) {

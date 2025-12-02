@@ -45,6 +45,7 @@ Command parse_shell_command(String line) {
 Command::Command(String name, Vector<String> args) : m_name(move(name)), m_args(move(args)) {
     m_pathname = new char[m_name.size() + 1];
     memcpy(m_pathname, m_name.data(), m_name.size());
+
     m_pathname[m_name.size()] = '\0';
 }
 
