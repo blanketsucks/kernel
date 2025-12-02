@@ -108,6 +108,10 @@ void Terminal::replace_current_line(const String& text) {
 
 void Terminal::render_cell(size_t row, size_t col, const Cell& cell) {
     u8* glyph = m_font->glyph(cell.c);
+    if (!glyph) {
+        glyph = m_font->glyph(0);
+    }
+
     u32* framebuffer = m_render_context.framebuffer().buffer();
 
     size_t y = row * m_font->height();
