@@ -1,5 +1,6 @@
 #include <kernel/devices/audio/manager.h>
 #include <kernel/devices/audio/ac97/device.h>
+#include <kernel/fs/devfs/filesystem.h>
 
 namespace kernel {
 
@@ -16,6 +17,8 @@ AudioManager* AudioManager::instance() {
 
 void AudioManager::initialize() {
     s_instance.enumerate();
+
+    devfs::register_device_range("snd", DeviceMajor::Audio);
 }
 
 void AudioManager::enumerate() {
