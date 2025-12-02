@@ -86,7 +86,9 @@ add_custom_target(
 
 add_custom_target(
     image
-    COMMAND sudo ${SCRIPTS}/mkfs.qemu.sh
+    COMMAND python3 ${SCRIPTS}/map.py
+    COMMAND sudo ${SCRIPTS}/mkfs.limine.sh
+    DEPENDS kernel.bin
     USES_TERMINAL
 )
 
