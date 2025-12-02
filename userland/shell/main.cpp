@@ -176,6 +176,7 @@ static void run_command(shell::Terminal& terminal, String line) {
             auto iterator = BUILTIN_COMMANDS.find(name);
             if (iterator == BUILTIN_COMMANDS.end()) {
                 terminal.writeln(std::format("{}: command not found", name));
+                return;
             }
 
             shell::Command command = shell::parse_command_arguments(name, line);
