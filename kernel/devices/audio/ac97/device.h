@@ -10,14 +10,14 @@ namespace kernel {
 
 class AC97Device : public AudioDevice, public IRQHandler {
 public:
-    static constexpr u16 DEFAULT_SAMPLE_RATE = 48000;
+    static constexpr u16 DEFAULT_SAMPLE_RATE = 44100;
 
     static constexpr u16 MIN_SAMPLE_RATE = 8000;
     static constexpr u16 MAX_SAMPLE_RATE = 48000;
 
     static constexpr size_t DESCRIPTOR_COUNT = 32;
 
-    static constexpr size_t OUTPUT_BUFFER_PAGES = 8;
+    static constexpr size_t OUTPUT_BUFFER_PAGES = 16;
     static constexpr size_t OUTPUT_BUFFER_SIZE = PAGE_SIZE * OUTPUT_BUFFER_PAGES;
 
     enum AudioMixerRegisters : u16 {
