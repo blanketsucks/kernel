@@ -36,7 +36,7 @@ String Terminal::cwd() {
 Line& Terminal::current_line() { return m_lines[m_current_line]; }
 Line const& Terminal::current_line() const { return m_lines[m_current_line]; }
 
-void Terminal::add_line(String text, bool newline_before) {
+void Terminal::add_line(StringView text, bool newline_before) {
     String line = format("{} $ {}", cwd(), text);
     size_t prompt_length = line.size() - text.size();
 

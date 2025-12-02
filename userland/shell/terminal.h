@@ -39,7 +39,7 @@ public:
     void on_char(char);
     void clear();
     
-    void add_line(String text, bool newline_before = false);
+    void add_line(StringView text, bool newline_before = false);
     void replace_current_line(const String& text);
 
     void write(StringView text);
