@@ -327,7 +327,7 @@ void* MemoryManager::map_physical_region(void* ptr, size_t size) {
     return reinterpret_cast<void*>(region->base());
 }
 
-void MemoryManager::unmap_physical_region(void* ptr) {
+void MemoryManager::unmap_kernel_region(void* ptr) {
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
     auto* region = m_kernel_region_allocator->find_region(reinterpret_cast<VirtualAddress>(ptr));
 
@@ -364,8 +364,8 @@ void MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
 
     memcpy(dst, src, size);
 
-    this->unmap_physical_region(dst);
-    this->unmap_physical_region(src);
+    this->unmap_kernel_region(dst);
+    this->unmap_kernel_region(src);
 }
 
 bool MemoryManager::is_mapped(void* addr) {
@@ -383,7 +383,7 @@ TemporaryMapping::TemporaryMapping(arch::PageDirectory& page_directory, void* pt
 }
 
 TemporaryMapping::~TemporaryMapping() {
-    s_mm->unmap_physical_region(m_ptr);
+    s_mm->unmap_kernel_region(m_ptr);
 }
 
 }

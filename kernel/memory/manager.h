@@ -122,7 +122,8 @@ public:
 
     // Map an already existing physical region into the kernel's address space
     void* map_physical_region(void* ptr, size_t size);
-    void unmap_physical_region(void* ptr);
+
+    void unmap_kernel_region(void* ptr);
 
     void* map_from_page_directory(arch::PageDirectory*, void* ptr, size_t size);
 

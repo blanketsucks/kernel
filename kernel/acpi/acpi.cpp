@@ -47,7 +47,7 @@ SDTHeader* Parser::map_acpi_table(PhysicalAddress addr) {
         return header; // No need to remap if the size has not changed
     }
 
-    MM->unmap_physical_region(region);
+    MM->unmap_kernel_region(region);
     region = reinterpret_cast<u8*>(MM->map_physical_region(ptr, length));
 
     return reinterpret_cast<SDTHeader*>(region + offset);
