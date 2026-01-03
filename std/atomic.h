@@ -48,6 +48,10 @@ public:
         return __atomic_fetch_add(&m_value, value, to_underlying(order));
     }
 
+    T fetch_sub(T value, MemoryOrder order = MemoryOrder::SeqCst) volatile {
+        return __atomic_fetch_sub(&m_value, value, to_underlying(order));
+    }
+
 
 private:
     T m_value = 0;
