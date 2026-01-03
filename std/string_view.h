@@ -27,6 +27,10 @@ template<typename T>
 class Vector;
 
 constexpr size_t __strlen(const char* str) {
+    if (!str) {
+        return 0;
+    }
+
     size_t len = 0;
     while (str[len] != '\0') {
         len++;
