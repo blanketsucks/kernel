@@ -9,6 +9,7 @@
 #include <std/format.h>
 #include <std/string.h>
 #include <std/time.h>
+#include <std/vector.h>
 
 namespace kernel {
 
@@ -90,6 +91,7 @@ private:
     void set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters&);
     
     void setup_thread_arguments();
+    void prepare_argument_vector(Vector<String> const& src, Vector<VirtualAddress>& dst);
 
     void enqueue(Thread*);
     Thread* take_next();
@@ -112,6 +114,9 @@ private:
     Process* m_process;
     ProcessArguments& m_arguments;
 
+    u8* m_arguments_region = nullptr;
+    size_t m_arguments_offset = 0;
+    
     void* m_exit_value = nullptr;
 
     Blocker* m_blocker = nullptr;

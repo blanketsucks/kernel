@@ -102,75 +102,109 @@ void Thread::set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters& register
     registers.set_initial_stack_state(this);
 }
 
+void Thread::prepare_argument_vector(Vector<String> const& src, Vector<VirtualAddress>& dst) {
+    if (!m_arguments_region) {
+        m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
+        m_arguments_offset = 0;
+    }
+
+    char* address = reinterpret_cast<char*>(MM->map_from_page_directory(m_process->page_directory(), m_arguments_region, PAGE_SIZE));
+    auto& offset = m_arguments_offset;
+
+    for (auto& argument : src) {
+        if (argument.empty()) {
+            dst.append(0);
+            continue;
+        }
+
+        size_t size = argument.size() + 1;
+        if (offset + size > PAGE_SIZE) {
+            MM->unmap_kernel_region(address);
+
+            m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
+            address = reinterpret_cast<char*>(MM->map_from_page_directory(m_process->page_directory(), m_arguments_region, PAGE_SIZE));
+
+            offset = 0;
+        }
+
+        memcpy(address + offset, argument.data(), argument.size());
+        address[offset + argument.size()] = '\0';
+
+        dst.append(reinterpret_cast<VirtualAddress>(m_arguments_region + offset));
+        offset += size;
+    }
+
+    dst.append(0); // Null-terminate the argument vector (argv/envp)
+    MM->unmap_kernel_region(address);
+}
+
 void Thread::setup_thread_arguments() {
-    page_directory()->switch_to(); // FIXME: Should we do this?
+    if (is_kernel()) {
+        return;
+    }
 
     Vector<VirtualAddress> argv, envp;
 
-    argv.reserve(m_arguments.argv.size());
-    envp.reserve(m_arguments.envp.size());
-
-    auto prepare_argument_vector = [this](Vector<String>& src, Vector<VirtualAddress>& dst) {
-        char* address = reinterpret_cast<char*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
-        size_t offset = 0;
-
-        for (auto& argument : src) {
-            if (argument.empty()) {
-                dst.append(0);
-                continue;
-            }
-
-            size_t size = argument.size() + 1;
-            if (offset + size > PAGE_SIZE) {
-                address = reinterpret_cast<char*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
-                offset = 0;
-            }
-
-            memcpy(address + offset, argument.data(), argument.size());
-            address[offset + argument.size()] = '\0';
-
-            dst.append(reinterpret_cast<VirtualAddress>(address + offset));
-            offset += size;
-        }
-
-        dst.append(0); // Null-terminate the argument vector (argv/envp)
-    };
+    argv.reserve(m_arguments.argv.size() + 1);
+    envp.reserve(m_arguments.envp.size() + 1);
 
     prepare_argument_vector(m_arguments.argv, argv);
     prepare_argument_vector(m_arguments.envp, envp);
 
+    size_t entries = argv.size() + envp.size() + 1;
+#ifdef __x86_64__
+    bool should_align = (entries % 2 != 0);
+    if (should_align) {
+        entries++;
+    }
+#else
+    entries += 3;
+#endif
+
+    size_t size = entries * sizeof(FlatPtr);
+
+    VirtualAddress user_stack = m_user_stack.value();
+    size_t offset = offset_in_page(user_stack - size);
+
+    u8* address = reinterpret_cast<u8*>(MM->map_from_page_directory(
+        m_process->page_directory(),
+        reinterpret_cast<void*>(std::align_down(user_stack - size, PAGE_SIZE)),
+        size + offset
+    ));
+
+    address += offset;
+
+    Stack stack(address, size);
     for (size_t i = argv.size(); i > 0; i--) {
-        m_user_stack.push<FlatPtr>(argv[i - 1]);
+        stack.push<FlatPtr>(argv[i - 1]);
     }
 
-    VirtualAddress argv_address = m_user_stack.value();
+    VirtualAddress argv_address = user_stack - stack.offset();
     for (size_t i = envp.size(); i > 0; i--) {
-        m_user_stack.push<FlatPtr>(envp[i - 1]);
+        stack.push<FlatPtr>(envp[i - 1]);
     }
 
-    VirtualAddress envp_address = m_user_stack.value();
+    VirtualAddress envp_address = user_stack - stack.offset();
     size_t argc = m_arguments.argv.size();
+    
+    stack.push<FlatPtr>(0xdeadbeef); // _start return address
 
 #ifdef __x86_64__
     m_registers.rdi = argc;
     m_registers.rsi = argv_address;
     m_registers.rdx = envp_address;
-#else
-    m_user_stack.push<FlatPtr>(envp_address);
-    m_user_stack.push<FlatPtr>(argv_address);
-    m_user_stack.push<FlatPtr>(argc);
-#endif
 
-    m_user_stack.push<FlatPtr>(0xdeadbeef); // _start return address
-
-#ifdef __x86_64__
-    // TODO: This comparision should be != but something weird is happening and I don't want to fix it now.
-    if (m_user_stack.value() % 16 == 0) {
-        m_user_stack.push<FlatPtr>(0);
+    if (should_align) {
+        stack.push<FlatPtr>(0);
     }
+#else
+    stack.push<FlatPtr>(envp_address);
+    stack.push<FlatPtr>(argv_address);
+    stack.push<FlatPtr>(argc);
 #endif
 
-    arch::PageDirectory::kernel_page_directory()->switch_to();
+    m_user_stack.skip(stack.offset());
+    MM->unmap_kernel_region(address - offset);
 }
 
 void Thread::exit(void* value) {

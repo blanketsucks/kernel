@@ -19,6 +19,11 @@ public:
 
     size_t size() const { return m_size; }
     size_t offset() const { return m_offset; }
+    
+    void skip(size_t bytes) {
+        m_stack -= bytes;
+        m_offset += bytes;
+    }
 
     template<typename T>
     void push(T value) {
