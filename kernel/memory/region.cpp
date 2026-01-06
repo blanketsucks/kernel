@@ -21,22 +21,35 @@ RegionAllocator::RegionAllocator(const Range& range, arch::PageDirectory* page_d
     m_head = new Region(range);
 }
 
+RegionAllocator::RegionAllocator(
+    const Range& range, Region* head, arch::PageDirectory* page_directory
+) : m_range(range), m_head(head), m_page_directory(page_directory) {}
+
 RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) {
     ScopedSpinLock lock(m_lock);
 
-    auto allocator = RegionAllocator::create(m_range, page_directory);
-    this->for_each_region([&](Region* region) {
-        auto* r = allocator->allocate_at(region->base(), region->size(), region->prot());
-        if (!r) {
-            return;
-        }
+    auto allocator = RegionAllocator::create(m_range, m_head->clone(), page_directory);
 
-        r->m_used = region->used();
+    Region* prev = allocator->m_head;
+    Region* region = m_head->next;
 
+    if (prev->used()) {
+        this->map_into(page_directory, prev);
+    }
+
+    while (region) {
+        auto* cloned = region->clone();
+
+        prev->next = cloned;
+        cloned->prev = prev;
+    
+        prev = cloned;
         if (region->used()) {
             this->map_into(page_directory, region);
         }
-    });
+
+        region = region->next;
+    }
 
     return allocator;
 }
@@ -44,26 +57,27 @@ RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directo
 void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* region) const {
     size_t pages = region->size() / PAGE_SIZE;
 
+    bool is_shared = region->is_shared();
+    VirtualAddress base = region->base();
+
     for (size_t i = 0; i < pages; i++) {
-        VirtualAddress address = region->base() + i * PAGE_SIZE;
+        VirtualAddress address = base + i * PAGE_SIZE;
         auto* entry = m_page_directory->get_page_table_entry(address);
 
         if (!entry) {
             continue;
         }
         
-        PhysicalAddress dst = entry->get_physical_address();
-        PhysicalPage* page = MM->get_physical_page(dst);
+        PhysicalAddress pa = entry->get_physical_address();
+        PhysicalPage* page = MM->get_physical_page(pa);
 
         if (!page) {
             continue;
         }
 
-        if (!region->is_shared()) {
-            entry->set_writable(false);
+        if (!is_shared) {            
             page->flags |= PhysicalPage::CoW;
-            
-            arch::invlpg(address);
+            entry->set_writable(false);
         }
 
         PageFlags flags = PageFlags::User;
@@ -76,7 +90,7 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
         }
         
         page->ref_count++;
-        page_directory->map(address, dst, flags);
+        page_directory->map(address, pa, flags);
     }
 }
 

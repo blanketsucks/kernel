@@ -110,9 +110,14 @@ class RegionAllocator {
 public:
     RegionAllocator() = default;
     RegionAllocator(const Range& range, arch::PageDirectory*);
+    RegionAllocator(const Range& range, Region* head, arch::PageDirectory* page_directory);
 
     static RefPtr<RegionAllocator> create(const Range& range, arch::PageDirectory* page_directory) {
         return RefPtr<RegionAllocator>(new RegionAllocator(range, page_directory));
+    }
+
+    static RefPtr<RegionAllocator> create(const Range& range, Region* head, arch::PageDirectory* page_directory) {
+        return RefPtr<RegionAllocator>(new RegionAllocator(range, head, page_directory));
     }
 
     RefPtr<RegionAllocator> clone(arch::PageDirectory*);
