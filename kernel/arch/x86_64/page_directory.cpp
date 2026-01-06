@@ -115,6 +115,7 @@ void PageDirectory::map(VirtualAddress va, PhysicalAddress pa, PageFlags flags) 
     }
 
     entry->set_physical_address(pa);
+    arch::invlpg(va);
 }
 
 void PageDirectory::unmap(VirtualAddress va) {
