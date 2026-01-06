@@ -87,6 +87,8 @@ void Scheduler::yield(bool if_idle) {
     }
 
     arch::InterruptDisabler disabler;
+    s_invoked_async = false;
+
     for (auto& process : s_processes) {
         for (auto& [_, thread] : process->threads()) {
             if (thread->is_blocked() && thread->should_unblock()) {
