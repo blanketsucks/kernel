@@ -60,7 +60,8 @@ Process::Process(
         m_page_directory = arch::PageDirectory::create_user_page_directory();
         if (!parent) {
             m_allocator = memory::RegionAllocator::create(
-                { PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) }, m_page_directory
+                { PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) },
+                m_page_directory
             );
         }
     } else {
@@ -79,19 +80,33 @@ Process::Process(
     }
 }
 
+Process::Process(
+    String name, Process* parent
+) : m_id(generate_id()), m_parent_id(parent->id()), m_name(move(name)), m_kernel(false), m_cwd(parent->m_cwd) {
+    m_page_directory = arch::PageDirectory::create_user_page_directory();
+    m_allocator = parent->m_allocator->clone(m_page_directory);
+
+    m_file_descriptors.resize(parent->m_file_descriptors.size());
+    for (size_t i = 0; i < parent->m_file_descriptors.size(); i++) {
+        m_file_descriptors[i] = parent->m_file_descriptors[i];
+    }
+}
+
 ErrorOr<void> Process::create_user_entry(ELF elf) {
     TRY(elf.load());
 
     if (elf.has_interpreter()) {
+        String interpreter = elf.interpreter();
+
         auto* vfs = fs::vfs();
-        auto file = TRY(vfs->open(elf.interpreter(), O_RDONLY, 0, m_cwd));
+        auto file = TRY(vfs->open(interpreter, O_RDONLY, 0, m_cwd));
 
         elf = ELF(file);
         TRY(elf.load());
 
         Vector<String> argv = m_arguments.argv;
 
-        m_arguments.argv = { elf.interpreter() };
+        m_arguments.argv = { interpreter };
         m_arguments.argv.extend(move(argv));
     }
 
@@ -119,18 +134,8 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
     return {};
 }
 
-Process* Process::fork(arch::Registers& registers) {
-    auto* process = new Process(generate_id(), m_name, false, nullptr, nullptr, nullptr, {}, m_tty, this);
-
-    process->m_parent_id = m_id;
-    process->m_allocator = m_allocator->clone(process->page_directory());
-
-    process->m_file_descriptors.resize(m_file_descriptors.size());
-    process->m_cwd = m_cwd;
-
-    for (size_t i = 0; i < m_file_descriptors.size(); i++) {
-        process->m_file_descriptors[i] = m_file_descriptors[i];
-    }
+Process* Process::fork(arch::Registers* registers) {
+    auto* process = new Process(name(), this);
 
     auto* thread = new Thread(process, registers);
     process->add_thread(thread);
@@ -246,14 +251,15 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
 
     auto* region = m_allocator->find_region(address, true);
     if (region && fault.rw && fault.present) {
-        address = std::align_down(address, PAGE_SIZE);
         arch::PageTableEntry* entry = m_page_directory->get_page_table_entry(address);
+        PhysicalAddress pa = entry->physical_address();
 
-        auto* page = MM->get_physical_page(entry->physical_address());
+        auto* page = MM->get_physical_page(pa);
+
         if (!page) {
             goto unrecoverable_fault;
         }
-
+        
         bool is_cow = page->flags & PhysicalPage::CoW;
         if (!is_cow) {
             goto unrecoverable_fault;
@@ -261,18 +267,18 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
 
         if (page->ref_count > 1) {
             page->ref_count--;
-
-            void* frame = MUST(MM->allocate_page_frame());
-
-            // TODO: Move this to a function in MemoryManager
-            page = MM->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
-            page->ref_count++;
-
-            MM->copy_physical_memory(frame, reinterpret_cast<void*>(entry->physical_address()), PAGE_SIZE);
-            entry->set_physical_address(reinterpret_cast<PhysicalAddress>(frame));
         } else {
             page->flags &= ~PhysicalPage::CoW;
         }
+
+        void* frame = MUST(MM->allocate_page_frame());
+
+        // TODO: Move this to a function in MemoryManager
+        page = MM->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
+        page->ref_count++;
+
+        MM->copy_physical_memory(frame, reinterpret_cast<void*>(pa), PAGE_SIZE);
+        entry->set_physical_address(reinterpret_cast<PhysicalAddress>(frame));
 
         entry->set_writable(true);
         arch::invlpg(address);

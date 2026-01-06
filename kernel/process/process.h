@@ -155,6 +155,8 @@ private:
         Process* parent = nullptr
     );
 
+    Process(String name, Process* parent);
+
     void notify_exit(Thread*);
 
     memory::Region* validate_pointer_access(const void* ptr, bool write);
