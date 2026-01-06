@@ -85,7 +85,7 @@ private:
     friend class Scheduler;
 
     Thread(String name, Process*, pid_t id, Entry, void* entry_data, ProcessArguments&);
-    Thread(Process*, arch::Registers&);
+    Thread(Process*, arch::Registers*);
 
     void create_stack();
     void set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters&);

@@ -84,7 +84,7 @@ public:
 
     Thread* spawn(String name, void (*entry)(void*), void* data = nullptr);
 
-    Process* fork(arch::Registers&);
+    Process* fork(arch::Registers*);
 
     void kill();
 
@@ -129,7 +129,7 @@ public:
     ErrorOr<FlatPtr> sys$getcwd(char* buffer, size_t size);
     ErrorOr<FlatPtr> sys$chdir(const char* path);
     
-    ErrorOr<FlatPtr> sys$fork(arch::Registers&);
+    ErrorOr<FlatPtr> sys$fork(arch::Registers*);
     ErrorOr<FlatPtr> sys$execve(const char* pathname, char* const argv[], char* const envp[]);
     
     ErrorOr<FlatPtr> sys$waitpid(pid_t pid, int* status, int options);

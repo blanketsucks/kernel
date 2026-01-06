@@ -21,7 +21,7 @@ FlatPtr Process::handle_syscall(arch::Registers* registers) {
     ErrorOr<FlatPtr> result = { FlatPtr(nullptr) };
 
     if (syscall == SYS_fork) {
-        result = this->sys$fork(*registers);
+        result = this->sys$fork(registers);
     } else if (syscall == SYS_exit) {
         this->sys$exit(arg1); // sys$exit never returns so it needs special handling
     } else {

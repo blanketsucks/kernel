@@ -30,12 +30,12 @@ Thread::Thread(
 }
 
 Thread::Thread(
-    Process* process, arch::Registers& registers
+    Process* process, arch::Registers* registers
 ) : m_id(process->id()), m_state(Running), m_name("main"), m_process(process), m_arguments(process->m_arguments) {
     void* kernel_stack = MUST(MM->allocate_kernel_region(KERNEL_STACK_SIZE));
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
-    memcpy(&m_registers, &registers, sizeof(arch::Registers));
+    memcpy(&m_registers, registers, sizeof(arch::Registers));
     m_registers.cr3 = page_directory()->cr3();
 
     m_registers.set_syscall_return(0);

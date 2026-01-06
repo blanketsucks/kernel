@@ -726,10 +726,10 @@ ErrorOr<FlatPtr> Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
     return TRY(file->ioctl(request, arg));
 }
 
-ErrorOr<FlatPtr> Process::sys$fork(arch::Registers& registers) {
+ErrorOr<FlatPtr> Process::sys$fork(arch::Registers* registers) {
     auto* process = this->fork(registers);
     Scheduler::add_process(process);
-    
+
     return process->id();
 }
 
