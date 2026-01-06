@@ -33,22 +33,7 @@ struc ThreadRegisters
     .cr3 resq 1
 endstruc
 
-_switch_context_no_state:
-    mov rsp, [rdi + ThreadRegisters.rsp]
-
-    pop rbx
-    pop rbp
-    pop r12
-    pop r13
-    pop r14
-    pop r15
-    popfq
-
-    ret
-
-; void _switch_context(ThreadRegisters *old, ThreadRegisters *new)
-_switch_context:
-    ; Push callee-saved registers
+%macro pushr 0
     pushfq
     push r15
     push r14
@@ -56,21 +41,9 @@ _switch_context:
     push r12
     push rbp
     push rbx
+%endmacro
 
-    mov [rdi + ThreadRegisters.rsp], rsp
-
-    ; Load rsp and cr3 from `new`
-    mov rsp, [rsi + ThreadRegisters.rsp]
-    mov rax, [rsi + ThreadRegisters.cr3]
-
-    mov rcx, cr3
-    cmp rcx, rax
-
-    jz .no_cr3_change ; No need to cause a TLB flush if we are switching to the same page directory
-
-    mov cr3, rax
-.no_cr3_change:
-
+%macro popr 0
     pop rbx
     pop rbp
     pop r12
@@ -78,7 +51,27 @@ _switch_context:
     pop r14
     pop r15
     popfq
+%endmacro
 
+_switch_context_no_state:
+    mov rsp, [rdi + ThreadRegisters.rsp]
+
+    popr
+    ret
+
+; void _switch_context(ThreadRegisters *old, ThreadRegisters *new)
+_switch_context:
+    pushr
+
+    mov [rdi + ThreadRegisters.rsp], rsp
+
+    ; Load rsp and cr3 from `new`
+    mov rsp, [rsi + ThreadRegisters.rsp]
+    mov rax, [rsi + ThreadRegisters.cr3]
+
+    mov cr3, rax
+
+    popr
     ret
 
 _thread_first_enter:

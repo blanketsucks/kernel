@@ -26,11 +26,7 @@ bool SleepBlocker::should_unblock() {
     Duration current = TimeManager::query_time(m_clock_id);
     Duration remaining = m_deadline - current;
 
-    if (remaining <= Duration::zero()) {
-        return true;
-    }
-
-    return false;
+    return remaining <= Duration::zero();
 }
 
 WaitBlocker* WaitBlocker::create(Thread* thread, pid_t pid) {

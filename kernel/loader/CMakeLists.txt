@@ -3,14 +3,7 @@ file(GLOB_RECURSE ASM_SOURCES *.asm)
 
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)
 
-add_executable(
-    loader.bin 
-    ${SOURCES} 
-    ${ASM_SOURCES} 
-    ${CMAKE_SOURCE_DIR}/kernel/serial.cpp 
-    ${CMAKE_SOURCE_DIR}/kernel/arch/io.cpp
-    ${CMAKE_SOURCE_DIR}/std/cstring.cpp
-)
+add_executable(loader.bin ${SOURCES} ${ASM_SOURCES} ${CMAKE_SOURCE_DIR}/std/cstring.cpp)
 set_target_properties(loader.bin PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld)
 
 target_include_directories(loader.bin PRIVATE ${CMAKE_SOURCE_DIR}/ ${CMAKE_SOURCE_DIR}/include)

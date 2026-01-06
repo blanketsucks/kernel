@@ -22,6 +22,7 @@ target_link_options(
     -nostdlib -shared -Bsymbolic -T ${CMAKE_CURRENT_SOURCE_DIR}/elf_x86_64_efi.ld
 )
 
-add_custom_command(TARGET efi-loader POST_BUILD
+add_custom_command(
+    TARGET efi-loader POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $<TARGET_FILE:efi-loader> ${CMAKE_CURRENT_BINARY_DIR}/loader.efi
 )

@@ -113,8 +113,6 @@ void PATADevice::handle_irq() {
     
     m_bus_master.write<u8>(ata::BMStatus, status | 0x04);
     m_irq_blocker.set_value(true);
-
-    // Scheduler::yield(true);
 }
 
 size_t PATADevice::max_io_block_count() const {

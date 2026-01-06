@@ -40,7 +40,7 @@ public:
 
 private:
     Duration m_deadline;
-    clockid_t m_clock_id;  
+    clockid_t m_clock_id;
 };
 
 class WaitBlocker : public Blocker {
