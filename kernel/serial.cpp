@@ -1,10 +1,16 @@
 #include <kernel/serial.h>
 #include <kernel/arch/io.h>
+#include <kernel/sync/spinlock.h>
+#include <kernel/arch/processor.h>
+
+#include <std/cstring.h>
 
 namespace kernel::serial {
 
 static COMPort s_com1(COM1);
 static bool s_initialized = false;
+
+static SpinLock s_lock;
 
 // Directly taken from https://wiki.osdev.org/Serial_Ports#Example_Code
 bool COMPort::init() {
@@ -34,10 +40,17 @@ void COMPort::write(char c) {
     m_port.write<u8>(Data, c);
 }
 
-void COMPort::write(const char* str) {
-    while (*str) {
-        this->write(*str++);
+void COMPort::write(const char* str, size_t len) {
+    if (Processor::are_interrupts_initialized()) {
+        ScopedSpinLock lock(s_lock);
+        while (len--)
+            this->write(*str++);
+
+        return;
     }
+        
+    while (len--)
+        this->write(*str++);
 }
 
 char COMPort::read() {
@@ -67,15 +80,11 @@ void putc(char c) {
 }
 
 void write(const char* str, size_t len) {
-    for (u32 i = 0; i < len; i++) {
-        putc(str[i]);
-    }
+    s_com1.write(str, len);
 }
 
 void write(const char* str) {
-    while (*str) {
-        putc(*str++);
-    }
+    s_com1.write(str, std::strlen(str));
 }
 
 }

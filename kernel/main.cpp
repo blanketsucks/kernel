@@ -87,6 +87,7 @@ extern "C" void main(BootInfo const& boot_info) {
 
     devfs::init();
 
+    Processor::set_interrupts_initialized();
     asm volatile("sti");
 
     auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);

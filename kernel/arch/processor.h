@@ -19,6 +19,9 @@ public:
     // For now there is only one instance but where we have SMP we will have multiple instances
     static Processor& instance();
 
+    static bool are_interrupts_initialized();
+    static void set_interrupts_initialized();
+
     arch::TSS& tss() { return m_tss; }
 
     [[noreturn]] void initialize_context_switching(Thread* initial_thread);

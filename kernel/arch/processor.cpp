@@ -8,10 +8,20 @@ namespace kernel {
 extern "C" void _switch_context(arch::ThreadRegisters*, arch::ThreadRegisters*);
 extern "C" [[noreturn]] void _switch_context_no_state(arch::ThreadRegisters*);
 
+static bool s_interrupts_initialized = false;
+
 static Processor s_instance;
 
 Processor& Processor::instance() {
     return s_instance;
+}
+
+bool Processor::are_interrupts_initialized() {
+    return s_interrupts_initialized;
+}
+
+void Processor::set_interrupts_initialized() {
+    s_interrupts_initialized = true;
 }
 
 void Processor::preinit() {

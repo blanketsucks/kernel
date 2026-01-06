@@ -37,7 +37,7 @@ public:
     bool init();
 
     void write(char c);
-    void write(const char* str);
+    void write(const char* str, size_t len);
 
     char read();
 
