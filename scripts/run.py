@@ -1,10 +1,10 @@
 from typing import List, NamedTuple
 
+from enum import Enum
 import argparse
 import pathlib
 import subprocess
 import sys
-from enum import Enum
 
 CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
@@ -53,7 +53,7 @@ class QemuArgs(NamedTuple):
     cmdline: List[str] = []
 
     netdev: str = 'user,id=net0,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888'
-    devices: List[str] = ['ac97', 'e1000,netdev=net0']
+    devices: List[str] = ['ac97,audiodev=snd0', 'e1000,netdev=net0']
 
     def build_disk_image_argument(self) -> List[str]:
         return ['-drive', self.disk_image.build()]
@@ -83,6 +83,7 @@ class QemuArgs(NamedTuple):
             *self.build_network_argument()
         ]
 
+        args.extend(['-audiodev', 'pa,id=snd0'])
         if self.usb:
             if self.usb_controller is USBController.UHCI:
                 args.append('-usb')
@@ -92,7 +93,7 @@ class QemuArgs(NamedTuple):
                 # TODO: Support
                 ...
 
-            args.extend(['-device', 'usb-audio,bus=usb-bus.0,id=foobar'])
+            args.extend(['-device', 'usb-audio,bus=usb-bus.0,audiodev=snd0'])
 
         if self.virtio_gpu:
             args.extend(['-device', 'virtio-gpu-pci'])
@@ -108,11 +109,14 @@ class QemuArgs(NamedTuple):
 
         if self.uefi:
             args.extend(['-bios', self.ovmf])
+            args.extend(['-machine', 'q35'])
 
         if self.kvm:
             args.extend(['-accel', 'kvm'])
 
-        args.extend(['-append', ' '.join(self.cmdline)])
+        if not self.uefi:
+            args.extend(['-append', ' '.join(self.cmdline)])
+
         return args
 
 def main():
