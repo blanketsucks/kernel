@@ -5,6 +5,7 @@
 #include <kernel/usb/usb.h>
 
 #include <std/memory.h>
+#include <std/string.h>
 
 namespace kernel::usb {
 
@@ -21,6 +22,8 @@ public:
     u8 address() const { return m_address; }
 
     size_t submit_control_transfer(RequestType type, u8 request, u16 value, u16 index, u16 length, void* data);
+
+    String fetch_string_descriptor(u8 index, u16 lang_id);
     
 private:
     Device(Controller* controller, u8 port, u8 address) : m_controller(controller), m_port(port), m_address(address) {}

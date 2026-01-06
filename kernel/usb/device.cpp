@@ -42,6 +42,7 @@ void Device::initialize() {
     dbgln(" - Max Packet Size: {}", descriptor.max_packet_size);
     dbgln(" - Vendor ID: {:#x}", descriptor.vendor_id);
     dbgln(" - Product ID: {:#x}", descriptor.product_id);
+    dbgln();
 }
 
 size_t Device::submit_control_transfer(RequestType type, u8 request, u16 value, u16 index, u16 length, void* data) {
@@ -54,6 +55,42 @@ size_t Device::submit_control_transfer(RequestType type, u8 request, u16 value, 
     );
 
     return length;
+}
+
+String Device::fetch_string_descriptor(u8 index, u16 lang_id) {
+    UnicodeStringDescriptor descriptor;
+    this->submit_control_transfer(
+        RequestType::DeviceToHost | RequestType::Standard | RequestType::Device,
+        Request::GetDescriptor, 
+        (USB_DESCRIPTOR_TYPE_STRING << 8) | index, 
+        lang_id, 
+        sizeof(UnicodeStringDescriptor), 
+        &descriptor
+    );
+
+    u8* buffer = new u8[descriptor.length];
+    this->submit_control_transfer(
+        RequestType::DeviceToHost | RequestType::Standard | RequestType::Device,
+        Request::GetDescriptor,
+        (USB_DESCRIPTOR_TYPE_STRING << 8) | index,
+        lang_id,
+        descriptor.length,
+        buffer
+    );
+
+    size_t len = (descriptor.length - 2) / 2;
+
+    String str;
+    str.reserve(len);
+
+    // TODO: Support unicode strings
+    for (size_t i = 0; i < len; i++) {
+        char16_t ch = reinterpret_cast<char16_t*>(buffer + 2)[i];
+        str.append(static_cast<char>(ch));
+    }
+
+    delete[] buffer;
+    return str;
 }
 
 void Device::set_device_address(u8 address) {
