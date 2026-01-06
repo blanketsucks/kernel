@@ -6,7 +6,7 @@
 namespace kernel {
 
 extern "C" void _switch_context(arch::ThreadRegisters*, arch::ThreadRegisters*);
-extern "C" void _switch_context_no_state(arch::ThreadRegisters*);
+extern "C" [[noreturn]] void _switch_context_no_state(arch::ThreadRegisters*);
 
 static Processor s_instance;
 

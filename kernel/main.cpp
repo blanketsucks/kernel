@@ -93,10 +93,7 @@ extern "C" void main(BootInfo const& boot_info) {
     Scheduler::add_process(process);
 
     Scheduler::init();
-
-    for (;;) {
-        asm volatile("hlt");
-    }
+    __builtin_unreachable();
 }
 
 void stage2() {
