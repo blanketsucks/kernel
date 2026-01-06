@@ -12,7 +12,7 @@ namespace kernel {
 
 class HPET;
 
-static constexpr size_t DEFAULT_HPET_TIMER_FREQUENCY = 100;
+static constexpr size_t DEFAULT_HPET_TIMER_FREQUENCY = 1'000;
 
 class HPETTimer : public Timer {
 public:
