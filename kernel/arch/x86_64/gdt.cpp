@@ -15,24 +15,16 @@ static void set_tss_selector(u16 selector) {
     asm volatile("ltr %0" :: "r"(selector));
 }
 
-
-// Limine requires us to have at least 7 GDT entries and we use the rest for user segments
 static GDTEntry s_gdt_entries[11];
 
-void set_gdt_entry(
-    u32 index,
-    u32 limit,
-    bool is_data_segment,
-    GDTEntrySize size,
-    bool rw,
-    bool executable,
-    u8 privilege,
-    u8 type,
-    bool present,
-    bool accessed 
-) {
-    GDTEntry& entry = s_gdt_entries[index];
+static GDTEntry s_entries[256];
+static u16 s_entry_count = 1;
+
+u16 create_gdt_entry(u32 limit, GDTEntrySize size, GDTEntryFlags flags, u8 privilege, GDTEntryType type) {
+    GDTEntry& entry = s_entries[s_entry_count];
     memset(&entry, 0, sizeof(GDTEntry));
+
+    bool is_data_segment = std::has_flag(flags, GDTEntryFlags::DataSegment);
 
     entry.limit_low = limit & 0xFFFF;
     entry.flags.limit_high = (limit >> 16) & 0xF;
@@ -53,12 +45,13 @@ void set_gdt_entry(
             break;
     }
 
-    entry.access.readable = rw;
-    entry.access.executable = executable;
+    entry.access.readable = std::has_flag(flags, GDTEntryFlags::Readable);
+    entry.access.executable = std::has_flag(flags, GDTEntryFlags::Executable);
     entry.access.privilege = privilege;
-    entry.access.type = type;
-    entry.access.present = present;
-    entry.access.accessed = accessed;
+    entry.access.type = to_underlying(type);
+    entry.access.present = true;
+
+    return s_entry_count++;
 }
 
 void write_tss(u16 index, TSS& tss) {
@@ -84,36 +77,62 @@ void write_tss(u16 index, TSS& tss) {
     s_gdt_entries[index + 1] = entry;
 }
 
+u16 write_tss(TSS& tss) {
+    u16 index = s_entry_count;
+
+    u64 base = reinterpret_cast<u64>(&tss);
+    u32 limit = sizeof(TSS) - 1;
+
+    GDTEntry entry;
+
+    entry.set_base(base & 0xFFFFFFFF);
+    entry.set_limit(limit);
+
+    entry.flags.size = 1;
+
+    entry.access.executable = true;
+    entry.access.present = true;
+    entry.access.accessed = true;
+
+    s_entries[s_entry_count++] = entry;
+
+    entry.high = 0;
+    entry.low = base >> 32;
+
+    s_entries[s_entry_count++] = entry;
+
+    return index;
+}
+
 void init_gdt() {
-    GDTDescriptor gdtr {
-        .limit = sizeof(s_gdt_entries) - 1,
-        .base = reinterpret_cast<u64>(&s_gdt_entries)
-    };
+    memset(s_entries, 0, sizeof(s_entries));
 
-    // Null segment
-    memset(&s_gdt_entries[0], 0, sizeof(GDTEntry));
+    // TODO: Limine forces us to have entries for 16 and 32 bit segments and currently every descriptor index is hardcoded,
+    //       so we need to find a way to make this more flexible.
+    create_gdt_entry(0xFFFF, GDT_ENTRY_SIZE_16, GDTEntryFlags::Readable | GDTEntryFlags::Executable);
+    create_gdt_entry(0xFFFF, GDT_ENTRY_SIZE_16, GDTEntryFlags::DataSegment | GDTEntryFlags::Readable);
 
-    // 16 bit segments
-    set_gdt_entry(1, 0xFFFF, false, GDT_ENTRY_SIZE_16, true, true, 0);
-    set_gdt_entry(2, 0xFFFF, true, GDT_ENTRY_SIZE_16, true, false, 0);
+    create_gdt_entry(0xFFFFFFFF, GDT_ENTRY_SIZE_32, GDTEntryFlags::Readable | GDTEntryFlags::Executable);
+    create_gdt_entry(0xFFFFFFFF, GDT_ENTRY_SIZE_32, GDTEntryFlags::DataSegment | GDTEntryFlags::Readable);
 
-    // 32 bit segments
-    set_gdt_entry(3, 0xFFFFFFFF, false, GDT_ENTRY_SIZE_32, true, true, 0);
-    set_gdt_entry(4, 0xFFFFFFFF, true, GDT_ENTRY_SIZE_32, true, false, 0);
-    
-    // Kernel 64 bit segments
-    set_gdt_entry(5, 0, false, GDT_ENTRY_SIZE_64, true, true, 0);
-    set_gdt_entry(6, 0, true, GDT_ENTRY_SIZE_64, true, false, 0);
+    // Kernel 64-bit code/data
+    create_gdt_entry(0, GDT_ENTRY_SIZE_64, GDTEntryFlags::Readable | GDTEntryFlags::Executable);
+    create_gdt_entry(0, GDT_ENTRY_SIZE_64, GDTEntryFlags::DataSegment | GDTEntryFlags::Readable);
 
-    // User 64 bit segments
-    set_gdt_entry(7, 0, true, GDT_ENTRY_SIZE_64, true, false, 3);
-    set_gdt_entry(8, 0, false, GDT_ENTRY_SIZE_64, true, true, 3);
+    // User 64-bit code/data
+    create_gdt_entry(0, GDT_ENTRY_SIZE_64, GDTEntryFlags::DataSegment | GDTEntryFlags::Readable, 3);
+    create_gdt_entry(0, GDT_ENTRY_SIZE_64, GDTEntryFlags::Readable | GDTEntryFlags::Executable, 3);
 
     auto& tss = Processor::instance().tss();
-    write_tss(9, tss);
+    u16 index = write_tss(tss);
+
+    GDTDescriptor gdtr {
+        .limit = static_cast<u16>(sizeof(GDTEntry) * s_entry_count - 1),
+        .base = reinterpret_cast<u64>(&s_entries)
+    };
 
     _flush_gdt(&gdtr);
-    set_tss_selector(0x48);
+    set_tss_selector(index * sizeof(GDTEntry));
 }
 
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "std/enums.h"
 #include <kernel/common.h>
 
 namespace kernel::arch {
@@ -70,12 +71,31 @@ enum GDTEntrySize {
 };
 
 void init_gdt();
-void set_gdt_entry(
-    u32 index, u32 limit, bool is_data_segment, GDTEntrySize size,
-    bool rw, bool executable, u8 privilege,
-    u8 type = 1, bool present = true, bool accessed = false
+
+enum class GDTEntryFlags {
+    None = 0,
+    DataSegment = 1 << 0,
+    Executable = 1 << 1,
+    Readable = 1 << 2
+};
+
+enum class GDTEntryType {
+    System = 0,
+    CodeOrData = 1
+};
+
+MAKE_ENUM_BITWISE_OPS(GDTEntryFlags)
+
+u16 create_gdt_entry(
+    u32 limit,
+    GDTEntrySize size,
+    GDTEntryFlags flags,
+    u8 privilege = 0,
+    GDTEntryType type = GDTEntryType::CodeOrData
 );
 
-void write_tss(u16 index, TSS&);
+u16 create_gdt_entry(const GDTEntry&);
+
+u16 write_tss(TSS&);
 
 }
