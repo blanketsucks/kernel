@@ -26,6 +26,7 @@ class Process {
 public:
     enum State {
         Alive = 1,
+        Zombie,
         Dead
     };
 
@@ -59,6 +60,7 @@ public:
     static Process* current();
 
     State state() const { return m_state; }
+    void set_state(State state) { m_state = state; }
 
     pid_t id() const { return m_id; }
     pid_t parent_id() const { return m_parent_id; }
