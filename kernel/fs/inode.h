@@ -105,7 +105,7 @@ public:
     FileSystem* fs() { return m_fs; }
     const FileSystem* fs() const { return m_fs; }
 
-    String name() const { return m_name; }
+    String const& name() const { return m_name; }
 
     String fullpath() const;
 
