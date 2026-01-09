@@ -27,7 +27,7 @@ public:
 
     static VFS* instance();
 
-    ResolvedInode const& root() const { return *m_root; }
+    RefPtr<ResolvedInode> root() const { return m_root; }
 
     ErrorOr<RefPtr<ResolvedInode>> resolve(StringView path, RefPtr<ResolvedInode>* parent = nullptr, RefPtr<ResolvedInode> relative_to = nullptr);
 
