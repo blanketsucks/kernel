@@ -76,7 +76,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
             continue;
         } else if (component == "..") {
             if (current->parent()) {
-                current = current->parent();
+                current = current->m_parent;
             }
             
             continue;
