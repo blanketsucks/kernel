@@ -5,12 +5,7 @@ namespace kernel {
 ErrorOr<FlatPtr> Process::sys$getcwd(char* buffer, size_t size) {
     this->validate_write(buffer, size);
 
-    auto cwd = m_cwd;
-    if (!cwd) {
-        cwd = fs::vfs()->resolve("/").unwrap();
-    }
-
-    auto path = cwd->fullpath();
+    auto path = m_cwd->fullpath();
     if (path.size() > size) {
         return Error(ERANGE);
     }

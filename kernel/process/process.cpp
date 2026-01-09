@@ -55,7 +55,13 @@ Process::Process(
     ProcessArguments arguments,
     TTY* tty,
     Process* parent
-) : m_state(Alive), m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_cwd(cwd), m_arguments(move(arguments)) {
+) : m_state(Alive), m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_arguments(move(arguments)) {
+    if (!cwd) {
+        m_cwd = fs::vfs()->root();
+    } else {
+        m_cwd = move(cwd);
+    }
+
     if (!kernel) {
         m_page_directory = arch::PageDirectory::create_user_page_directory();
         if (!parent) {
