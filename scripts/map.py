@@ -1,3 +1,4 @@
+from typing import NamedTuple
 import subprocess
 import sys
 import pathlib
@@ -7,6 +8,11 @@ CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
 
 DEFAULT_KERNEL_LOCATION = ROOT  / 'build' / 'kernel' / 'kernel.bin'
+MAP_FILE = CWD / 'kernel.map'
+
+class Entry(NamedTuple):
+    address: int
+    name: str
 
 try:
     binary = sys.argv[1]
@@ -18,8 +24,9 @@ process = subprocess.Popen(['nm', '-n', '-C', binary], stdout=subprocess.PIPE, s
 stdout, _ = process.communicate()
 stdout = stdout.decode('utf-8')
 
-map = open('kernel.map', 'wb')
+map = open(MAP_FILE, 'wb')
 
+entries: list[Entry] = []
 for line in stdout.split('\n'):
     if not line:
         continue
@@ -28,12 +35,11 @@ for line in stdout.split('\n'):
     if type not in ('T', 'W'):
         continue
 
-    entry = struct.pack('QI', int(address, 16), len(name));
+    entries.append(Entry(int(address, 16), name))
 
-    map.write(entry)
+map.write(struct.pack('I', len(entries)))
+for (address, name) in entries:
+    map.write(struct.pack('QI', address, len(name)))
     map.write(name.encode('ascii'))
-
-null_entry = struct.pack('QI', 0, 0)
-map.write(null_entry)
 
 map.close()
