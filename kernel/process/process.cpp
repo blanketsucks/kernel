@@ -412,20 +412,21 @@ RefPtr<fs::FileDescriptor> Process::get_file_descriptor(int fd) {
 }
 
 void Process::kill() {
-    for (auto& [_, thread] : m_threads) {
-        thread->kill();
-    }
-    
     for (auto& fd : m_file_descriptors) {
         fd.~RefPtr();
     }
-    
-    m_state = Zombie;
-    if (!m_allocator) {
-        Scheduler::yield();
-        return;
-    }
 
+    if (!m_allocator) {
+        m_state = Zombie;
+        for (auto& [_, thread] : m_threads) {
+            thread->kill();
+        }
+
+        Scheduler::yield();
+
+        __builtin_unreachable();
+    }
+    
     m_allocator->for_each_region([this](auto* region) {
         if (region->is_file_backed()) {
             // TODO
@@ -433,10 +434,15 @@ void Process::kill() {
         } else if (!region->used() || region->is_kernel_managed()) {
             return;
         }
-
+        
         MM->free(m_allocator->page_directory(), region->base(), region->size());
         m_allocator->free(region);
     });
+    
+    m_state = Zombie;
+    for (auto& [_, thread] : m_threads) {
+        thread->kill();
+    }
 
     Scheduler::yield();
 }
