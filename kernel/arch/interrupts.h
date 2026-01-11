@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/arch/processor.h>
 
 namespace kernel::arch {
 
@@ -37,7 +38,7 @@ void set_interrupt_handler(u32 interrupt, uintptr_t handler, u8 flags);
 class InterruptDisabler {
 public:
     InterruptDisabler() {
-        asm volatile("cli");
+        Processor::disable_interrupts();
     }
 
     ~InterruptDisabler() {
@@ -45,7 +46,7 @@ public:
     }
 
     void enable() {
-        asm volatile("sti");
+        Processor::enable_interrupts();
     }
 };
 
