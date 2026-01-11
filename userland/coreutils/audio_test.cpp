@@ -1,15 +1,23 @@
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <fcntl.h>
+#include <sys/stat.h>
+#include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <time.h>
 
 #include <std/format.h>
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        dbgln("Usage: {} <file>", argv[0]);
+        return 1;
+    }
+
     int fd = open("/dev/snd0", O_WRONLY);
     if (fd < 0) {
-        dbgln("Failed to open /dev/snd0");
+        dbgln("Failed to open /dev/snd0: {}", strerror(errno));
         return 1;
     }
 
@@ -21,9 +29,9 @@ int main() {
     dbgln("Sample rate: {}", sample_rate);
     dbgln("Channels: {}", channels);
 
-    int audio = open("/res/audio/audio.pcm", O_RDONLY);
+    int audio = open(argv[1], O_RDONLY);
     if (audio < 0) {
-        dbgln("Failed to open /res/audio/audio.pcm");
+        dbgln("Failed to open {}: {}", argv[1], strerror(errno));
         return 1;
     }
 
@@ -34,5 +42,11 @@ int main() {
     read(audio, buffer, st.st_size);
 
     write(fd, buffer, st.st_size);
+
+    close(audio);
+    close(fd);
+
+    delete[] buffer;
+
     return 0;
 }

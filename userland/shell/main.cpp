@@ -46,48 +46,8 @@ static int term_cd(shell::Terminal&, int argc, char** argv) {
     return 0;
 }
 
-static int term_cat(shell::Terminal& terminal, int argc, char** argv) {
-    if (argc < 2) {
-        return 1;
-    }
-
-    int fd = open(argv[1], O_RDONLY);
-    if (fd < 0) {
-        terminal.writeln(std::format("cat: {}: {}", argv[1], strerror(errno)));
-        return 1;
-    }
-
-    struct stat st;
-    if (fstat(fd, &st) < 0) {
-        close(fd);
-        return 1;
-    }
-
-    size_t size = st.st_size;
-    if (size == 0) {
-        close(fd);
-        return 0;
-    }
-
-    char* buffer = new char[4096];
-    while (true) {
-        ssize_t n = read(fd, buffer, 4096);
-        terminal.write(StringView { buffer, static_cast<size_t>(n) } );
-
-        if (n < 4096) {
-            break;
-        }
-    }
-
-    delete[] buffer;
-    close(fd);
-    
-    return 0;
-}
-
-static HashMap<String, BuiltinCommand> BUILTIN_COMMANDS = {
-    { "cd", { .function = term_cd } },
-    { "cat", { .function = term_cat } }
+static HashMap<StringView, BuiltinCommand> BUILTIN_COMMANDS = {
+    { "cd", { .function = term_cd } }
 };
 
 static void spawn(shell::Terminal& terminal, shell::Command const& command, char** argv) {
@@ -150,7 +110,7 @@ static void run_command(shell::Terminal& terminal, String line) {
     };
 
     struct stat st;
-    if (name.startswith("./")) {
+    if (name.startswith(".") || name.startswith("..") || name.startswith("/")) {
         int rc = stat_length(name.data(), name.size(), &st);
         if (rc < 0) {
             terminal.writeln(std::format("{}: {}", name, strerror(errno)));
