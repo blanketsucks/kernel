@@ -22,6 +22,9 @@ public:
     static bool are_interrupts_initialized();
     static void set_interrupts_initialized();
 
+    static void enable_interrupts();
+    static void disable_interrupts();
+
     arch::TSS& tss() { return m_tss; }
 
     [[noreturn]] void initialize_context_switching(Thread* initial_thread);

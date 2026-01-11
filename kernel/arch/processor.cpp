@@ -24,6 +24,22 @@ void Processor::set_interrupts_initialized() {
     s_interrupts_initialized = true;
 }
 
+void Processor::enable_interrupts() {
+    if (!s_interrupts_initialized) {
+        return;
+    }
+
+    asm volatile("sti");
+}
+
+void Processor::disable_interrupts() {
+    if (!s_interrupts_initialized) {
+        return;
+    }
+
+    asm volatile("cli");
+}
+
 void Processor::preinit() {
     m_features = arch::cpu_features();
     u32 eax, ebx, ecx, edx;
