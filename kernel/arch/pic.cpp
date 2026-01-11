@@ -1,6 +1,7 @@
 #include <kernel/arch/pic.h>
 #include <kernel/arch/interrupts.h>
 #include <kernel/arch/io.h>
+#include <kernel/arch/processor.h>
 
 namespace kernel::pic {
 
@@ -70,7 +71,7 @@ void init() {
 }
 
 void disable(u8 irq) {
-    asm volatile("cli");
+    arch::InterruptDisabler disabler;
 
     u16 port = 0;
     if (irq < 8) {
@@ -82,12 +83,10 @@ void disable(u8 irq) {
 
     u8 value = io::read<u8>(port) | (1 << irq);
     io::write(port, value);
-
-    asm volatile("sti");
 }
 
 void enable(u8 irq) {
-    asm volatile("cli");
+    arch::InterruptDisabler disabler;
 
     u16 port = 0;
     if (irq < 8) {
@@ -101,7 +100,6 @@ void enable(u8 irq) {
     value &= ~(1 << irq);
 
     io::write(port, value);
-    asm volatile("sti");
 }
 
 }
