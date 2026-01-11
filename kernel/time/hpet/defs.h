@@ -63,6 +63,8 @@ union TimerConfigurationAndCapabilities {
 };
 
 struct HPETTable {
+    static constexpr const char* SIGNATURE = "HPET";
+
     acpi::SDTHeader header;
     u8 hardware_rev_id;
     u8 comparator_count : 5;

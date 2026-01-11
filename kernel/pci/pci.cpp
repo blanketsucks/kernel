@@ -40,10 +40,7 @@ Optional<pci::Device> PCI::find_device(u16 vendor_id, u16 device_id, i16 prog_if
 }
 
 void PCI::init() {
-    auto* parser = acpi::Parser::instance();
-    parser->init();
-
-    auto* mcfg = parser->find_table<acpi::MCFG>("MCFG");
+    auto* mcfg = ACPIParser::find<acpi::MCFG>();
     if (!mcfg) {
         auto controller = pci::PIIX4Controller::create();
         controller->enumerate([this](const pci::Device& device) {

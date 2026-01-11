@@ -83,12 +83,14 @@ extern "C" void main(BootInfo const& boot_info) {
     pic::init();
     
     MemoryManager::init();
+    ACPIParser::init();
+
     TimeManager::init();
 
     devfs::init();
 
     Processor::set_interrupts_initialized();
-    asm volatile("sti");
+    Processor::enable_interrupts();
 
     auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
     Scheduler::add_process(process);

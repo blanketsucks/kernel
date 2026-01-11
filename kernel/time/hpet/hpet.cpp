@@ -31,9 +31,7 @@ bool HPET::init() {
 }
 
 bool HPET::initialize() {
-    auto* parser = acpi::Parser::instance();
-    auto* hpet = parser->find_table<HPETTable>("HPET");
-
+    auto* hpet = ACPIParser::find<HPETTable>();
     if (!hpet) {
         return false;
     }

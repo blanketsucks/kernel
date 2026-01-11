@@ -27,9 +27,6 @@ void TimeManager::initialize() {
 
     m_epoch_time = Duration::from_seconds(rtc::boot_time());
 
-    auto* parser = acpi::Parser::instance();
-    parser->init();
-
     // Fall back to the PIT if the HPET is not available
     if (!HPET::init()) {
         this->initialize_with_pit();

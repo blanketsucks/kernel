@@ -1,38 +1,37 @@
 #include <kernel/acpi/acpi.h>
-#include <kernel/acpi/lai.h>
 #include <kernel/memory/manager.h>
 #include <kernel/serial.h>
-
-#include <kernel/pci/controllers/mmio.h>
 
 #include <std/utility.h>
 #include <std/format.h>
 #include <std/cstring.h>
 
-#include <lai/core.h>
-#include <lai/helpers/resource.h>
+namespace kernel {
 
-namespace kernel::acpi {
+using namespace acpi;
 
-static Parser s_parser;
+static ACPIParser s_instance;
 static bool s_initialized = false;
 
-Parser* Parser::instance() {
-    return &s_parser;
+ACPIParser* ACPIParser::instance() {
+    return &s_instance;
 }
 
-void Parser::init() {
+void ACPIParser::init() {
     if (s_initialized) {
         return;
     }
 
-    this->find_root_table();
-    this->parse_acpi_tables();
-
+    s_instance.initialize();
     s_initialized = true;
 }
 
-SDTHeader* Parser::map_acpi_table(PhysicalAddress addr) {
+void ACPIParser::initialize() {
+    this->find_root_table();
+    this->parse_acpi_tables();
+}
+
+SDTHeader* ACPIParser::map_acpi_table(PhysicalAddress addr) {
     VirtualAddress base = page_base_of(addr);
     size_t offset = offset_in_page(addr);
 
@@ -53,7 +52,7 @@ SDTHeader* Parser::map_acpi_table(PhysicalAddress addr) {
     return reinterpret_cast<SDTHeader*>(region + offset);
 }
 
-bool Parser::find_root_table() {
+bool ACPIParser::find_root_table() {
     if (g_boot_info->rsdp) {
         m_rsdp = reinterpret_cast<RSDP*>(MM->map_physical_region(g_boot_info->rsdp, PAGE_SIZE));
 
@@ -91,7 +90,7 @@ bool Parser::find_root_table() {
     return true;
 }
 
-void Parser::parse_acpi_tables() {
+void ACPIParser::parse_acpi_tables() {
     size_t entries = 0;
     if (m_xsdt) {
         entries = (m_xsdt->header.length - sizeof(SDTHeader)) / 8;
@@ -125,11 +124,11 @@ void Parser::parse_acpi_tables() {
 
     dbgln();
 
-    FADT* fadt = this->find_table<FADT>("FACP");
+    FADT* fadt = this->find<FADT>();
     m_dsdt = this->map_acpi_table(fadt->dsdt);
 }
 
-SDTHeader* Parser::find_table(const char* signature) {
+SDTHeader* ACPIParser::find_table(const char* signature) {
     if (memcmp(signature, "DSDT", 4) == 0) {
         return m_dsdt;
     }

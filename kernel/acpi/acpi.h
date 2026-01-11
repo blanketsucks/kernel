@@ -1,220 +1,43 @@
 #pragma once
 
-#include <kernel/common.h>
+#include <kernel/acpi/tables.h>
 #include <std/vector.h>
 
-namespace kernel::acpi {
+namespace kernel {
 
-constexpr PhysicalAddress RSDP_START = 0x000E0000;
-constexpr PhysicalAddress RSDP_END = 0x000FFFFF;
+template<typename T>
+concept HasACPISignature = requires { T::SIGNATURE; };
 
-struct RSDP {
-    char signature[8];
-    u8 checksum;
-    char oem_id[6];
-    u8 revision;
-    u32 rsdt_address;
-} PACKED;
-
-struct XSDP {
-    char signature[8];
-    u8 checksum;
-    char oem_id[6];
-    u8 revision;
-    u32 rsdt_address; // deprecated
-
-    u32 length;
-    u64 xsdt_address;
-    u8 extended_checksum;
-    u8 reserved[3];
-} PACKED;
-
-struct SDTHeader {
-    char signature[4];
-    u32 length;
-    u8 revision;
-    u8 checksum;
-    char oem_id[6];
-    char oem_table_id[8];
-    u32 oem_revision;
-    u32 creator_id;
-    u32 creator_revision;
-} PACKED;
-
-struct RSDT {
-    SDTHeader header;
-    u32 tables[];
-} PACKED;
-
-struct XSDT {
-    SDTHeader header;
-    u64 tables[];
-} PACKED;
-
-struct MADT {
-    SDTHeader header;
-
-    u32 local_apic_address;
-    u32 flags;
-} PACKED;
-
-enum class MADTEntryType : u8 {
-    ProcessorLocalAPIC = 0,
-    IOAPIC = 1,
-    InterruptSourceOverride = 2,
-    NMISource = 3,
-    LocalAPICAddressOverride = 5,
-    IOAPICAddressOverride = 6,
-    LocalAPICX2 = 9
-};
-
-struct MADTHeader {
-    MADTEntryType type;
-    u8 length;
-} PACKED;
-
-struct ProcessorLocalAPIC {
-    MADTHeader header;
-
-    u8 acpi_processor_id;
-    u8 apic_id;
-    u32 flags;
-} PACKED;
-
-struct IOAPIC {
-    MADTHeader header;
-
-    u8 io_apic_id;
-    u8 reserved;
-    u32 io_apic_address;
-    u32 global_system_interrupt_base;
-} PACKED;
-
-enum class AddressSpace : u8 {
-    SystemMemory = 0,
-    SystemIO = 1,
-    PCIConfigurationSpace = 2,
-    EmbeddedController = 3,
-    SMBus = 4,
-    SystemCMOS = 5,
-    PCC = 0x0A
-};
-
-enum class AccessSize : u8 {
-    Undefined = 0,
-    Byte = 1,
-    Word = 2,
-    DWord = 3,
-    QWord = 4
-};
-
-struct GenericAddressStructure {
-    AddressSpace address_space;
-    u8 bit_width;
-    u8 bit_offset;
-    AccessSize access_size;
-    u64 address;
-} PACKED;  
-
-struct FADT {
-    SDTHeader header;
-
-    u32 firmware_control;
-    u32 dsdt;
-
-    u8 reserved;
-
-    u8 preferred_pm_profile;
-    u16 sci_interrupt;
-    u32 smi_command_port;
-    u8 acpi_enable;
-    u8 acpi_disable;
-    u8 s4bios_request;
-    u8 pstate_control;
-    u32 pm1a_event_block;
-    u32 pm1b_event_block;
-    u32 pm1a_control_block;
-    u32 pm1b_control_block;
-    u32 pm2_control_block;
-    u32 pm_timer_block;
-    u32 gpe0_block;
-    u32 gpe1_block;
-    u8 pm1_event_length;
-    u8 pm1_control_length;
-    u8 pm2_control_length;
-    u8 pm_timer_length;
-    u8 gpe0_length;
-    u8 gpe1_length;
-    u8 gpe1_base;
-    u8 cstate_control;
-    u16 worst_c2_latency;
-    u16 worst_c3_latency;
-    u16 flush_size;
-    u16 flush_stride;
-    u8 duty_offset;
-    u8 duty_width;
-    u8 day_alarm;
-    u8 month_alarm;
-    u8 century;
-    u16 boot_architecture_flags;
-    u8 reserved2;
-    u32 flags;
-    GenericAddressStructure reset_reg;
-    u8 reset_value;
-    u8 reserved3[3];
-    
-    u64 x_firmware_control;
-    u64 x_dsdt;
-
-    GenericAddressStructure x_pm1a_event_block;
-    GenericAddressStructure x_pm1b_event_block;
-    GenericAddressStructure x_pm1a_control_block;
-    GenericAddressStructure x_pm1b_control_block;
-    GenericAddressStructure x_pm2_control_block;
-    GenericAddressStructure x_pm_timer_block;
-    GenericAddressStructure x_gpe0_block;
-    GenericAddressStructure x_gpe1_block;
-} PACKED;
-
-struct MCFG {
-    SDTHeader header;
-    u64 reserved;
-
-    struct {
-        u64 base_address;
-        u16 segment_group_number;
-        u8 start_bus_number;
-        u8 end_bus_number;
-        u32 reserved;
-    } entries[];
-} PACKED;
-
-class Parser {
+class ACPIParser {
 public:
-    static Parser* instance();
-    void init();
+    static ACPIParser* instance();
+    static void init();
 
-    template<typename T>
-    T* find_table(const char* signature) {
-        return reinterpret_cast<T*>(this->find_table(signature));
+    template<typename T> requires HasACPISignature<T>
+    static T* find() {
+        auto* parser = instance();
+        return reinterpret_cast<T*>(parser->find_table(T::SIGNATURE));
     }
 
-    SDTHeader* find_table(const char* signature);
+    acpi::SDTHeader* find_table(const char* signature);
+
 private:
+    void initialize();
+
     bool find_root_table();
     void parse_acpi_tables();
 
-    SDTHeader* map_acpi_table(PhysicalAddress address);
+    acpi::SDTHeader* map_acpi_table(PhysicalAddress address);
 
-    RSDP* m_rsdp = nullptr;
-    XSDP* m_xsdp = nullptr;
+    acpi::RSDP* m_rsdp = nullptr;
+    acpi::XSDP* m_xsdp = nullptr;
 
-    RSDT* m_rsdt = nullptr;
-    XSDT* m_xsdt = nullptr;
+    acpi::RSDT* m_rsdt = nullptr;
+    acpi::XSDT* m_xsdt = nullptr;
 
-    SDTHeader* m_dsdt = nullptr;
+    acpi::SDTHeader* m_dsdt = nullptr;
 
-    Vector<SDTHeader*> m_tables;
+    Vector<acpi::SDTHeader*> m_tables;
 };
 
 }
