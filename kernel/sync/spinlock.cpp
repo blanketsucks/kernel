@@ -8,6 +8,10 @@ bool SpinLock::is_locked() {
 }
 
 void SpinLock::lock() {
+    if (!Processor::are_interrupts_initialized()) {
+        return;
+    }
+
     asm volatile("cli");
     while (m_lock.exchange(1, std::MemoryOrder::Acquire) != 0) {
         asm volatile("pause");
@@ -15,6 +19,10 @@ void SpinLock::lock() {
 }
 
 void SpinLock::unlock() {
+    if (!Processor::are_interrupts_initialized()) {
+        return;
+    }
+
     m_lock.store(0, std::MemoryOrder::Relaxed);
     asm volatile("sti");
 }
