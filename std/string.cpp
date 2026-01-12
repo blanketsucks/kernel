@@ -2,8 +2,6 @@
 #include <std/vector.h>
 #include <std/format.h>
 
-#include <kernel/serial.h>
-
 namespace std {
 
 bool String::operator==(const StringView& other) const {
