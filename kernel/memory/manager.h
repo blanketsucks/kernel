@@ -166,6 +166,13 @@ private:
 
 }
 
+// We have to place this definition here to avoid circular dependencies
+template<> struct std::Formatter<kernel::VirtualAddress> {
+    static void format(FormatBuffer& buffer, const kernel::VirtualAddress& value, const FormatStyle& style) {
+        std::Formatter<FlatPtr>::format(buffer, static_cast<FlatPtr>(value), style);
+    }
+};
+
 // The following is from liballoc
 
 /** This function is supposed to lock the memory data structures. It

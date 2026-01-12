@@ -61,7 +61,7 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
     VirtualAddress base = region->base();
 
     for (size_t i = 0; i < pages; i++) {
-        VirtualAddress address = base + i * PAGE_SIZE;
+        VirtualAddress address = base.offset(i * PAGE_SIZE);
         auto* entry = m_page_directory->get_page_table_entry(address);
 
         if (!entry) {
@@ -153,7 +153,7 @@ Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int pr
 
         // Create a new region after `region` if needed
         if (region->end() > address + size) {
-            auto* after = Region::create(address + size, region->end() - (address + size));
+            auto* after = Region::create(address.offset(size), region->end() - (address + size));
             this->insert_after(region, after);
         }
 
@@ -197,7 +197,7 @@ Region* RegionAllocator::find_free_region(size_t size) {
         }
 
         auto* new_region = Region::create(region->base(), size);
-        region->set_range({ region->base() + size, region->size() - size });
+        region->set_range({ region->offset_by(size), region->size() - size });
 
         this->insert_before(region, new_region);
         return new_region;

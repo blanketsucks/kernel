@@ -16,7 +16,7 @@ ErrorOr<void> VirtIOGPUConnector::initialize() {
 
     m_framebuffer = TRY(MM->allocate_kernel_region(size));
 
-    TRY(m_device->attach_resource_backing(m_resource_id, reinterpret_cast<VirtualAddress>(m_framebuffer), size));
+    TRY(m_device->attach_resource_backing(m_resource_id, VirtualAddress { m_framebuffer }, size));
     TRY(m_device->set_resource_scanout(m_id, m_resource_id, m_rect));
 
     u32* fb = reinterpret_cast<u32*>(m_framebuffer);
@@ -38,7 +38,7 @@ ErrorOr<GPUConnector::Resolution> VirtIOGPUConnector::get_resolution() const {
 ErrorOr<void*> VirtIOGPUConnector::map_framebuffer(Process* process) {
     size_t size = m_rect.width * m_rect.height * sizeof(u32);
     return process->allocate_from_kernel_region(
-        reinterpret_cast<VirtualAddress>(m_framebuffer), size, PROT_READ | PROT_WRITE
+        VirtualAddress { m_framebuffer }, size, PROT_READ | PROT_WRITE
     );
 }
 

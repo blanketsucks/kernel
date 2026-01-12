@@ -32,7 +32,7 @@ void ACPIParser::initialize() {
 }
 
 SDTHeader* ACPIParser::map_acpi_table(PhysicalAddress addr) {
-    VirtualAddress base = page_base_of(addr);
+    PhysicalAddress base = page_base_of(addr);
     size_t offset = offset_in_page(addr);
 
     void* ptr = reinterpret_cast<void*>(base);

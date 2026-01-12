@@ -39,7 +39,7 @@ public:
     PhysicalAddress max_physical_address() const { return (1ull << m_max_physical_address_width) - 1; }
 
     u8 max_virtual_address_width() const { return m_max_virtual_address_width; }
-    VirtualAddress max_virtual_address() const { return (1ull << m_max_virtual_address_width) - 1; }
+    VirtualAddress max_virtual_address() const { return VirtualAddress { (1ull << m_max_virtual_address_width) - 1 }; }
 
     bool has_nx() const { return m_has_nx; }
 

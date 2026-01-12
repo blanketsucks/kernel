@@ -51,7 +51,7 @@ template<typename T> PageTableEntry* PageDirectory::walk_page_table(T table, Vir
         memset(reinterpret_cast<void*>(entry.physical_address() + g_boot_info->hhdm), 0, PAGE_SIZE);
     }
 
-    VirtualAddress address = entry.physical_address() + g_boot_info->hhdm;
+    FlatPtr address = entry.physical_address() + g_boot_info->hhdm;
     auto* entries = reinterpret_cast<Entries>(address);
 
     return walk_page_table<typename T::Next>({ entries }, virt, flags);
@@ -82,7 +82,7 @@ template<> PageTableEntry* PageDirectory::walk_page_table(
         memset(reinterpret_cast<void*>(entry.physical_address() + g_boot_info->hhdm), 0, PAGE_SIZE);
     }
 
-    VirtualAddress address = entry.physical_address() + g_boot_info->hhdm;
+    FlatPtr address = entry.physical_address() + g_boot_info->hhdm;
     auto* entries = reinterpret_cast<PageTableEntry*>(address);
 
     return entries + PageTable::index(virt);
@@ -183,14 +183,14 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memo
     dir.create_pml4_table();
 
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += 2 * MB) {
-        VirtualAddress va = boot_info.hhdm + i;
+        VirtualAddress va { boot_info.hhdm + i };
         dir.map(va, i, PageFlags::Write | PageFlags::Huge);
     }
 
     // FIXME: This currently maps both the kernel text and data sections as writable
     for (size_t i = 0; i < boot_info.kernel_size; i += 2 * MB) {
         PhysicalAddress pa = boot_info.kernel_physical_base + i;
-        VirtualAddress va = boot_info.kernel_virtual_base + i;
+        VirtualAddress va { boot_info.kernel_virtual_base + i };
 
         dir.map(va, pa, PageFlags::Write | PageFlags::Huge);
     }

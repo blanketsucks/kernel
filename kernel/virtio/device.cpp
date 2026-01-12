@@ -77,7 +77,7 @@ void Device::initialize() {
         PhysicalAddress address = m_pci_device.bar(config.bar);
 
         auto* region = MM->map_physical_region(reinterpret_cast<void*>(address), size);
-        m_bars[config.bar] = reinterpret_cast<VirtualAddress>(region);
+        m_bars[config.bar] = VirtualAddress { region };
     }
     
     auto* config = m_common_config = get_config(Configuration::Common);

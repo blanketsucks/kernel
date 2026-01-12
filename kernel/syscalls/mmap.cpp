@@ -7,7 +7,7 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
     this->validate_pointer_access(args, sizeof(mmap_args), false);
 
     size_t size = args->size;
-    VirtualAddress hint = reinterpret_cast<VirtualAddress>(args->addr);
+    VirtualAddress hint = VirtualAddress { args->addr };
     int prot = args->prot;
     int flags = args->flags;
     int fileno = args->fd;
@@ -37,7 +37,7 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
             return Error(ENOMEM);
         }
 
-        region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
+        region = m_allocator->find_region(VirtualAddress { address }, true);
     } else {
         if (fileno < 0 || static_cast<size_t>(fileno) >= m_file_descriptors.size()) {
             return Error(EBADF);
@@ -58,7 +58,7 @@ ErrorOr<FlatPtr> Process::sys$mmap(mmap_args* args) {
             return Error(ENOMEM);
         }
 
-        address = reinterpret_cast<void*>(region->base());
+        address = region->base().to_ptr();
     }
 
     region->set_prot(prot);
@@ -78,7 +78,9 @@ ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
         return Error(EINVAL);
     }
 
-    auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(address), true);
+    VirtualAddress va { address };
+
+    auto* region = m_allocator->find_region(va, true);
     if (!region) {
         return Error(EINVAL);
     }
@@ -97,26 +99,26 @@ ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
             return 0;
         }
 
-        region->set_range({ region->base() + size, region->size() - size });
-        MM->free(m_page_directory, address, size);
+        region->set_range({ region->offset_by(size), region->size() - size });
+        MM->free(m_page_directory, va, size);
 
         return 0;
     } else {
         if (region->end() == address + size) {
             region->set_range({ region->base(), region->size() - size });
-            MM->free(m_page_directory, address, size);
+            MM->free(m_page_directory, va, size);
 
             return 0;
         }
 
-        auto* new_region = memory::Region::create(address + size, region->end() - (address + size));
+        auto* new_region = memory::Region::create(va.offset(size), region->end() - (address + size));
         new_region->set_prot(region->prot());
         new_region->set_shared(region->is_shared());
 
         region->set_range({ region->base(), address - region->base() });
 
         m_allocator->insert_after(region, new_region);
-        MM->free(m_page_directory, address, size);
+        MM->free(m_page_directory, va, size);
     }
 
     return 0;

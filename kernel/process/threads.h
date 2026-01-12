@@ -91,7 +91,7 @@ private:
     void set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters&);
     
     void setup_thread_arguments();
-    void prepare_argument_vector(Vector<String> const& src, Vector<VirtualAddress>& dst);
+    void prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>& dst);
 
     void enqueue(Thread*);
     Thread* take_next();

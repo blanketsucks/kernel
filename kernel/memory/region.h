@@ -25,7 +25,7 @@ public:
     VirtualAddress base() const { return m_base; }
     size_t size() const { return m_size; }
 
-    VirtualAddress end() const { return m_base + m_size; }
+    VirtualAddress end() const { return m_base.offset(m_size); }
 
     bool contains(VirtualAddress addr) const { return addr >= m_base && addr < end(); }
     bool contains(Range const& other) const {
@@ -65,6 +65,14 @@ public:
 
     VirtualAddress base() const { return m_range.base(); }
     VirtualAddress end() const { return m_range.end(); }
+
+    VirtualAddress offset_by(size_t offset) const {
+        return m_range.base().offset(offset);
+    }
+
+    size_t offset_in(VirtualAddress address) const {
+        return address - m_range.base();
+    }
     
     bool used() const { return m_used; }
 
@@ -135,7 +143,7 @@ public:
     void free(VirtualAddress address);
     void free(Region* region);
 
-    Region* create_file_backed_region(fs::File* file, size_t size, VirtualAddress hint = 0);
+    Region* create_file_backed_region(fs::File* file, size_t size, VirtualAddress hint = {});
 
     Region* find_region(void* address, bool contains = false) const {
         return find_region(VirtualAddress(address), contains);

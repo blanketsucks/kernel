@@ -33,11 +33,14 @@ size_t MemoryManager::current_kernel_heap_offset() {
 MemoryManager::MemoryManager() {
     auto* dir = arch::PageDirectory::kernel_page_directory();
 
-    VirtualAddress heap_base = g_boot_info->kernel_heap_base;
-    VirtualAddress virtual_base = g_boot_info->kernel_virtual_base;
+    VirtualAddress heap_base { g_boot_info->kernel_heap_base };
+    VirtualAddress virtual_base { g_boot_info->kernel_virtual_base };
 
     m_heap_region_allocator = RegionAllocator::create({ heap_base, MAX_VIRTUAL_ADDRESS - heap_base }, dir);
-    m_kernel_region_allocator = RegionAllocator::create({ virtual_base + g_boot_info->kernel_size, heap_base - virtual_base - g_boot_info->kernel_size }, dir);
+    m_kernel_region_allocator = RegionAllocator::create(
+        { virtual_base.offset(g_boot_info->kernel_size), heap_base - virtual_base - g_boot_info->kernel_size },
+        dir
+    );
 }
 
 void MemoryManager::init() {
@@ -107,7 +110,7 @@ StringView MemoryManager::get_fault_message(PageFault fault, Region* region) {
 }
 
 void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
-    VirtualAddress address = 0;
+    VirtualAddress address = {};
     asm volatile("mov %%cr2, %0" : "=r"(address));
 
     // Assume that the address is a null pointer dereference if it's less than a page size.
@@ -175,7 +178,7 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
         PhysicalPage* page = this->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
         page->ref_count++;
         
-        page_directory->map(region->base() + i, reinterpret_cast<PhysicalAddress>(frame), flags);
+        page_directory->map(region->offset_by(i), reinterpret_cast<PhysicalAddress>(frame), flags);
     }
 
     return {};
@@ -193,7 +196,7 @@ ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, 
 
     auto* page_directory = allocator.page_directory();
     if (this->try_allocate_contiguous(page_directory, region, flags)) {
-        return reinterpret_cast<void*>(region->base());
+        return region->base().to_ptr();
     }
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
@@ -203,10 +206,10 @@ ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, 
         PhysicalPage* page = this->get_physical_page(physical_address);
 
         page->ref_count++;
-        page_directory->map(region->base() + i, physical_address, flags);
+        page_directory->map(region->offset_by(i), physical_address, flags);
     }
 
-    return reinterpret_cast<void*>(region->base());
+    return region->base().to_ptr();
 }
 
 bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory, Region* region, PageFlags flags) {
@@ -220,7 +223,7 @@ bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory,
         PhysicalPage* page = this->get_physical_page(physical_address + i);
         page->ref_count++;
 
-        page_directory->map(region->base() + i, physical_address + i, flags);
+        page_directory->map(region->offset_by(i), physical_address + i, flags);
     }
 
     return true;
@@ -240,24 +243,24 @@ ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAdd
         PhysicalPage* page = this->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
         page->ref_count++;
 
-        page_directory->map(region->base() + i, reinterpret_cast<PhysicalAddress>(frame), flags);
+        page_directory->map(region->offset_by(i), reinterpret_cast<PhysicalAddress>(frame), flags);
     }
 
-    return reinterpret_cast<void*>(region->base());
+    return region->base().to_ptr();
 }
 
 ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t size) {
     ScopedSpinLock lock(m_lock);
 
-    VirtualAddress address = reinterpret_cast<VirtualAddress>(ptr);
+    VirtualAddress address { ptr };
     auto* region = allocator.find_region(address);
     if (!region) {
         return Error(EINVAL);
     }
 
     TRY(this->free(allocator.page_directory(), address, size));
-
     allocator.free(region);
+
     return {};
 }
 
@@ -265,7 +268,7 @@ ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAd
     ScopedSpinLock lock(m_lock);
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        auto* entry = page_directory->get_page_table_entry(address + i);
+        auto* entry = page_directory->get_page_table_entry(address.offset(i));
         if (!entry) {
             return Error(EINVAL);
         }
@@ -321,22 +324,22 @@ void* MemoryManager::map_physical_region(void* ptr, size_t size) {
 
     PhysicalAddress start = reinterpret_cast<PhysicalAddress>(ptr);
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        page_directory->map(region->base() + i, start + i, PageFlags::Write);
+        page_directory->map(region->offset_by(i), start + i, PageFlags::Write);
     }
 
-    return reinterpret_cast<void*>(region->base());
+    return region->base().to_ptr();
 }
 
 void MemoryManager::unmap_kernel_region(void* ptr) {
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
-    auto* region = m_kernel_region_allocator->find_region(reinterpret_cast<VirtualAddress>(ptr));
+    auto* region = m_kernel_region_allocator->find_region(VirtualAddress { ptr });
 
     if (!region) {
         return;
     }
 
     for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
-        page_directory->unmap(region->base() + i);
+        page_directory->unmap(region->offset_by(i));
     }
 
     m_kernel_region_allocator->free(region);
@@ -350,12 +353,14 @@ void* MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory
     }
 
     auto* kernel_page_directory = arch::PageDirectory::kernel_page_directory();
+    VirtualAddress address { ptr };
+
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        PhysicalAddress address = page_directory->get_physical_address(reinterpret_cast<VirtualAddress>(ptr) + i);
-        kernel_page_directory->map(region->base() + i, address, PageFlags::Write);
+        PhysicalAddress pa = page_directory->get_physical_address(address.offset(i));
+        kernel_page_directory->map(region->offset_by(i), pa, PageFlags::Write);
     }
 
-    return reinterpret_cast<void*>(region->base());
+    return region->base().to_ptr();
 }
 
 void MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
@@ -370,12 +375,12 @@ void MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
 
 bool MemoryManager::is_mapped(void* addr) {
     auto dir = arch::PageDirectory::kernel_page_directory();
-    return dir->is_mapped(reinterpret_cast<VirtualAddress>(addr));
+    return dir->is_mapped(VirtualAddress { addr });
 }
 
 PhysicalAddress MemoryManager::get_physical_address(void* addr) {
     auto dir = arch::PageDirectory::kernel_page_directory();
-    return dir->get_physical_address(reinterpret_cast<VirtualAddress>(addr));
+    return dir->get_physical_address(VirtualAddress { addr });
 }
 
 TemporaryMapping::TemporaryMapping(arch::PageDirectory& page_directory, void* ptr, size_t size) : m_size(size) {

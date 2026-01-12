@@ -26,6 +26,8 @@ public:
     static void yield(bool if_idle = false);
 
     static void add_process(Process*);
+    static Vector<Process*>& processes();
+
     static void queue(Thread*);
 
     static Process* current_process();

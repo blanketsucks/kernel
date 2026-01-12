@@ -70,6 +70,10 @@ bool Scheduler::is_locked() {
     return s_irq_disable_counter > 0;
 }
 
+Vector<Process*>& Scheduler::processes() {
+    return s_processes;
+}
+
 void Scheduler::init() {
     s_initialized = true;
     s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);

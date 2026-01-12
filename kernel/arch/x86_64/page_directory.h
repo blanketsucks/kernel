@@ -159,28 +159,28 @@ private:
 
 struct PageTable {
     PageTableEntry* entries;
-    static constexpr u32 index(VirtualAddress address) { return (address >> 12) & 0x1FF; }
+    static constexpr u32 index(FlatPtr address) { return (address >> 12) & 0x1FF; }
 };
 
 struct PageDirectoryTable {
     using Next = PageTable;
 
     PageDirectoryEntry* entries;
-    static constexpr u32 index(VirtualAddress address) { return (address >> 21) & 0x1FF; }
+    static constexpr u32 index(FlatPtr address) { return (address >> 21) & 0x1FF; }
 };
 
 struct PageDirectoryPointerTable {
     using Next = PageDirectoryTable;
 
     PageDirectoryTableEntry* entries;
-    static constexpr u32 index(VirtualAddress address) { return (address >> 30) & 0x1FF; }
+    static constexpr u32 index(FlatPtr address) { return (address >> 30) & 0x1FF; }
 };
 
 struct PML4 {
     using Next = PageDirectoryPointerTable;
 
     PML4Entry* entries;
-    static constexpr u32 index(VirtualAddress address) { return (address >> 39) & 0x1FF; }
+    static constexpr u32 index(FlatPtr address) { return (address >> 39) & 0x1FF; }
 };
 
 class PageDirectory {

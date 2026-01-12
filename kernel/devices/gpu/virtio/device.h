@@ -38,7 +38,7 @@ private:
     ErrorOr<virtio::GPUGetEDIDResponse*> get_edid(u32 scanout_id); 
 
     ErrorOr<u32> create_resource_2d(virtio::GPUFormat format, u32 width, u32 height);
-    ErrorOr<void> attach_resource_backing(u32 resource_id, PhysicalAddress address, size_t size);
+    ErrorOr<void> attach_resource_backing(u32 resource_id, VirtualAddress address, size_t size);
     ErrorOr<void> set_resource_scanout(u32 scanout_id, u32 resource_id, virtio::GPURect rect);
     ErrorOr<void> transfer_to_host_2d(u32 resource_id, virtio::GPURect rect, u32 offset);
     ErrorOr<void> resource_flush(u32 resource_id, virtio::GPURect rect);

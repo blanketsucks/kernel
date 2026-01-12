@@ -102,7 +102,7 @@ extern "C" void init(multiboot_info* info) {
 
     std::memcpy(kernel_program_headers, kernel_image + header->e_phoff, sizeof(Elf64_Phdr) * header->e_phnum);
 
-    VirtualAddress kernel_virtual_base = 0xffffffff80000000;
+    VirtualAddress kernel_virtual_base { 0xffffffff80000000 };
     PhysicalAddress kernel_physical_base = 0x200000; // TODO: Randomize this
 
     VirtualAddress kernel_virtual_end = kernel_virtual_base;
@@ -115,13 +115,13 @@ extern "C" void init(multiboot_info* info) {
             abort("Kernel program header is below kernel virtual base. Halting.");
         }
 
-        VirtualAddress end = ph.p_vaddr + ph.p_memsz;
+        VirtualAddress end { ph.p_vaddr + ph.p_memsz };
         if (end > kernel_virtual_end) {
             kernel_virtual_end = end;
         }
     }
     
-    kernel_virtual_end = std::align_up(kernel_virtual_end, 2 * MB);
+    kernel_virtual_end = kernel_virtual_end.align_up(2 * MB);
     PhysicalAddress kernel_physical_end = kernel_physical_base + (kernel_virtual_end - kernel_virtual_base);
 
     u32 pml4 = ((kernel_virtual_base >> 39) & 0x1ff);
@@ -132,7 +132,7 @@ extern "C" void init(multiboot_info* info) {
         kernel_pdpt[pdpt] = reinterpret_cast<u64>(kernel_pd[i]) | 0x3;
     }
 
-    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address += 2 * MB) {
+    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MB)) {
         PhysicalAddress physical = kernel_physical_base + (address - kernel_virtual_base);
 
         u32 pdpt = (address >> 30) & 0x1ff;
@@ -146,13 +146,13 @@ extern "C" void init(multiboot_info* info) {
             continue;
         }
 
-        VirtualAddress vaddr = ph.p_vaddr;
+        VirtualAddress vaddr { ph.p_vaddr };
         PhysicalAddress paddr = ph.p_offset + reinterpret_cast<PhysicalAddress>(kernel_image);
 
         size_t size = ph.p_filesz;
 
-        std::memcpy(reinterpret_cast<void*>(vaddr), reinterpret_cast<void*>(paddr), size);
-        std::memset(reinterpret_cast<void*>(vaddr + size), 0, ph.p_memsz - size);
+        std::memcpy(vaddr.to_ptr(), reinterpret_cast<void*>(paddr), size);
+        std::memset(vaddr.offset(size).to_ptr(), 0, ph.p_memsz - size);
     }
 
     BootInfo boot_info;

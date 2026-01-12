@@ -65,8 +65,9 @@ Process::Process(
     if (!kernel) {
         m_page_directory = arch::PageDirectory::create_user_page_directory();
         if (!parent) {
+            // The allocator gets created later for child processes
             m_allocator = memory::RegionAllocator::create(
-                { PAGE_SIZE, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) },
+                { VirtualAddress { PAGE_SIZE }, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) },
                 m_page_directory
             );
         }
@@ -122,7 +123,7 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
             continue;
         }
 
-        uintptr_t address = std::align_down(ph.p_vaddr, PAGE_SIZE);
+        VirtualAddress address { std::align_down(ph.p_vaddr, PAGE_SIZE) };
         size_t size = std::align_up(ph.p_memsz, PAGE_SIZE);
 
         u8* region = reinterpret_cast<u8*>(TRY(this->allocate_at(address, size, PageFlags::Write)));
@@ -200,11 +201,11 @@ ErrorOr<void*> Process::allocate_from_kernel_region(VirtualAddress address, size
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         PhysicalAddress pa = MM->get_physical_address(reinterpret_cast<void*>(address + i));
-        m_page_directory->map(region->base() + i, pa, pflags);
+        m_page_directory->map(region->offset_by(i), pa, pflags);
     }
 
     region->set_kernel_managed(true);
-    return reinterpret_cast<void*>(region->base());
+    return region->base().to_ptr();
 }
 
 ErrorOr<void*> Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
@@ -220,11 +221,11 @@ ErrorOr<void*> Process::allocate_with_physical_region(PhysicalAddress address, s
     }
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        m_page_directory->map(region->base() + i, address + i, pflags);
+        m_page_directory->map(region->offset_by(i), address + i, pflags);
     }
 
     region->set_kernel_managed(true);
-    return reinterpret_cast<void*>(region->base());
+    return region->base().to_ptr();
 }
 
 ErrorOr<void*> Process::allocate_file_backed_region(fs::File* file, size_t size) {
@@ -234,7 +235,7 @@ ErrorOr<void*> Process::allocate_file_backed_region(fs::File* file, size_t size)
         return Error(ENOMEM);
     }
 
-    return reinterpret_cast<void*>(region->base());
+    return region->base().to_ptr();
 }
 
 void Process::notify_exit(Thread* thread) {
@@ -312,13 +313,13 @@ unrecoverable_fault:
     }
 
     auto* file = region->file();
-    size_t offset = std::align_down(address - region->base(), PAGE_SIZE);
+    size_t offset = std::align_down(region->offset_in(address), PAGE_SIZE);
 
     void* frame = MUST(MM->allocate_page_frame());
-    m_page_directory->map(region->base() + offset, reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
+    m_page_directory->map(region->offset_by(offset), reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
 
     size_t size = std::min(file->size() - offset, PAGE_SIZE);
-    auto result = file->read(reinterpret_cast<void*>(region->base() + offset), size, region->offset() + offset);
+    auto result = file->read(region->offset_by(offset).to_ptr(), size, region->offset() + offset);
 
     if (result.is_err()) {
         dbgln("\033[1;31mFailed to read file backed region (address={:#p}) @ IP={:#p}:\033[0m", address, regs->ip());
@@ -338,7 +339,7 @@ void Process::handle_general_protection_fault(arch::InterruptRegisters* regs) {
 }
 
 memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
-    auto* region = m_allocator->find_region(reinterpret_cast<VirtualAddress>(ptr), true);
+    auto* region = m_allocator->find_region(VirtualAddress { ptr }, true);
 
     if (!region) {
         dbgln("Invalid memory access @ {:#}. Killing.", ptr);
@@ -362,7 +363,7 @@ void Process::validate_pointer_access(const void* ptr, size_t size, bool write) 
         }
     }
 
-    size_t offset = reinterpret_cast<VirtualAddress>(ptr) - region->base();
+    size_t offset = region->offset_in(VirtualAddress { ptr });
     if (offset + size > region->size()) {
         dbgln("Invalid memory access at {:#}. Killing.", ptr);
         this->kill();
@@ -379,7 +380,7 @@ void Process::validate_write(const void* ptr, size_t size) {
 
 StringView Process::validate_string(const char* ptr) {
     memory::Region* region = this->validate_pointer_access(ptr, false);
-    size_t offset = reinterpret_cast<VirtualAddress>(ptr) - region->base();
+    size_t offset = region->offset_in(VirtualAddress { ptr });
 
     size_t length = 0;
     while (*ptr) {

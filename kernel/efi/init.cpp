@@ -233,9 +233,9 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
 
     std::memcpy(kernel_program_headers, kernel_image + header->e_phoff, header->e_phnum * sizeof(Elf64_Phdr));
 
-    VirtualAddress kernel_virtual_base = 0xffffffff80000000;
+    VirtualAddress kernel_virtual_base { 0xffffffff80000000 };
     VirtualAddress kernel_virtual_end = kernel_virtual_base;
-    VirtualAddress hhdm = 0xffff800000000000;
+    VirtualAddress hhdm { 0xffff800000000000 };
 
     u32 pml4e = (hhdm >> 39) & 0x1ff;
     pml4t[pml4e] = reinterpret_cast<u64>(pdpt) | 0x3;
@@ -246,13 +246,13 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
             continue;
         }
 
-        VirtualAddress end = ph.p_vaddr + ph.p_memsz;
+        VirtualAddress end { ph.p_vaddr + ph.p_memsz };
         if (end > kernel_virtual_end) {
             kernel_virtual_end = end;
         }
     }
 
-    kernel_virtual_end = std::align_up(kernel_virtual_end, 2 * MB);
+    kernel_virtual_end = kernel_virtual_end.align_up(2 * MB);
 
     size_t kernel_size = kernel_virtual_end - kernel_virtual_base;
     size_t kernel_pages = kernel_size / PAGE_SIZE;
@@ -333,7 +333,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     }
     
     parse_memory_map();
-    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address += 2 * MB) {
+    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MB)) {
         PhysicalAddress physical = kernel_physical_base + (address - kernel_virtual_base);
 
         u32 pdpt = (address >> 30) & 0x1ff;

@@ -102,7 +102,7 @@ void Thread::set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters& register
     registers.set_initial_stack_state(this);
 }
 
-void Thread::prepare_argument_vector(Vector<String> const& src, Vector<VirtualAddress>& dst) {
+void Thread::prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>& dst) {
     if (!m_arguments_region) {
         m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
         m_arguments_offset = 0;
@@ -130,7 +130,7 @@ void Thread::prepare_argument_vector(Vector<String> const& src, Vector<VirtualAd
         memcpy(address + offset, argument.data(), argument.size());
         address[offset + argument.size()] = '\0';
 
-        dst.append(reinterpret_cast<VirtualAddress>(m_arguments_region + offset));
+        dst.append(reinterpret_cast<FlatPtr>(m_arguments_region + offset));
         offset += size;
     }
 
@@ -143,7 +143,7 @@ void Thread::setup_thread_arguments() {
         return;
     }
 
-    Vector<VirtualAddress> argv, envp;
+    Vector<FlatPtr> argv, envp;
 
     argv.reserve(m_arguments.argv.size() + 1);
     envp.reserve(m_arguments.envp.size() + 1);
@@ -163,16 +163,16 @@ void Thread::setup_thread_arguments() {
 
     size_t size = entries * sizeof(FlatPtr);
 
-    VirtualAddress user_stack = m_user_stack.value();
-    size_t offset = offset_in_page(user_stack - size);
+    VirtualAddress user_stack { m_user_stack.value() };
+    VirtualAddress top = user_stack - size;
 
     u8* address = reinterpret_cast<u8*>(MM->map_from_page_directory(
         m_process->page_directory(),
-        reinterpret_cast<void*>(std::align_down(user_stack - size, PAGE_SIZE)),
-        size + offset
+        top.align_down(PAGE_SIZE).to_ptr(),
+        size + top.offset_in_page()
     ));
 
-    address += offset;
+    address += top.offset_in_page();
 
     Stack stack(address, size);
     for (size_t i = argv.size(); i > 0; i--) {
@@ -204,7 +204,7 @@ void Thread::setup_thread_arguments() {
 #endif
 
     m_user_stack.skip(stack.offset());
-    MM->unmap_kernel_region(address - offset);
+    MM->unmap_kernel_region(address - top.offset_in_page());
 }
 
 void Thread::exit(void* value) {
