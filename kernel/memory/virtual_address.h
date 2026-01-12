@@ -7,7 +7,7 @@ namespace kernel {
 
 class VirtualAddress {
 public:
-    static constexpr FlatPtr PAGE_MASK = ~0xFFF;
+    static constexpr FlatPtr PAGE_MASK = ~(FlatPtr)0xFFF;
 
     constexpr VirtualAddress() : m_address(0) {}
 
