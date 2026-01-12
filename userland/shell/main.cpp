@@ -33,16 +33,18 @@ struct BuiltinCommand {
     int(*function)(shell::Terminal&, int, char**);
 };
 
-static int term_cd(shell::Terminal&, int argc, char** argv) {
+static int term_cd(shell::Terminal& terminal, int argc, char** argv) {
     if (argc < 2) {
         return 1;
     }
 
     int rc = chdir(argv[1]);
     if (rc < 0) {
+        terminal.writeln(std::format("cd: {}: {}", argv[1], strerror(errno)));
         return 1;
     }
 
+    terminal.fetch_cwd();
     return 0;
 }
 

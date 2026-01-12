@@ -6,10 +6,6 @@
 
 namespace shell {
 
-void _free(void* ptr, size_t) {
-    free(ptr);
-}
-
 Terminal::Terminal(
     gfx::RenderContext& context, RefPtr<gfx::PSFFont> font
 ) : on_line_flush(nullptr), m_render_context(context), m_font(move(font)) {
@@ -23,21 +19,25 @@ Terminal::Terminal(
     m_cols = m_width / m_font->width();
 
     m_cells.resize(m_rows * m_cols);
+
+    this->fetch_cwd();
     this->add_line({});
 }
 
-String Terminal::cwd() {
-    char buffer[256];
-    getcwd(buffer, sizeof(buffer));
-
-    return String(buffer);
+void Terminal::fetch_cwd() {
+    char buffer[4096];
+    if (getcwd(buffer, 4096)) {
+        m_cwd = String(buffer);
+    } else {
+        m_cwd = "/";
+    }
 }
 
 Line& Terminal::current_line() { return m_lines[m_current_line]; }
 Line const& Terminal::current_line() const { return m_lines[m_current_line]; }
 
 void Terminal::add_line(StringView text, bool newline_before) {
-    String line = format("{} $ {}", cwd(), text);
+    String line = format("{} $ {}", m_cwd, text);
     size_t prompt_length = line.size() - text.size();
 
     if (newline_before) {
@@ -99,7 +99,7 @@ void Terminal::replace_current_line(const String& text) {
         this->push("\b \b");
     }
 
-    line.text = format("{} $ {}", cwd(), text);
+    line.text = format("{} $ {}", m_cwd, text);
     line.prompt = line.text.size() - text.size();
 
     this->push(line.text);

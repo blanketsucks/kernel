@@ -31,7 +31,7 @@ public:
     
     Function<void(String)> on_line_flush;
 
-    static String cwd();
+    void fetch_cwd();
 
     Line& current_line();
     Line const& current_line() const;
@@ -72,6 +72,8 @@ private:
 
     u32 m_rows;
     u32 m_cols;
+
+    String m_cwd;
 };
 
 }
