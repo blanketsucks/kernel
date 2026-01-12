@@ -39,10 +39,6 @@ MAKE_ENUM_BITWISE_OPS(PageFlags)
 
 }
 
-namespace kernel::memory {
-    class RegionAllocator;
-}
-
 namespace kernel::arch {
 
 constexpr u64 PHYSICAL_ADDRESS_MASK = 0x7FFFFFFFFFFFF000ull;
@@ -192,7 +188,7 @@ public:
 
     using Map = void(PageDirectory::*)(VirtualAddress, PhysicalAddress, PageFlags);
 
-    static void create_kernel_page_directory(BootInfo const&, memory::RegionAllocator& kernel_region_allocator);
+    static void create_kernel_page_directory(BootInfo const&);
     static PageDirectory* create_user_page_directory();
 
     bool is_user() const { return m_type == Type::User; }

@@ -12,18 +12,18 @@ static constexpr size_t HHDM_MAPPING_SIZE = 4 * GB;
 static PageDirectory s_kernel_page_directory;
 
 PageDirectory* PageDirectory::create_user_page_directory() {
-    PageDirectory* dir = new PageDirectory();
+    PageDirectory* page_directory = new PageDirectory();
 
-    dir->set_type(User);
-    dir->create_pml4_table();
+    page_directory->set_type(User);
+    page_directory->create_pml4_table();
 
     size_t hhdm_pml4e = PML4::index(g_boot_info->hhdm);
-    dir->m_pml4.entries[hhdm_pml4e] = s_kernel_page_directory.m_pml4.entries[hhdm_pml4e];
+    page_directory->m_pml4.entries[hhdm_pml4e] = s_kernel_page_directory.m_pml4.entries[hhdm_pml4e];
 
     size_t kernel_pml4e = PML4::index(g_boot_info->kernel_virtual_base);
-    dir->m_pml4.entries[kernel_pml4e] = s_kernel_page_directory.m_pml4.entries[kernel_pml4e];
+    page_directory->m_pml4.entries[kernel_pml4e] = s_kernel_page_directory.m_pml4.entries[kernel_pml4e];
 
-    return dir;
+    return page_directory;
 }
 
 PageTableEntry* PageDirectory::walk_page_table(VirtualAddress virt, PageFlags flags) {
@@ -176,15 +176,15 @@ void PageDirectory::create_pml4_table() {
     memset(entries, 0, PAGE_SIZE);
 }
 
-void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memory::RegionAllocator&) {
-    auto& dir = s_kernel_page_directory;
+void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info) {
+    auto& page_directory = s_kernel_page_directory;
 
-    dir.set_type(Kernel);
-    dir.create_pml4_table();
+    page_directory.set_type(Kernel);
+    page_directory.create_pml4_table();
 
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += 2 * MB) {
         VirtualAddress va { boot_info.hhdm + i };
-        dir.map(va, i, PageFlags::Write | PageFlags::Huge);
+        page_directory.map(va, i, PageFlags::Write | PageFlags::Huge);
     }
 
     // FIXME: This currently maps both the kernel text and data sections as writable
@@ -192,10 +192,10 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info, memo
         PhysicalAddress pa = boot_info.kernel_physical_base + i;
         VirtualAddress va { boot_info.kernel_virtual_base + i };
 
-        dir.map(va, pa, PageFlags::Write | PageFlags::Huge);
+        page_directory.map(va, pa, PageFlags::Write | PageFlags::Huge);
     }
 
-    dir.switch_to();
+    page_directory.switch_to();
 }
 
 }

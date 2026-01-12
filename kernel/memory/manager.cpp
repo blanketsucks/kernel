@@ -50,7 +50,7 @@ void MemoryManager::init() {
 
 void MemoryManager::initialize() {
     m_pmm = PhysicalMemoryManager::create(*g_boot_info);
-    arch::PageDirectory::create_kernel_page_directory(*g_boot_info, *m_kernel_region_allocator);
+    arch::PageDirectory::create_kernel_page_directory(*g_boot_info);
 
     this->create_physical_pages();
 }
