@@ -7,9 +7,13 @@
 
 namespace kernel {
 
+static constexpr u8 irq_for_drive(ata::Drive drive) {
+    return drive == ata::Drive::Master ? ata::PRIMARY_IRQ : ata::SECONDARY_IRQ;
+}
+
 RefPtr<PATADevice> PATADevice::create(ata::Channel channel, ata::Drive drive, pci::Address address) {
     auto device = RefPtr<PATADevice>(new PATADevice(channel, drive, address));
-    if (!device->max_addressable_block()) { // If max_addressable_block is 0, we returned early in the constructor which means the device is not present
+    if (auto result = device->initialize(); result.is_err()) {
         return nullptr;
     }
 
@@ -19,9 +23,7 @@ RefPtr<PATADevice> PATADevice::create(ata::Channel channel, ata::Drive drive, pc
 
 PATADevice::PATADevice(
     ata::Channel channel, ata::Drive drive, pci::Address address
-) : StorageDevice(SECTOR_SIZE),
-    IRQHandler(drive == ata::Drive::Master ? ata::PRIMARY_IRQ : ata::SECONDARY_IRQ), 
-    m_channel(channel), m_drive(drive) {
+) : StorageDevice(SECTOR_SIZE), IRQHandler(irq_for_drive(drive)), m_channel(channel), m_drive(drive), m_pci_address(address) {
     m_bus_master = address.bar(4) & ~1;
     if (channel == ata::Channel::Primary) {
         m_data = ata::PRIMARY_DATA_PORT;
@@ -30,8 +32,10 @@ PATADevice::PATADevice(
         m_data = ata::SECONDARY_DATA_PORT;
         m_control = ata::SECONDARY_CONTROL_PORT;
     }
+}
 
-    m_data.write<u8>(ata::DriveReg, 0xA0 | (to_underlying(drive) << 4));
+ErrorOr<void> PATADevice::initialize() {
+    m_data.write<u8>(ata::DriveReg, 0xA0 | (to_underlying(m_drive) << 4));
 
     m_data.write<u8>(ata::SectorCount, 0x00);
     m_data.write<u8>(ata::LBA0, 0x00);
@@ -46,7 +50,7 @@ PATADevice::PATADevice(
     }
 
     if (status & ata::Error || status == 0) {
-        return;
+        return Error(ENXIO);
     }
 
     u8 cl = m_data.read<u8>(ata::LBA1);
@@ -82,8 +86,8 @@ PATADevice::PATADevice(
     if (m_has_dma) {
         auto* mm = MemoryManager::instance();
 
-        address.set_bus_master(true);
-        address.set_interrupt_line(true);
+        m_pci_address.set_bus_master(true);
+        m_pci_address.set_interrupt_line(true);
 
         u8 status = m_bus_master.read<u8>(ata::BMStatus);
         m_bus_master.write<u8>(ata::BMStatus, status | 0x04);
@@ -103,6 +107,8 @@ PATADevice::PATADevice(
     dbgln(" - Has 48 bit PIO: {}", m_has_48bit_pio);
     dbgln(" - Max Addressable Sector: {}", m_max_addressable_block);
     dbgln(" - Capacity: {} MB\n", capacity / MB);
+
+    return {};
 }
 
 void PATADevice::handle_irq() {

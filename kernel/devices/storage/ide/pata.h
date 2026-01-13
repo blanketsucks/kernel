@@ -21,6 +21,8 @@ public:
 
     static RefPtr<PATADevice> create(ata::Channel, ata::Drive, pci::Address);
 
+    ErrorOr<void> initialize();
+
     ata::Channel channel() const { return m_channel; }
     ata::Drive drive() const { return m_drive; }
     
@@ -58,6 +60,7 @@ private:
 
     ata::Channel m_channel;
     ata::Drive m_drive;
+    pci::Address m_pci_address;
 
     Type m_type;
 
