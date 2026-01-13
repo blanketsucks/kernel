@@ -192,7 +192,6 @@ struct Inode {
 
 static_assert(sizeof(Inode) == 128);
 
-// This doesn't incldue the name because we don't know the length of it until we actually read the entry.
 struct DirEntry {
     u32 inode;
     u16 size;
