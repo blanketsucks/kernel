@@ -13,7 +13,7 @@ Thread* Thread::create(u32 id, String name, Process* process, Entry entry, void*
 }
 
 Thread* Thread::create(String name, Process* process, Entry entry, void* entry_data, ProcessArguments& arguments) {
-    return new Thread(move(name), process, generate_id(), entry, entry_data, arguments);
+    return new Thread(move(name), process, Scheduler::generate_pid(), entry, entry_data, arguments);
 }
 
 Thread* Thread::current() {
@@ -237,8 +237,6 @@ bool Thread::should_unblock() const {
 }
 
 void Thread::block(Blocker* blocker) {
-    ScopedSchedulerLock lock;
-
     m_blocker = blocker;
     m_state = Blocked;
 

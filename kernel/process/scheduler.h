@@ -10,11 +10,11 @@ namespace kernel {
 class Process;
 class Thread;
 
-u32 generate_id();
-
 class Scheduler {
 public:
     static void init();
+
+    static pid_t generate_pid();
 
     static void invoke_async();
     static bool is_invoked_async();
@@ -41,12 +41,6 @@ public:
     static Thread* set_next_thread(Thread*);
 
     static Thread* get_next_thread();
-};
-
-class ScopedSchedulerLock {
-public:
-    ScopedSchedulerLock() { Scheduler::lock(); }
-    ~ScopedSchedulerLock() { Scheduler::unlock(); }
 };
 
 }

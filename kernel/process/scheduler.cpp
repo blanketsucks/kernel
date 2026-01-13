@@ -20,8 +20,6 @@ static Thread* s_current_thread = nullptr;
 
 static Process* s_kernel_process = nullptr;
 
-static u32 s_irq_disable_counter = 0;
-
 static bool s_invoked_async = false;
 
 void Scheduler::invoke_async() {
@@ -50,24 +48,8 @@ void _idle() {
     }
 }
 
-u32 generate_id() {
+pid_t Scheduler::generate_pid() {
     return s_next_id++;
-}
-
-void Scheduler::lock() {
-    s_irq_disable_counter++;
-    asm volatile("cli");
-}
-
-void Scheduler::unlock() {
-    s_irq_disable_counter--;
-    if (s_irq_disable_counter == 0) {
-        asm volatile("sti");
-    }
-}
-
-bool Scheduler::is_locked() {
-    return s_irq_disable_counter > 0;
 }
 
 Vector<Process*>& Scheduler::processes() {

@@ -16,7 +16,7 @@
 namespace kernel {
 
 Process* Process::create_kernel_process(String name, void (*entry)(void*), void* data) {
-    return new Process(generate_id(), move(name), true, entry, data);
+    return new Process(Scheduler::generate_pid(), move(name), true, entry, data);
 }
 
 ErrorOr<Process*> Process::create_user_process(String path, RefPtr<fs::ResolvedInode> cwd, TTY* tty) {
@@ -28,14 +28,14 @@ ErrorOr<Process*> Process::create_user_process(String path, RefPtr<fs::ResolvedI
     ProcessArguments arguments;
     arguments.argv = { path };
 
-    auto* process = new Process(generate_id(), move(path), false, nullptr, nullptr, cwd, move(arguments), tty);
+    auto* process = new Process(Scheduler::generate_pid(), move(path), false, nullptr, nullptr, cwd, move(arguments), tty);
     TRY(process->create_user_entry(elf));
 
     return process;
 }
 
 ErrorOr<Process*> Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty) {
-    auto* process = new Process(generate_id(), move(name), false, nullptr, nullptr, cwd, move(arguments), tty);
+    auto* process = new Process(Scheduler::generate_pid(), move(name), false, nullptr, nullptr, cwd, move(arguments), tty);
     TRY(process->create_user_entry(elf));
 
     return process;
@@ -89,7 +89,7 @@ Process::Process(
 
 Process::Process(
     String name, Process* parent
-) : m_id(generate_id()), m_parent_id(parent->id()), m_name(move(name)), m_kernel(false), m_cwd(parent->m_cwd) {
+) : m_id(Scheduler::generate_pid()), m_parent_id(parent->id()), m_name(move(name)), m_kernel(false), m_cwd(parent->m_cwd) {
     m_page_directory = arch::PageDirectory::create_user_page_directory();
     m_allocator = parent->m_allocator->clone(m_page_directory);
 
@@ -164,7 +164,7 @@ Thread* Process::get_main_thread() const {
 }
 
 Thread* Process::spawn(String name, void (*entry)(void*), void* data) {
-    auto thread = Thread::create(generate_id(), move(name), this, entry, data, m_arguments);
+    auto thread = Thread::create(Scheduler::generate_pid(), move(name), this, entry, data, m_arguments);
     this->add_thread(thread);
 
     Scheduler::queue(thread);
