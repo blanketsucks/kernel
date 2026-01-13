@@ -20,8 +20,8 @@ RefPtr<AC97Device> AC97Device::create(pci::Device device) {
 }
 
 AC97Device::AC97Device(pci::Address address) : IRQHandler(address.interrupt_line()) {
-    m_audio_mixer = address.bar(0) & ~1;
-    m_audio_bus = address.bar(1) & ~1;
+    m_audio_mixer = io::Port(address.bar(0) & ~1);
+    m_audio_bus = io::Port(address.bar(1) & ~1);
 
     m_audio_output = m_audio_bus.offset(PCMOut);
 

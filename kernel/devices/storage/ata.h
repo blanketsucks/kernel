@@ -1,14 +1,15 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/arch/io.h>
 
 namespace kernel::ata {
 
-constexpr static u16 PRIMARY_CONTROL_PORT = 0x3F6;
-constexpr static u16 SECONDARY_CONTROL_PORT = 0x376;
+constexpr static io::Port PRIMARY_CONTROL_PORT { 0x3F6 };
+constexpr static io::Port SECONDARY_CONTROL_PORT { 0x376 };
 
-constexpr static u16 PRIMARY_DATA_PORT = 0x1F0;
-constexpr static u16 SECONDARY_DATA_PORT = 0x170;
+constexpr static io::Port PRIMARY_DATA_PORT { 0x1F0 };
+constexpr static io::Port SECONDARY_DATA_PORT { 0x170 };
 
 constexpr static u16 PRIMARY_IRQ = 14;
 constexpr static u16 SECONDARY_IRQ = 15;

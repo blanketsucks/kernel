@@ -22,7 +22,7 @@ void wait(u32 us);
 class Port {
 public:
     Port() = default;
-    Port(u16 port) : m_port(port) {}
+    constexpr explicit Port(u16 port) : m_port(port) {}
 
     u16 value() const { return m_port; }
     Port offset(u16 offset) const { return Port(m_port + offset); }

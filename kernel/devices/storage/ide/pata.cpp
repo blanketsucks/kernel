@@ -1,3 +1,4 @@
+#include "kernel/devices/storage/ata.h"
 #include <kernel/devices/storage/ide/pata.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/process/threads.h>
@@ -24,7 +25,8 @@ RefPtr<PATADevice> PATADevice::create(ata::Channel channel, ata::Drive drive, pc
 PATADevice::PATADevice(
     ata::Channel channel, ata::Drive drive, pci::Address address
 ) : StorageDevice(SECTOR_SIZE), IRQHandler(irq_for_drive(drive)), m_channel(channel), m_drive(drive), m_pci_address(address) {
-    m_bus_master = address.bar(4) & ~1;
+    m_bus_master = io::Port(address.bar(4) & ~1);
+
     if (channel == ata::Channel::Primary) {
         m_data = ata::PRIMARY_DATA_PORT;
         m_control = ata::PRIMARY_CONTROL_PORT;

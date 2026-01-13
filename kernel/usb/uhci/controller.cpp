@@ -47,7 +47,7 @@ UHCIController::UHCIController(pci::Address address) : IRQHandler(address.interr
     address.set_bus_master(true);
     address.set_interrupt_line(true);
 
-    m_port = address.bar(4) & ~1;
+    m_port = io::Port(address.bar(4) & ~1);
     this->initialize();
 }
 
