@@ -103,21 +103,21 @@ public:
 
     ErrorOr<void> free_page_frame(void* frame);
 
-    ErrorOr<void*> allocate(memory::RegionAllocator&, size_t size, PageFlags flags);
-    ErrorOr<void*> allocate_at(memory::RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags);
+    ErrorOr<void*> allocate(memory::RegionAllocator&, size_t size, PageFlags flags, String name = {});
+    ErrorOr<void*> allocate_at(memory::RegionAllocator&, VirtualAddress address, size_t size, PageFlags flags, String name = {});
 
     ErrorOr<void> map_region(arch::PageDirectory*, memory::Region*, PageFlags flags);
 
     ErrorOr<void> free(memory::RegionAllocator&, void* ptr, size_t size);
     ErrorOr<void> free(arch::PageDirectory*, VirtualAddress address, size_t size);
 
-    ErrorOr<void*> allocate_heap_region(size_t size);
+    ErrorOr<void*> allocate_heap_region(size_t size, String name = {});
     ErrorOr<void> free_heap_region(void* ptr, size_t size);
 
-    ErrorOr<void*> allocate_kernel_region(size_t size);
+    ErrorOr<void*> allocate_kernel_region(size_t size, String name = {});
     ErrorOr<void> free_kernel_region(void* ptr, size_t size);
 
-    ErrorOr<void*> allocate_dma_region(size_t size);
+    ErrorOr<void*> allocate_dma_region(size_t size, String name = {});
     ErrorOr<void> free_dma_region(void* ptr, size_t size);
 
     // Map an already existing physical region into the kernel's address space

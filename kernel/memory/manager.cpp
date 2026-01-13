@@ -184,7 +184,7 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
     return {};
 }
 
-ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags) {
+ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags, String name) {
     // FIXME: Acquiring the lock *sometimes* hangs when trying to allocate the DMA region for the control USB pipe.
     ScopedSpinLock lock(m_lock);
 
@@ -193,6 +193,8 @@ ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, 
     if (!region) {
         return Error(ENOMEM);
     }
+
+    region->set_name(move(name));
 
     auto* page_directory = allocator.page_directory();
     if (this->try_allocate_contiguous(page_directory, region, flags)) {
@@ -229,12 +231,14 @@ bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory,
     return true;
 }
 
-ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress address, size_t size, PageFlags flags) {
+ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAddress address, size_t size, PageFlags flags, String name) {
     size = std::align_up(size, PAGE_SIZE);
     auto region = allocator.allocate_at(address, size, PROT_READ | PROT_WRITE);
     if (!region) {
         return Error(ENOMEM);
     }
+
+    region->set_name(move(name));
 
     auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
@@ -289,24 +293,24 @@ ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAd
     return {};
 }
 
-ErrorOr<void*> MemoryManager::allocate_heap_region(size_t size) {
-    return this->allocate(*m_heap_region_allocator, size, PageFlags::Write);
+ErrorOr<void*> MemoryManager::allocate_heap_region(size_t size, String name) {
+    return this->allocate(*m_heap_region_allocator, size, PageFlags::Write, move(name));
 }
 
 ErrorOr<void> MemoryManager::free_heap_region(void* start, size_t size) {
     return this->free(*m_heap_region_allocator, start, size);
 }
 
-ErrorOr<void*> MemoryManager::allocate_kernel_region(size_t size) {
-    return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write);
+ErrorOr<void*> MemoryManager::allocate_kernel_region(size_t size, String name) {
+    return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write, move(name));
 }
 
 ErrorOr<void> MemoryManager::free_kernel_region(void* ptr, size_t size) {
     return this->free(*m_kernel_region_allocator, ptr, size);
 }
 
-ErrorOr<void*> MemoryManager::allocate_dma_region(size_t size) {
-    return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write | PageFlags::CacheDisable);
+ErrorOr<void*> MemoryManager::allocate_dma_region(size_t size, String name) {
+    return this->allocate(*m_kernel_region_allocator, size, PageFlags::Write | PageFlags::CacheDisable, move(name));
 }
 
 ErrorOr<void> MemoryManager::free_dma_region(void* ptr, size_t size) {

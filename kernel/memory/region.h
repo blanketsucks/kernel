@@ -6,6 +6,7 @@
 
 #include <std/enums.h>
 #include <std/memory.h>
+#include <std/string.h>
 
 namespace kernel::arch {
     class PageDirectory;
@@ -52,6 +53,9 @@ public:
 
     Range const& range() const { return m_range; }
 
+    String const& name() const { return m_name; }
+    void set_name(String name) { m_name = move(name); }
+
     fs::File* file() { return m_file; }
     fs::File const* file() const { return m_file; }
 
@@ -97,6 +101,7 @@ public:
 
 private:
     Range m_range;
+    String m_name;
 
     bool m_used = false;
     bool m_shared = false;
