@@ -7,20 +7,14 @@
 
 #include <std/format.h>
 
+[[gnu::constructor]] void before_main() {
+    dbgln("Before main");
+}
+
+[[gnu::destructor]] void after_main() {
+    dbgln("After main");
+}
+
 int main() {
-    bool* ptr = (bool*)mmap(nullptr, sizeof(bool), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-
-    dbgln("Forking process.");
-    pid_t pid = fork();
-    if (pid == 0) {
-        dbgln("Child writing to memory...");
-        *ptr = true;
-    } else {
-        dbgln("Parent waiting for child to write to memory...");
-        while (*ptr == false) {}
-
-        dbgln("Child wrote to memory, exiting...");
-    }
-
-    return 32;
+    return 0;
 }

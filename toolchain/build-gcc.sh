@@ -25,7 +25,7 @@ function build_gcc() {
     mkdir build
     cd build
 
-    ../configure --prefix="$PREFIX" --target="$TARGET-corn" --with-sysroot="$SYSROOT" --enable-languages=c,c++ --enable-shared --disable-nls --enable-initfini-array
+    ../configure --prefix="$PREFIX" --target="$TARGET-corn" --with-sysroot="$SYSROOT" --enable-languages=c,c++ --enable-shared --disable-nls --disable-initfini-array
     make -j16 all-gcc all-target-libgcc
     make install-gcc install-target-libgcc
 

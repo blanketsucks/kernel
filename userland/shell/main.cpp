@@ -70,11 +70,11 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
         close(0);
         close(1);
         close(2);
-
+        
         dup2(fd, 0);
         dup2(fd, 1);
         dup2(fd, 2);
-
+        
         execve(command.pathname(), argv, nullptr);
     }
 

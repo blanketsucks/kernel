@@ -25,7 +25,7 @@ function build_binutils() {
     mkdir build
     cd build
 
-    ../configure --prefix="$PREFIX" --target="$TARGET-corn" --with-sysroot="$SYSROOT" --disable-werror --disable-nls
+    ../configure --prefix="$PREFIX" --target="$TARGET-corn" --with-sysroot="$SYSROOT" --disable-werror --disable-nls --disable-initfini-array
 
     make -j16
     make install
