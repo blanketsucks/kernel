@@ -153,8 +153,7 @@ private:
         void* entry_data = nullptr,
         RefPtr<fs::ResolvedInode> cwd = nullptr,
         ProcessArguments arguments = {},
-        TTY* tty = nullptr,
-        Process* parent = nullptr
+        TTY* tty = nullptr
     );
 
     Process(String name, Process* parent);

@@ -53,8 +53,7 @@ Process::Process(
     void* entry_data,
     RefPtr<fs::ResolvedInode> cwd,
     ProcessArguments arguments,
-    TTY* tty,
-    Process* parent
+    TTY* tty
 ) : m_state(Alive), m_id(id), m_name(move(name)), m_kernel(kernel), m_tty(tty), m_arguments(move(arguments)) {
     if (!cwd) {
         m_cwd = fs::vfs()->root();
@@ -64,13 +63,10 @@ Process::Process(
 
     if (!kernel) {
         m_page_directory = arch::PageDirectory::create_user_page_directory();
-        if (!parent) {
-            // The allocator gets created later for child processes
-            m_allocator = memory::RegionAllocator::create(
-                { VirtualAddress { PAGE_SIZE }, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) },
-                m_page_directory
-            );
-        }
+        m_allocator = memory::RegionAllocator::create(
+            { VirtualAddress { PAGE_SIZE }, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) },
+            m_page_directory
+        );
     } else {
         m_page_directory = arch::PageDirectory::kernel_page_directory();
 
