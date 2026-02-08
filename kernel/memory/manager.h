@@ -3,6 +3,7 @@
 #include <kernel/common.h>
 #include <kernel/memory/region.h>
 #include <kernel/sync/spinlock.h>
+#include <kernel/sync/mutex.h>
 
 #include <kernel/boot/boot_info.h>
 #include <kernel/arch/page_directory.h>
@@ -132,7 +133,8 @@ public:
     PhysicalPage* get_physical_page(PhysicalAddress address);
 
     SpinLock& liballoc_lock() { return m_liballoc_lock; }
-    
+    Mutex& lock() { return m_lock; }
+
 private:
     void initialize();
     void create_physical_pages();
@@ -148,7 +150,7 @@ private:
     size_t m_physical_pages_count = 0;
 
     SpinLock m_liballoc_lock;
-    SpinLock m_lock;
+    Mutex m_lock;
 };
 
 class TemporaryMapping {

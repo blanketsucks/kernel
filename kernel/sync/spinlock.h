@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/posix/sys/types.h>
 
 #include <std/atomic.h>
 
@@ -10,11 +11,8 @@ class SpinLock {
 public:
     SpinLock() = default;
 
-    SpinLock(const SpinLock&) = delete;
-    SpinLock(SpinLock&&) = delete;
-
-    SpinLock& operator=(const SpinLock&) = delete;
-    SpinLock& operator=(SpinLock&&) = delete;
+    NO_COPY(SpinLock)
+    NO_MOVE(SpinLock)
 
     bool is_locked();
 
@@ -23,21 +21,6 @@ public:
 
 private:
     std::Atomic<u8> m_lock { 0 };
-};
-
-template<typename Lock>
-class ScopedSpinLock {
-public:
-    explicit ScopedSpinLock(Lock& lock) : m_lock(lock) {
-        m_lock.lock();
-    }
-
-    ~ScopedSpinLock() {
-        m_lock.unlock();
-    }
-
-private:
-    Lock& m_lock;
 };
 
 }

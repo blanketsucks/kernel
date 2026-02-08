@@ -1,7 +1,8 @@
 #include <kernel/memory/region.h>
 #include <kernel/memory/manager.h>
+#include <kernel/sync/lock.h>
 #include <kernel/fs/file.h>
-#include <kernel/arch/cpu.h>
+
 
 #include <std/format.h>
 
@@ -26,7 +27,7 @@ RegionAllocator::RegionAllocator(
 ) : m_range(range), m_head(head), m_page_directory(page_directory) {}
 
 RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) {
-    ScopedSpinLock lock(m_lock);
+    ScopedLock lock(m_lock);
 
     auto allocator = RegionAllocator::create(m_range, m_head->clone(), page_directory);
 

@@ -167,7 +167,7 @@ ErrorOr<void> MemoryManager::free_page_frame(void* frame) {
 }
 
 ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Region* region, PageFlags flags) {
-    ScopedSpinLock lock(m_lock);
+    ScopedLock lock(m_lock);
     if (this->try_allocate_contiguous(page_directory, region, flags)) {
         return {};
     }
@@ -186,7 +186,7 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
 
 ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags, String name) {
     // FIXME: Acquiring the lock *sometimes* hangs when trying to allocate the DMA region for the control USB pipe.
-    ScopedSpinLock lock(m_lock);
+    ScopedLock lock(m_lock);
 
     size = std::align_up(size, PAGE_SIZE);
     auto* region = allocator.allocate(size, PROT_READ | PROT_WRITE);
@@ -254,7 +254,7 @@ ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAdd
 }
 
 ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t size) {
-    ScopedSpinLock lock(m_lock);
+    ScopedLock lock(m_lock);
 
     VirtualAddress address { ptr };
     auto* region = allocator.find_region(address);
@@ -269,7 +269,7 @@ ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t 
 }
 
 ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAddress address, size_t size) {
-    ScopedSpinLock lock(m_lock);
+    ScopedLock lock(m_lock);
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         auto* entry = page_directory->get_page_table_entry(address.offset(i));

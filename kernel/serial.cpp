@@ -1,6 +1,7 @@
 #include <kernel/serial.h>
 #include <kernel/arch/io.h>
 #include <kernel/sync/spinlock.h>
+#include <kernel/sync/lock.h>
 #include <kernel/arch/processor.h>
 
 #include <std/cstring.h>
@@ -42,7 +43,7 @@ void COMPort::write(char c) {
 
 void COMPort::write(const char* str, size_t len) {
     if (Processor::are_interrupts_initialized()) {
-        ScopedSpinLock lock(s_lock);
+        ScopedLock lock(s_lock);
         while (len--)
             this->write(*str++);
 

@@ -1,5 +1,6 @@
 #include <kernel/sync/spinlock.h>
 #include <kernel/arch/processor.h>
+#include <kernel/process/threads.h>
 
 namespace kernel {
 
