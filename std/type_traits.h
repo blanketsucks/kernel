@@ -167,4 +167,7 @@ template<typename T> inline constexpr bool is_integral_v = is_integral<T>::value
 
 #endif
 
+template<typename T, typename U>
+concept same_as = is_same_v<T, U> && is_same_v<U, T>;
+
 }
