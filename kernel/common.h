@@ -13,6 +13,22 @@
 #define ALIGNED(x) __attribute__((aligned(x)))
 #define ALWAYS_INLINE [[gnu::always_inline]]
 
+#define NO_COPY(Class)                                  \
+    Class(const Class&) = delete;                       \
+    Class& operator=(const Class&) = delete;
+
+#define NO_MOVE(Class)                                  \
+    Class(Class&&) = delete;                            \
+    Class& operator=(Class&&) = delete;
+
+#define DEFAULT_COPY(Class)                             \
+    Class(const Class&) = default;                      \
+    Class& operator=(const Class&) = default;
+
+#define DEFAULT_MOVE(Class)                             \
+    Class(Class&&) = default;                           \
+    Class& operator=(Class&&) = default;
+
 namespace kernel {
 
 using PhysicalAddress = uintptr_t;
