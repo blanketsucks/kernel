@@ -10,7 +10,9 @@ function build_gcc() {
 
     if [ -d "gcc" ]; then
         echo "Removing existing gcc directory..."
+
         rm -rf gcc
+        rm $GCC_PACKAGE
     fi
 
     mkdir gcc

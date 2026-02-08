@@ -10,7 +10,9 @@ function build_binutils() {
 
     if [ -d "binutils-gdb" ]; then
         echo "Removing existing binutils-gdb directory..."
+
         rm -rf binutils-gdb
+        rm $BINUTILS_PACKAGE
     fi
 
     mkdir binutils-gdb
