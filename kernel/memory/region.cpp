@@ -14,6 +14,7 @@ Region* Region::clone() const {
     region->m_used = m_used;
     region->m_prot = m_prot;
     region->m_file = m_file;
+    region->m_name = m_name;
 
     return region;
 }
