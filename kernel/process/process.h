@@ -95,8 +95,8 @@ public:
 
     FlatPtr handle_syscall(arch::Registers*);
 
-    ErrorOr<void*> allocate(size_t size, PageFlags flags);
-    ErrorOr<void*> allocate_at(VirtualAddress address, size_t size, PageFlags flags);
+    ErrorOr<void*> allocate(size_t size, PageFlags flags, String name = {});
+    ErrorOr<void*> allocate_at(VirtualAddress address, size_t size, PageFlags flags, String name = {});
 
     ErrorOr<void*> allocate_from_kernel_region(VirtualAddress, size_t size, int prot);
     ErrorOr<void*> allocate_with_physical_region(PhysicalAddress, size_t size, int prot);

@@ -122,7 +122,7 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
         VirtualAddress address { std::align_down(ph.p_vaddr, PAGE_SIZE) };
         size_t size = std::align_up(ph.p_memsz, PAGE_SIZE);
 
-        u8* region = reinterpret_cast<u8*>(TRY(this->allocate_at(address, size, PageFlags::Write)));
+        u8* region = reinterpret_cast<u8*>(TRY(this->allocate_at(address, size, PageFlags::Write, "Program Region")));
         TemporaryMapping temp(*m_page_directory, region, size);
 
         file.seek(ph.p_offset, SEEK_SET);
@@ -167,20 +167,20 @@ Thread* Process::spawn(String name, void (*entry)(void*), void* data) {
     return thread;
 }
 
-ErrorOr<void*> Process::allocate(size_t size, PageFlags flags) {
+ErrorOr<void*> Process::allocate(size_t size, PageFlags flags, String name) {
     if (this->is_kernel()) {
         return MM->allocate_kernel_region(size);
     }
 
-    return MM->allocate(*m_allocator, size, flags | PageFlags::User);
+    return MM->allocate(*m_allocator, size, flags | PageFlags::User, move(name));
 }
 
-ErrorOr<void*> Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags) {
+ErrorOr<void*> Process::allocate_at(VirtualAddress address, size_t size, PageFlags flags, String name) {
     if (this->is_kernel()) {
         return MM->allocate_kernel_region(size);
     }
 
-    return MM->allocate_at(*m_allocator, address, size, flags | PageFlags::User);
+    return MM->allocate_at(*m_allocator, address, size, flags | PageFlags::User, move(name));
 }
 
 ErrorOr<void*> Process::allocate_from_kernel_region(VirtualAddress address, size_t size, int prot) {
@@ -301,7 +301,12 @@ unrecoverable_fault:
                 return;
             }
 
-            dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
+            auto& name = region->name();
+            if (name.empty()) {
+                dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
+            } else {
+                dbgln("  {:#p} - {:#p} ({}{}{}): {}", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P', name);
+            }
         });
 
         dbgln();

@@ -63,7 +63,7 @@ void Thread::create_stack() {
 
     bool is_kernel_process = this->is_kernel();
     if (!is_kernel_process) {
-        void* user_stack = MUST(m_process->allocate(USER_STACK_SIZE, PageFlags::Write));
+        void* user_stack = MUST(m_process->allocate(USER_STACK_SIZE, PageFlags::Write, "User Stack"));
         m_user_stack = Stack(user_stack, USER_STACK_SIZE);
 
         this->setup_thread_arguments();
@@ -104,7 +104,7 @@ void Thread::set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters& register
 
 void Thread::prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>& dst) {
     if (!m_arguments_region) {
-        m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
+        m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write, "Arguments Region")));
         m_arguments_offset = 0;
     }
 
@@ -121,7 +121,7 @@ void Thread::prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>&
         if (offset + size > PAGE_SIZE) {
             MM->unmap_kernel_region(address);
 
-            m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write)));
+            m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write, "Arguments Region")));
             address = reinterpret_cast<char*>(MM->map_from_page_directory(m_process->page_directory(), m_arguments_region, PAGE_SIZE));
 
             offset = 0;
