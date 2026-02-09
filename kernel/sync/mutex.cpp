@@ -42,4 +42,8 @@ void Mutex::unlock() {
     m_owner.store(-1, std::MemoryOrder::Release);
 }
 
+bool Mutex::is_locked() {
+    return m_owner.load(std::MemoryOrder::SeqCst) != -1;
+}
+
 }
