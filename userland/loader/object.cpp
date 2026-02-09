@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+static constexpr bool DEBUG_MMAP_NAMES = true;
+
 ErrorOr<void> DynamicObject::load() {
     m_fd = open_length(m_name.data(), m_name.size(), O_RDONLY, 0);
     if (m_fd < 0) {
@@ -23,6 +25,11 @@ ErrorOr<void> DynamicObject::load() {
     if (data == MAP_FAILED) {
         close(m_fd);
         return Error(errno);
+    }
+
+    if constexpr (DEBUG_MMAP_NAMES) {
+        String name = std::format("'{}': Dynamic Object File", m_name);
+        mmap_set_name_length(data, name.data(), name.size());
     }
 
     m_image = elf::Image(reinterpret_cast<u8*>(data), st.st_size);
@@ -136,6 +143,11 @@ ErrorOr<void> DynamicObject::map_sections() {
             }
 
             std::memset(reinterpret_cast<void*>(base() + vaddr + ph.p_filesz), 0, ph.p_memsz - ph.p_filesz);
+        }
+
+        if constexpr (DEBUG_MMAP_NAMES) {
+            String name = std::format("'{}': Dynamic Object Section", m_name);
+            mmap_set_name_length(addr, name.data(), name.size());
         }
     }
 
