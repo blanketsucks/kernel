@@ -127,6 +127,7 @@ public:
 
     ErrorOr<FlatPtr> sys$mmap(mmap_args*);
     ErrorOr<FlatPtr> sys$munmap(FlatPtr address, size_t size);
+    ErrorOr<FlatPtr> sys$mmap_set_name(FlatPtr address, const char* name, size_t length);
 
     ErrorOr<FlatPtr> sys$getcwd(char* buffer, size_t size);
     ErrorOr<FlatPtr> sys$chdir(const char* path);

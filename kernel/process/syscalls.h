@@ -11,6 +11,7 @@
     Op(stat)                    \
     Op(fstat)                   \
     Op(mmap)                    \
+    Op(mmap_set_name)           \
     Op(munmap)                  \
     Op(getpid)                  \
     Op(getppid)                 \

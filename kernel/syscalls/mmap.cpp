@@ -124,4 +124,16 @@ ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
     return 0;
 }
 
+ErrorOr<FlatPtr> Process::sys$mmap_set_name(FlatPtr address, const char* name, size_t length) {
+    auto* region = m_allocator->find_region(reinterpret_cast<void*>(address));
+    if (!region) {
+        return Error(EINVAL);
+    }
+    
+    StringView str = this->validate_string(name, length);
+    region->set_name(str);
+
+    return 0;
+}
+
 }
