@@ -20,6 +20,7 @@ struct Line {
 struct Cell {
     u32 bg, fg;
     char c;
+    bool dirty;
 };
 
 class Terminal {
@@ -55,6 +56,8 @@ public:
     void push(char c, u32 fg = DEFAULT_FG, u32 bg = DEFAULT_BG);
 
 private:
+    void fill(size_t x, size_t y, size_t height, size_t width, u32 color);
+
     gfx::RenderContext& m_render_context;
     RefPtr<gfx::PSFFont> m_font;
 

@@ -133,7 +133,12 @@ void Terminal::render() {
     for (size_t row = 0; row < m_rows; row++) {
         for (size_t col = 0; col < m_cols; col++) {
             size_t index = col + row * m_cols;
-            this->render_cell(row, col, m_cells[index]);
+            auto& cell = m_cells[index];
+
+            if (cell.dirty) {
+                this->render_cell(row, col, m_cells[index]);
+                cell.dirty = false;
+            }
         }
     }
 
@@ -141,13 +146,23 @@ void Terminal::render() {
 }
 
 void Terminal::render_cursor(u32 color) {
-    u32* framebuffer = m_render_context.framebuffer().buffer();
+    size_t height = m_font->height();
+    size_t width = m_font->width() / 2;
 
     size_t x = m_current_col * m_font->width();
     size_t y = m_current_row * m_font->height();
 
-    for (size_t dy = 0; dy < m_font->height(); dy++) {
-        for (size_t dx = 0; dx < m_font->width() / 2; dx++) {
+    auto& cell = m_cells[m_current_col + m_current_row * m_cols];
+    cell.dirty = true;
+
+    this->fill(x, y, height, width, color);
+}
+
+void Terminal::fill(size_t x, size_t y, size_t height, size_t width, u32 color) {
+    u32* framebuffer = m_render_context.framebuffer().buffer();
+
+    for (size_t dy = 0; dy < height; dy++) {
+        for (size_t dx = 0; dx < width; dx++) {
             size_t index = (y + dy) * m_pitch / 4 + (x + dx);
             framebuffer[index] = color;
         }
@@ -158,6 +173,10 @@ void Terminal::scroll() {
     // We don't have to re-render everything here, since we know what ever calls push() will call render() later.
     memmove(m_cells.data(), m_cells.data() + m_cols, (m_rows - 1) * m_cols * sizeof(Cell));
     memset(m_cells.data() + (m_rows - 1) * m_cols, 0, m_cols * sizeof(Cell));
+
+    for (auto& cell : m_cells) {
+        cell.dirty = true;
+    }
 }
 
 void Terminal::push(char c, u32 fg, u32 bg) {
@@ -184,8 +203,12 @@ void Terminal::push(char c, u32 fg, u32 bg) {
         }
     }
 
-    Cell cell { bg, fg, c };
-    m_cells[m_current_col + m_current_row * m_cols] = cell;
+    auto& cell = m_cells[m_current_col + m_current_row * m_cols];
+
+    cell.bg = bg;
+    cell.fg = fg;
+    cell.c = c;
+    cell.dirty = true;
 
     m_current_col++;
     if (m_current_col < m_cols) {
