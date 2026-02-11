@@ -292,7 +292,7 @@ unrecoverable_fault:
         if (!message.empty()) {
             dbgln("  \033[1;31mUnrecoverable page fault: {}\033[0m", message);
         } else {
-            dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
+            dbgln("  \033[1;31mUnrecoverable page fault. Fault code: {:#x}\033[0m", fault.value);
         }
 
         dbgln("Process memory regions:");
