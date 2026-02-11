@@ -110,6 +110,7 @@ public:
         m_head = m_head->next;
         delete prev_head;
 
+        m_size--;
         return value;
     }
 
