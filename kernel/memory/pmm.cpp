@@ -163,16 +163,12 @@ ErrorOr<void*> PhysicalMemoryManager::allocate_contiguous(size_t count) {
         return reinterpret_cast<void*>(m_frames.pop());
     }
 
-    for (size_t i = 0; i < count - 1; i++) {
-        if (m_frames.empty()) {
-            return Error(ENOMEM);
-        }
-
-        m_frames.pop();
+    if (m_frames.size() < count) {
+        return Error(ENOMEM);
     }
 
-    if (m_frames.empty()) {
-        return Error(ENOMEM);
+    for (size_t i = 0; i < count - 1; i++) {
+        m_frames.pop();
     }
 
     return reinterpret_cast<void*>(m_frames.pop());
