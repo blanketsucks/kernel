@@ -11,10 +11,10 @@ global kernel_pd
 extern init
 
 HIGHER_HALF_DIRECT_MAP equ 0xffff800000000000
-HHDM_PML4E equ 0x800
+HHDM_PML4E             equ ((HIGHER_HALF_DIRECT_MAP >> 39) & 0x1FF) * 8
 
 VIDEO_ADDRESS equ 0xB8000
-PAGE_SIZE equ 0x1000
+PAGE_SIZE     equ 0x1000
 
 %macro clear_page_tables 2
     mov edi, %1
