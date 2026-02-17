@@ -15,8 +15,6 @@ static void set_tss_selector(u16 selector) {
     asm volatile("ltr %0" :: "r"(selector));
 }
 
-static GDTEntry s_gdt_entries[11];
-
 static GDTEntry s_entries[256];
 static u16 s_entry_count = 1;
 
@@ -52,29 +50,6 @@ u16 create_gdt_entry(u32 limit, GDTEntrySize size, GDTEntryFlags flags, u8 privi
     entry.access.present = true;
 
     return s_entry_count++;
-}
-
-void write_tss(u16 index, TSS& tss) {
-    u64 base = reinterpret_cast<u64>(&tss);
-    u32 limit = sizeof(TSS) - 1;
-
-    GDTEntry entry;
-
-    entry.set_base(base & 0xFFFFFFFF);
-    entry.set_limit(limit);
-
-    entry.flags.size = 1;
-
-    entry.access.executable = true;
-    entry.access.present = true;
-    entry.access.accessed = true;
-
-    s_gdt_entries[index] = entry;
-
-    entry.high = 0;
-    entry.low = base >> 32;
-
-    s_gdt_entries[index + 1] = entry;
 }
 
 u16 write_tss(TSS& tss) {
