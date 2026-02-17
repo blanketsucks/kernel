@@ -88,8 +88,8 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
         }
 
         // TODO: Handle symbolic links
-        current = ResolvedInode::create(component, fs, entry, current);
-        auto* mount = this->find_mount(*current);
+        auto inode = ResolvedInode::create(component, fs, entry, current);
+        auto* mount = this->find_mount(*inode);
 
         if (mount) {
             auto* guest = mount->guest();
@@ -97,6 +97,8 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
 
             auto root = guest->inode(guest->root());
             current = ResolvedInode::create(component, fs, root, current);
+        } else {
+            current = inode;
         }
 
         if (parent) {

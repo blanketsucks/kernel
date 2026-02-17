@@ -9,8 +9,6 @@
 
 namespace kernel::devfs {
 
-// FIXME: The current way we handle devices doesn't allow for devices like /dev/sda1 to be created.
-
 static RefPtr<fs::ResolvedInode> s_root;
 static fs::FileSystem* s_fs = nullptr;
 
@@ -29,7 +27,7 @@ void init() {
     // But we still want to be able to create nodes inside the devfs so we manually create a ResolvedInode to act
     // as the root of the devfs for VFS operations.
     auto root = s_fs->inode(s_fs->root());
-    s_root = fs::ResolvedInode::create("/dev", s_fs, root, nullptr);
+    s_root = fs::ResolvedInode::create({}, s_fs, root, nullptr);
 
     mkdir("pts", 0);
 
