@@ -15,7 +15,7 @@ u8* MMIOController::map_bus(u8 bus) {
     if (!m_mapped_buses[bus]) {
         PhysicalAddress bus_base = this->get_bus_base_address(bus);
         m_mapped_buses[bus] = reinterpret_cast<u8*>(
-            MM->map_physical_region(reinterpret_cast<void*>(bus_base), BUS_SIZE)
+            MUST(MM->map_physical_region(reinterpret_cast<void*>(bus_base), BUS_SIZE))
         );
     }
 

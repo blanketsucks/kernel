@@ -317,13 +317,13 @@ ErrorOr<void> MemoryManager::free_dma_region(void* ptr, size_t size) {
     return this->free(*m_kernel_region_allocator, ptr, size);
 }
 
-void* MemoryManager::map_physical_region(void* ptr, size_t size) {
+ErrorOr<void*> MemoryManager::map_physical_region(void* ptr, size_t size) {
     size = std::align_up(size, PAGE_SIZE);
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
     auto* region = m_kernel_region_allocator->allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
-        return nullptr;
+        return Error(ENOMEM);
     }
 
     PhysicalAddress start = reinterpret_cast<PhysicalAddress>(ptr);
@@ -349,11 +349,11 @@ void MemoryManager::unmap_kernel_region(void* ptr) {
     m_kernel_region_allocator->free(region);
 }
 
-void* MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory, void* ptr, size_t size) {
+ErrorOr<void*> MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory, void* ptr, size_t size) {
     size = std::align_up(size, PAGE_SIZE);
     auto* region = m_kernel_region_allocator->allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
-        return nullptr;
+        return Error(ENOMEM);
     }
 
     auto* kernel_page_directory = arch::PageDirectory::kernel_page_directory();
@@ -367,14 +367,16 @@ void* MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory
     return region->base().to_ptr();
 }
 
-void MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
-    void* dst = this->map_physical_region(d, size);
-    void* src = this->map_physical_region(s, size);
+ErrorOr<void> MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
+    void* dst = TRY(this->map_physical_region(d, size));
+    void* src = TRY(this->map_physical_region(s, size));
 
     memcpy(dst, src, size);
 
     this->unmap_kernel_region(dst);
     this->unmap_kernel_region(src);
+
+    return {};
 }
 
 bool MemoryManager::is_mapped(void* addr) {
@@ -388,7 +390,7 @@ PhysicalAddress MemoryManager::get_physical_address(void* addr) {
 }
 
 TemporaryMapping::TemporaryMapping(arch::PageDirectory& page_directory, void* ptr, size_t size) : m_size(size) {
-    m_ptr = (u8*)s_mm->map_from_page_directory(&page_directory, ptr, size);
+    m_ptr = (u8*)MUST(s_mm->map_from_page_directory(&page_directory, ptr, size));
 }
 
 TemporaryMapping::~TemporaryMapping() {

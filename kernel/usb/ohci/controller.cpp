@@ -44,7 +44,7 @@ OHCIController* OHCIController::create() {
 
 OHCIController::OHCIController(pci::Address address) : IRQHandler(address.interrupt_line()) {
     m_registers = reinterpret_cast<ohci::Registers*>(
-        MM->map_physical_region(reinterpret_cast<void*>(address.bar(0) & ~3), PAGE_SIZE)
+        MUST(MM->map_physical_region(reinterpret_cast<void*>(address.bar(0) & ~3), PAGE_SIZE))
     );
 
     address.set_bus_master(true);

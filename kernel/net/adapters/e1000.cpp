@@ -26,7 +26,7 @@ E1000NetworkAdapter::E1000NetworkAdapter(pci::Address address) : IRQHandler(addr
             PhysicalAddress bar0 = address.bar(0) & ~3;
             size_t size = address.bar_size(0);
 
-            m_memory = reinterpret_cast<u8*>(MM->map_physical_region(reinterpret_cast<void*>(bar0), size));
+            m_memory = reinterpret_cast<u8*>(MUST(MM->map_physical_region(reinterpret_cast<void*>(bar0), size)));
             break;
         }
     }

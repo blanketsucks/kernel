@@ -108,7 +108,7 @@ void Thread::prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>&
         m_arguments_offset = 0;
     }
 
-    char* address = reinterpret_cast<char*>(MM->map_from_page_directory(m_process->page_directory(), m_arguments_region, PAGE_SIZE));
+    char* address = reinterpret_cast<char*>(MUST(MM->map_from_page_directory(m_process->page_directory(), m_arguments_region, PAGE_SIZE)));
     auto& offset = m_arguments_offset;
 
     for (auto& argument : src) {
@@ -122,7 +122,7 @@ void Thread::prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>&
             MM->unmap_kernel_region(address);
 
             m_arguments_region = reinterpret_cast<u8*>(MUST(m_process->allocate(PAGE_SIZE, PageFlags::Write, "Arguments Region")));
-            address = reinterpret_cast<char*>(MM->map_from_page_directory(m_process->page_directory(), m_arguments_region, PAGE_SIZE));
+            address = reinterpret_cast<char*>(MUST(MM->map_from_page_directory(m_process->page_directory(), m_arguments_region, PAGE_SIZE)));
 
             offset = 0;
         }
@@ -166,11 +166,11 @@ void Thread::setup_thread_arguments() {
     VirtualAddress user_stack { m_user_stack.value() };
     VirtualAddress top = user_stack - size;
 
-    u8* address = reinterpret_cast<u8*>(MM->map_from_page_directory(
+    u8* address = reinterpret_cast<u8*>(MUST(MM->map_from_page_directory(
         m_process->page_directory(),
         top.align_down(PAGE_SIZE).to_ptr(),
         size + top.offset_in_page()
-    ));
+    )));
 
     address += top.offset_in_page();
 

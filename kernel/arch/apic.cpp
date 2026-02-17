@@ -53,7 +53,7 @@ void init() {
     set_apic_base(base);
 
     // Map the APIC registers
-    g_apic_base = VirtualAddress { MM->map_physical_region(reinterpret_cast<void*>(base), PAGE_SIZE) };
+    g_apic_base = VirtualAddress { MUST(MM->map_physical_region(reinterpret_cast<void*>(base), PAGE_SIZE)) };
 
     u32 value = read_reg(APICRegisters::SpuriousInterruptVector);
     write_reg(APICRegisters::SpuriousInterruptVector, value | SPURIOUS_INTERRUPT_VECTOR | 0x100);

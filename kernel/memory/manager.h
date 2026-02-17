@@ -122,13 +122,13 @@ public:
     ErrorOr<void> free_dma_region(void* ptr, size_t size);
 
     // Map an already existing physical region into the kernel's address space
-    void* map_physical_region(void* ptr, size_t size);
+    ErrorOr<void*> map_physical_region(void* ptr, size_t size);
 
     void unmap_kernel_region(void* ptr);
 
-    void* map_from_page_directory(arch::PageDirectory*, void* ptr, size_t size);
+    ErrorOr<void*> map_from_page_directory(arch::PageDirectory*, void* ptr, size_t size);
 
-    void copy_physical_memory(void* dst, void* src, size_t size);
+    ErrorOr<void> copy_physical_memory(void* dst, void* src, size_t size);
 
     PhysicalPage* get_physical_page(PhysicalAddress address);
 

@@ -27,7 +27,9 @@ RefPtr<AHCIController> AHCIController::create(pci::Device device) {
 }
 
 AHCIController::AHCIController(pci::Address address) : IRQHandler(address.interrupt_line()) {
-    m_hba = reinterpret_cast<HBAMemory*>(MM->map_physical_region(reinterpret_cast<void*>(address.bar(5)), PAGE_SIZE * 2));
+    m_hba = reinterpret_cast<HBAMemory*>(
+        MUST(MM->map_physical_region(reinterpret_cast<void*>(address.bar(5)), PAGE_SIZE * 2))
+    );
     
     m_hba->global_host_control = GlobalHostControl::HR; // Initiate a reset
     while (m_hba->global_host_control & GlobalHostControl::HR) {}
