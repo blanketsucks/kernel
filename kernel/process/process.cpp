@@ -259,12 +259,6 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
             goto unrecoverable_fault;
         }
 
-        if (page->ref_count > 1) {
-            page->ref_count--;
-        } else {
-            page->flags &= ~PhysicalPage::CoW;
-        }
-
         void* frame = MUST(MM->allocate_page_frame());
 
         // TODO: Move this to a function in MemoryManager
@@ -276,6 +270,12 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
 
         entry->set_writable(true);
         arch::invlpg(address);
+
+        page->ref_count--;
+        if (page->ref_count == 0) {
+            page->flags &= ~PhysicalPage::CoW;
+        }
+
 
         return;
     }
