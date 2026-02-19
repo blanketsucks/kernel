@@ -36,7 +36,7 @@ public:
     bool has_feature(arch::CPUFeatures feature) const { return std::has_flag(m_features, feature); }
 
     u8 max_physical_address_width() const { return m_max_physical_address_width; }
-    PhysicalAddress max_physical_address() const { return (1ull << m_max_physical_address_width) - 1; }
+    PhysicalAddress max_physical_address() const { return PhysicalAddress { (1ull << m_max_physical_address_width) - 1 }; }
 
     u8 max_virtual_address_width() const { return m_max_virtual_address_width; }
     VirtualAddress max_virtual_address() const { return VirtualAddress { (1ull << m_max_virtual_address_width) - 1 }; }

@@ -38,7 +38,7 @@ private:
         PhysicalAddress address = MM->get_physical_address(m_region);
         for (size_t i = 0; i < PAGE_SIZE / sizeof(T); i++) {
             auto* descriptor = &m_region[i];
-            new (descriptor) T(address + i * sizeof(T));
+            new (descriptor) T(address.offset(i * sizeof(T)));
             
             m_free_descriptors.push(descriptor);
         }

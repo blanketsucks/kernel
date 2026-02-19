@@ -44,7 +44,7 @@ OHCIController* OHCIController::create() {
 
 OHCIController::OHCIController(pci::Address address) : IRQHandler(address.interrupt_line()) {
     m_registers = reinterpret_cast<ohci::Registers*>(
-        MUST(MM->map_physical_region(reinterpret_cast<void*>(address.bar(0) & ~3), PAGE_SIZE))
+        MUST(MM->map_physical_region(PhysicalAddress { address.bar(0) & ~3 }, PAGE_SIZE))
     );
 
     address.set_bus_master(true);
@@ -198,7 +198,7 @@ OHCIController::Chain OHCIController::create_transfer_chain(Pipe* pipe, ohci::Pa
         size_t packet_size = std::min(size - offset, static_cast<size_t>(max_packet_size));
         auto* td = this->create_transfer_descriptor(pipe, direction);
 
-        td->set_buffer_address(buffer + offset, packet_size);
+        td->set_buffer_address(buffer.offset(offset), packet_size);
         if (tail) {
             tail->set_next(td);
         } else {
@@ -286,7 +286,10 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     setup->set_buffer_address(buffer, sizeof(DeviceRequest));
 
     auto chain = this->create_transfer_chain(
-        pipe, is_device_to_host ? PacketPID::In : PacketPID::Out, buffer + sizeof(DeviceRequest), length
+        pipe,
+        is_device_to_host ? PacketPID::In : PacketPID::Out,
+        buffer.offset(sizeof(DeviceRequest)),
+        length
     );
 
     pipe->set_data_toggle(true);
@@ -294,10 +297,10 @@ size_t OHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
 
     auto* tail = m_td_pool->allocate();
 
-    tail->set_buffer_address(0, 0);
+    tail->set_buffer_address({}, 0);
     tail->set_next(nullptr);
 
-    status->set_buffer_address(0, 0);
+    status->set_buffer_address({}, 0);
     status->set_next(tail);
 
     if (chain.head) {
@@ -328,7 +331,7 @@ size_t OHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, 
     auto chain = this->create_transfer_chain(pipe, pid, buffer, length);
 
     auto* tail = m_td_pool->allocate();
-    tail->set_buffer_address(0, 0);
+    tail->set_buffer_address({}, 0);
     tail->set_next(nullptr);
 
     chain.tail->set_next(tail);

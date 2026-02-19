@@ -15,6 +15,7 @@ public:
     explicit VirtualAddress(const void* address) : m_address(reinterpret_cast<FlatPtr>(address)) {}
 
     constexpr operator FlatPtr() const { return m_address; }
+    constexpr FlatPtr value() const { return m_address; }
 
     [[nodiscard]] constexpr VirtualAddress offset(FlatPtr offset) const {
         return VirtualAddress(m_address + offset);

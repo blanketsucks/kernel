@@ -39,7 +39,7 @@ RefPtr<GPUDevice> BochsGPUDevice::create(pci::Device pci_device) {
 }
 
 BochsGPUDevice::BochsGPUDevice(pci::Address address) {
-    m_physical_address = address.bar(0) & 0xfffffff0;
+    m_physical_address = PhysicalAddress { address.bar(0) & 0xfffffff0 };
 
     this->set_resolution(DEFAULT_WIDTH, DEFAULT_HEIGHT, 32);
     m_connectors.append(BochsGPUConnector::create(this));

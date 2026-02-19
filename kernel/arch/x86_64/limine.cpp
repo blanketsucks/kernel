@@ -95,9 +95,9 @@ extern "C" void _early_main() {
         boot_info.framebuffer.green_mask_shift = fb->green_mask_shift;
         boot_info.framebuffer.blue_mask_size = fb->blue_mask_size;
         boot_info.framebuffer.blue_mask_shift = fb->blue_mask_shift;
-        boot_info.framebuffer.address = reinterpret_cast<PhysicalAddress>(fb->address) - boot_info.hhdm;
+        boot_info.framebuffer.address = (FlatPtr)fb->address - boot_info.hhdm;
         boot_info.framebuffer.edid_size = fb->edid_size;
-        boot_info.framebuffer.edid = reinterpret_cast<PhysicalAddress>(fb->edid) - boot_info.hhdm;
+        boot_info.framebuffer.edid = (FlatPtr)fb->edid - boot_info.hhdm;
     }
 
     main(boot_info);

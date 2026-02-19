@@ -122,13 +122,13 @@ public:
     ErrorOr<void> free_dma_region(void* ptr, size_t size);
 
     // Map an already existing physical region into the kernel's address space
-    ErrorOr<void*> map_physical_region(void* ptr, size_t size);
+    ErrorOr<void*> map_physical_region(PhysicalAddress address, size_t size);
 
     void unmap_kernel_region(void* ptr);
 
     ErrorOr<void*> map_from_page_directory(arch::PageDirectory*, void* ptr, size_t size);
 
-    ErrorOr<void> copy_physical_memory(void* dst, void* src, size_t size);
+    ErrorOr<void> copy_physical_memory(PhysicalAddress dst, PhysicalAddress src, size_t size);
 
     PhysicalPage* get_physical_page(PhysicalAddress address);
 
@@ -171,6 +171,12 @@ private:
 // We have to place this definition here to avoid circular dependencies
 template<> struct std::Formatter<kernel::VirtualAddress> {
     static void format(FormatBuffer& buffer, const kernel::VirtualAddress& value, const FormatStyle& style) {
+        std::Formatter<FlatPtr>::format(buffer, static_cast<FlatPtr>(value), style);
+    }
+};
+
+template<> struct std::Formatter<kernel::PhysicalAddress> {
+    static void format(FormatBuffer& buffer, const kernel::PhysicalAddress& value, const FormatStyle& style) {
         std::Formatter<FlatPtr>::format(buffer, static_cast<FlatPtr>(value), style);
     }
 };

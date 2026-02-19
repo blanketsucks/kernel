@@ -217,7 +217,7 @@ ErrorOr<void*> Process::allocate_with_physical_region(PhysicalAddress address, s
     }
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        m_page_directory->map(region->offset_by(i), address + i, pflags);
+        m_page_directory->map(region->offset_by(i), address.offset(i), pflags);
     }
 
     region->set_kernel_managed(true);
@@ -259,14 +259,14 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
             goto unrecoverable_fault;
         }
 
-        void* frame = MUST(MM->allocate_page_frame());
+        PhysicalAddress frame { MUST(MM->allocate_page_frame()) };
 
         // TODO: Move this to a function in MemoryManager
-        page = MM->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
+        page = MM->get_physical_page(frame);
         page->ref_count++;
 
-        MM->copy_physical_memory(frame, reinterpret_cast<void*>(pa), PAGE_SIZE);
-        entry->set_physical_address(reinterpret_cast<PhysicalAddress>(frame));
+        MM->copy_physical_memory(frame, pa, PAGE_SIZE);
+        entry->set_physical_address(frame);
 
         entry->set_writable(true);
         arch::invlpg(address);
@@ -275,7 +275,6 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         if (page->ref_count == 0) {
             page->flags &= ~PhysicalPage::CoW;
         }
-
 
         return;
     }
@@ -316,8 +315,8 @@ unrecoverable_fault:
     auto* file = region->file();
     size_t offset = std::align_down(region->offset_in(address), PAGE_SIZE);
 
-    void* frame = MUST(MM->allocate_page_frame());
-    m_page_directory->map(region->offset_by(offset), reinterpret_cast<PhysicalAddress>(frame), PageFlags::Write | PageFlags::User);
+    PhysicalAddress frame { MUST(MM->allocate_page_frame()) };
+    m_page_directory->map(region->offset_by(offset), frame, PageFlags::Write | PageFlags::User);
 
     size_t size = std::min(file->size() - offset, PAGE_SIZE);
     auto result = file->read(region->offset_by(offset).to_ptr(), size, region->offset() + offset);

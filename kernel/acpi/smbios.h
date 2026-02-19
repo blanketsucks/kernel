@@ -5,7 +5,7 @@
 
 namespace kernel::smbios {
 
-constexpr PhysicalAddress BASE_ADDRESS = 0xF0000;
+constexpr PhysicalAddress BASE_ADDRESS { 0xF0000 };
 constexpr size_t MAX_SIZE = 0x10000;
 
 struct EntryPoint32Bit {

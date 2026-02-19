@@ -8,14 +8,14 @@ RefPtr<MMIOController> MMIOController::create(u32 domain, PhysicalAddress base_a
 }
 
 PhysicalAddress MMIOController::get_bus_base_address(u8 bus) const {
-    return m_base_address + (BUS_SIZE * bus);
+    return m_base_address.offset((BUS_SIZE * bus));
 }
 
 u8* MMIOController::map_bus(u8 bus) {
     if (!m_mapped_buses[bus]) {
         PhysicalAddress bus_base = this->get_bus_base_address(bus);
         m_mapped_buses[bus] = reinterpret_cast<u8*>(
-            MUST(MM->map_physical_region(reinterpret_cast<void*>(bus_base), BUS_SIZE))
+            MUST(MM->map_physical_region(bus_base, BUS_SIZE))
         );
     }
 

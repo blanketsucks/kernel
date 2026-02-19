@@ -38,10 +38,10 @@ struct FramebufferInfo {
     u8 green_mask_shift;
     u8 blue_mask_size;
     u8 blue_mask_shift;
-    PhysicalAddress address;
+    FlatPtr address;
 
     u64 edid_size;
-    PhysicalAddress edid;
+    FlatPtr edid;
 } PACKED;
 
 struct BootInfo {

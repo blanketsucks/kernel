@@ -75,7 +75,7 @@ public:
     }
 
     size_t offset_in(VirtualAddress address) const {
-        return address - m_range.base();
+        return static_cast<size_t>(address - m_range.base());
     }
     
     bool used() const { return m_used; }

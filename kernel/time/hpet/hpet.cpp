@@ -37,7 +37,7 @@ bool HPET::initialize() {
     }
 
     m_registers = reinterpret_cast<HPETRegisters*>(
-        MUST(MM->map_physical_region(reinterpret_cast<void*>(hpet->address.address), sizeof(HPETRegisters)))
+        MUST(MM->map_physical_region(PhysicalAddress { hpet->address.address }, sizeof(HPETRegisters)))
     );
 
     this->disable();

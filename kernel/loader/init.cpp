@@ -41,8 +41,8 @@ static void mmap_alloc_at(PhysicalAddress start, PhysicalAddress end, MemoryType
     for (size_t i = 0; i < count; i++) {
         auto& entry = mmap_entries[i];
 
-        PhysicalAddress base = entry.base;
-        PhysicalAddress top = entry.base + entry.length;
+        PhysicalAddress base { entry.base };
+        PhysicalAddress top { entry.base + entry.length };
 
         if (start < base || start >= top || end > top) {
             continue;
@@ -103,7 +103,7 @@ extern "C" void init(multiboot_info* info) {
     std::memcpy(kernel_program_headers, kernel_image + header->e_phoff, sizeof(Elf64_Phdr) * header->e_phnum);
 
     VirtualAddress kernel_virtual_base { 0xffffffff80000000 };
-    PhysicalAddress kernel_physical_base = 0x200000; // TODO: Randomize this
+    PhysicalAddress kernel_physical_base { 0x200000 }; // TODO: Randomize this
 
     VirtualAddress kernel_virtual_end = kernel_virtual_base;
     for (auto& ph : kernel_program_headers) {
@@ -122,7 +122,7 @@ extern "C" void init(multiboot_info* info) {
     }
     
     kernel_virtual_end = kernel_virtual_end.align_up(2 * MB);
-    PhysicalAddress kernel_physical_end = kernel_physical_base + (kernel_virtual_end - kernel_virtual_base);
+    PhysicalAddress kernel_physical_end = kernel_physical_base.offset(kernel_virtual_end - kernel_virtual_base);
 
     u32 pml4 = ((kernel_virtual_base >> 39) & 0x1ff);
     boot_pml4t[pml4] = reinterpret_cast<u64>(kernel_pdpt) | 0x3;
@@ -133,7 +133,7 @@ extern "C" void init(multiboot_info* info) {
     }
 
     for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MB)) {
-        PhysicalAddress physical = kernel_physical_base + (address - kernel_virtual_base);
+        PhysicalAddress physical = kernel_physical_base.offset(address - kernel_virtual_base);
 
         u32 pdpt = (address >> 30) & 0x1ff;
         u32 pdt = (address >> 21) & 0x1ff;
@@ -141,17 +141,18 @@ extern "C" void init(multiboot_info* info) {
         kernel_pd[pdpt - 0x1fe][pdt] = physical | 0x83;
     }
 
+    PhysicalAddress kernel_image_address { kernel_image };
     for (auto& ph : kernel_program_headers) {
         if (ph.p_type != PT_LOAD) {
             continue;
         }
 
         VirtualAddress vaddr { ph.p_vaddr };
-        PhysicalAddress paddr = ph.p_offset + reinterpret_cast<PhysicalAddress>(kernel_image);
+        PhysicalAddress paddr = kernel_image_address.offset(ph.p_offset);
 
         size_t size = ph.p_filesz;
 
-        std::memcpy(vaddr.to_ptr(), reinterpret_cast<void*>(paddr), size);
+        std::memcpy(vaddr.to_ptr(), paddr.to_ptr(), size);
         std::memset(vaddr.offset(size).to_ptr(), 0, ph.p_memsz - size);
     }
 
@@ -167,8 +168,8 @@ extern "C" void init(multiboot_info* info) {
 
     std::memset(mmap_entries, 0, sizeof(MemoryMapEntry) * 256);
 
-    PhysicalAddress loader_start = reinterpret_cast<PhysicalAddress>(&_loader_start);
-    PhysicalAddress loader_end = reinterpret_cast<PhysicalAddress>(&_loader_end);
+    PhysicalAddress loader_start { &_loader_start };
+    PhysicalAddress loader_end { &_loader_end };
 
     for (size_t i = 0; i < info->mmap_length; i++) {
         auto* entry = reinterpret_cast<multiboot_memory_map_t*>(info->mmap_addr + i * sizeof(multiboot_memory_map_t));

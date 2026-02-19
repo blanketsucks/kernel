@@ -59,7 +59,9 @@ ErrorOr<void*> PhysicalRegion::allocate_contiguous(size_t count) {
 }
 
 ErrorOr<void> PhysicalRegion::free(void* frame, size_t count) {
-    size_t index = (reinterpret_cast<PhysicalAddress>(frame) - m_base) / PAGE_SIZE;
+    PhysicalAddress pa { frame };
+
+    size_t index = (pa - m_base).value() / PAGE_SIZE;
     for (size_t i = 0; i < count; i++) {
         m_bitmap.set(index + i, false);
     }
@@ -81,9 +83,9 @@ void PhysicalMemoryManager::init(BootInfo const& boot_info) {
         auto& entry = boot_info.mmap.entries[i];
 
         size_t size = std::align_down(entry.length, static_cast<u64>(PAGE_SIZE));
-        PhysicalAddress address = std::align_up(entry.base, static_cast<u64>(PAGE_SIZE));
+        PhysicalAddress address { std::align_up(entry.base, static_cast<u64>(PAGE_SIZE)) };
 
-        PhysicalAddress end = entry.base + size;
+        PhysicalAddress end { entry.base + size };
         dbgln("  {:#p} - {:#p}: {}", address, end, memory_type_to_string(entry.type));
         if (entry.type != MemoryType::Available || size < PAGE_SIZE) {
             continue;
@@ -122,9 +124,9 @@ ErrorOr<void> PhysicalMemoryManager::fill_preframe_buffer() {
             continue;
         }
 
-        PhysicalAddress address = reinterpret_cast<PhysicalAddress>(result.value());
+        PhysicalAddress address { result.value() };
         for (size_t i = 0; i < remaining; i++) {
-            m_frames.push(address + i * PAGE_SIZE);
+            m_frames.push(address.offset(i * PAGE_SIZE));
         }
 
         found = true;
@@ -147,7 +149,7 @@ ErrorOr<void*> PhysicalMemoryManager::allocate() {
         TRY(this->fill_preframe_buffer());
     }
 
-    return reinterpret_cast<void*>(m_frames.pop());
+    return m_frames.pop().to_ptr();
 }
 
 ErrorOr<void*> PhysicalMemoryManager::allocate_contiguous(size_t count) {
@@ -160,7 +162,7 @@ ErrorOr<void*> PhysicalMemoryManager::allocate_contiguous(size_t count) {
     }
 
     if (count == 1) {
-        return reinterpret_cast<void*>(m_frames.pop());
+        return m_frames.pop().to_ptr();
     }
 
     if (m_frames.size() < count) {
@@ -171,7 +173,7 @@ ErrorOr<void*> PhysicalMemoryManager::allocate_contiguous(size_t count) {
         m_frames.pop();
     }
 
-    return reinterpret_cast<void*>(m_frames.pop());
+    return m_frames.pop().to_ptr();
 }
 
 ErrorOr<void> PhysicalMemoryManager::free(void* frame, size_t count) {
@@ -179,8 +181,9 @@ ErrorOr<void> PhysicalMemoryManager::free(void* frame, size_t count) {
         return Error(ENXIO);
     }
 
+    PhysicalAddress pa { frame };
     for (auto& region : m_physical_regions) {
-        if (region.contains(reinterpret_cast<PhysicalAddress>(frame))) {
+        if (region.contains(pa)) {
             m_allocations -= count;
             return region.free(frame, count);
         }

@@ -56,7 +56,7 @@ void MemoryManager::initialize() {
 }
 
 void MemoryManager::create_physical_pages() {
-    PhysicalAddress highest_address = 0;
+    PhysicalAddress highest_address;
     for (const auto& region : m_pmm->regions()) {
         if (region.end() > highest_address) {
             highest_address = region.end();
@@ -173,12 +173,12 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
     }
 
     for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
-        void* frame = TRY(this->allocate_page_frame());
+        PhysicalAddress frame { TRY(this->allocate_page_frame()) };
 
-        PhysicalPage* page = this->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
+        PhysicalPage* page = this->get_physical_page(frame);
         page->ref_count++;
         
-        page_directory->map(region->offset_by(i), reinterpret_cast<PhysicalAddress>(frame), flags);
+        page_directory->map(region->offset_by(i), frame, flags);
     }
 
     return {};
@@ -202,13 +202,11 @@ ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, 
     }
 
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        void* frame = TRY(this->allocate_page_frame());
-
-        PhysicalAddress physical_address = reinterpret_cast<PhysicalAddress>(frame);
-        PhysicalPage* page = this->get_physical_page(physical_address);
+        PhysicalAddress frame { TRY(this->allocate_page_frame()) };
+        PhysicalPage* page = this->get_physical_page(frame);
 
         page->ref_count++;
-        page_directory->map(region->offset_by(i), physical_address, flags);
+        page_directory->map(region->offset_by(i), frame, flags);
     }
 
     return region->base().to_ptr();
@@ -220,12 +218,12 @@ bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory,
         return false;
     }
 
-    PhysicalAddress physical_address = reinterpret_cast<PhysicalAddress>(result.value());
+    PhysicalAddress pa { result.value() };
     for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
-        PhysicalPage* page = this->get_physical_page(physical_address + i);
+        PhysicalPage* page = this->get_physical_page(pa.offset(i));
         page->ref_count++;
 
-        page_directory->map(region->offset_by(i), physical_address + i, flags);
+        page_directory->map(region->offset_by(i), pa.offset(i), flags);
     }
 
     return true;
@@ -242,12 +240,12 @@ ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAdd
 
     auto* page_directory = allocator.page_directory();
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        void* frame = TRY(this->allocate_page_frame());
+        PhysicalAddress frame { TRY(this->allocate_page_frame()) };
 
-        PhysicalPage* page = this->get_physical_page(reinterpret_cast<PhysicalAddress>(frame));
+        PhysicalPage* page = this->get_physical_page(frame);
         page->ref_count++;
 
-        page_directory->map(region->offset_by(i), reinterpret_cast<PhysicalAddress>(frame), flags);
+        page_directory->map(region->offset_by(i), frame, flags);
     }
 
     return region->base().to_ptr();
@@ -283,7 +281,7 @@ ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAd
         page->ref_count--;
 
         if (page->ref_count == 0) {
-            TRY(this->free_page_frame(reinterpret_cast<void*>(pa)));
+            TRY(this->free_page_frame(pa.to_ptr()));
         }
 
         entry->set_value(0);
@@ -317,7 +315,7 @@ ErrorOr<void> MemoryManager::free_dma_region(void* ptr, size_t size) {
     return this->free(*m_kernel_region_allocator, ptr, size);
 }
 
-ErrorOr<void*> MemoryManager::map_physical_region(void* ptr, size_t size) {
+ErrorOr<void*> MemoryManager::map_physical_region(PhysicalAddress address, size_t size) {
     size = std::align_up(size, PAGE_SIZE);
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
@@ -326,9 +324,8 @@ ErrorOr<void*> MemoryManager::map_physical_region(void* ptr, size_t size) {
         return Error(ENOMEM);
     }
 
-    PhysicalAddress start = reinterpret_cast<PhysicalAddress>(ptr);
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
-        page_directory->map(region->offset_by(i), start + i, PageFlags::Write);
+        page_directory->map(region->offset_by(i), address.offset(i), PageFlags::Write);
     }
 
     return region->base().to_ptr();
@@ -367,7 +364,7 @@ ErrorOr<void*> MemoryManager::map_from_page_directory(arch::PageDirectory* page_
     return region->base().to_ptr();
 }
 
-ErrorOr<void> MemoryManager::copy_physical_memory(void* d, void* s, size_t size) {
+ErrorOr<void> MemoryManager::copy_physical_memory(PhysicalAddress d, PhysicalAddress s, size_t size) {
     void* dst = TRY(this->map_physical_region(d, size));
     void* src = TRY(this->map_physical_region(s, size));
 

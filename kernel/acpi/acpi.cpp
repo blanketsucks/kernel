@@ -31,13 +31,11 @@ void ACPIParser::initialize() {
     this->parse_acpi_tables();
 }
 
-SDTHeader* ACPIParser::map_acpi_table(PhysicalAddress addr) {
-    PhysicalAddress base = page_base_of(addr);
-    size_t offset = offset_in_page(addr);
+SDTHeader* ACPIParser::map_acpi_table(PhysicalAddress address) {
+    PhysicalAddress base = address.page_base();
+    size_t offset = address.offset_in_page();
 
-    void* ptr = reinterpret_cast<void*>(base);
-
-    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(ptr, PAGE_SIZE)));
+    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(base, PAGE_SIZE)));
     auto* header = reinterpret_cast<SDTHeader*>(region + offset);
 
     // Ensure the table is at least a page in size
@@ -47,30 +45,29 @@ SDTHeader* ACPIParser::map_acpi_table(PhysicalAddress addr) {
     }
 
     MM->unmap_kernel_region(region);
-    region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(ptr, length)));
+    region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(base, length)));
 
     return reinterpret_cast<SDTHeader*>(region + offset);
 }
 
 bool ACPIParser::find_root_table() {
     if (g_boot_info->rsdp) {
-        m_rsdp = reinterpret_cast<RSDP*>(MUST(MM->map_physical_region(g_boot_info->rsdp, PAGE_SIZE)));
+        m_rsdp = reinterpret_cast<RSDP*>(MUST(MM->map_physical_region(PhysicalAddress { g_boot_info->rsdp }, PAGE_SIZE)));
 
         if (m_rsdp->revision == 2) {
             m_xsdp = reinterpret_cast<XSDP*>(m_rsdp);
-            m_xsdt = reinterpret_cast<XSDT*>(this->map_acpi_table(m_xsdp->xsdt_address));
+            m_xsdt = reinterpret_cast<XSDT*>(this->map_acpi_table(PhysicalAddress { m_xsdp->xsdt_address }));
 
             return true;
         }
 
-        m_rsdt = reinterpret_cast<RSDT*>(this->map_acpi_table(m_rsdp->rsdt_address));
+        m_rsdt = reinterpret_cast<RSDT*>(this->map_acpi_table(PhysicalAddress { m_rsdp->rsdt_address }));
         return true;
     }
 
-    void* start = reinterpret_cast<void*>(RSDP_START);
     size_t size = RSDP_END - RSDP_START;
+    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(RSDP_START, size)));
 
-    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(start, size)));
     if (!region) {
         return false;
     }
@@ -86,7 +83,7 @@ bool ACPIParser::find_root_table() {
         return false;
     }
 
-    m_rsdt = reinterpret_cast<RSDT*>(this->map_acpi_table(m_rsdp->rsdt_address));
+    m_rsdt = reinterpret_cast<RSDT*>(this->map_acpi_table(PhysicalAddress { m_rsdp->rsdt_address }));
     return true;
 }
 
@@ -104,12 +101,7 @@ void ACPIParser::parse_acpi_tables() {
     dbgln("ACPI Tables ({} entries):", entries);
 
     for (u32 i = 0; i < entries; i++) {
-        PhysicalAddress table = 0;
-        if (m_xsdt) {
-            table = m_xsdt->tables[i];
-        } else {
-            table = m_rsdt->tables[i];
-        }
+        PhysicalAddress table { m_xsdt ? m_xsdt->tables[i] : m_rsdt->tables[i] };
 
         SDTHeader* header = this->map_acpi_table(table);
         dbgln(" - {}{}{}{}:", header->signature[0], header->signature[1], header->signature[2], header->signature[3]);
@@ -125,7 +117,7 @@ void ACPIParser::parse_acpi_tables() {
     dbgln();
 
     FADT* fadt = this->find<FADT>();
-    m_dsdt = this->map_acpi_table(fadt->dsdt);
+    m_dsdt = this->map_acpi_table(PhysicalAddress { fadt->dsdt });
 }
 
 SDTHeader* ACPIParser::find_table(const char* signature) {

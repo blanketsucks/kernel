@@ -275,7 +275,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
 
     // We can't use AllocatePages to allocate memory directly since that only gives us 4Kb aligned pages while we need
     // 2Mb aligned pages.
-    PhysicalAddress kernel_physical_base = 0;
+    PhysicalAddress kernel_physical_base;
     for (size_t i = 0; i < s_efi_mmap.count; i++) {
         auto* descriptor = get_memory_descriptor(i);
         if (descriptor->type != EfiConventionalMemory && descriptor->type != EfiLoaderData) {
@@ -294,12 +294,12 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
                 continue;
             }
         
-            kernel_physical_base = aligned;
+            kernel_physical_base = PhysicalAddress { aligned };
             EFIStatus status = sys_table->boot_services->AllocatePages(
                 AllocateAddress,
                 EfiLoaderData,
                 kernel_pages,
-                &kernel_physical_base
+                reinterpret_cast<FlatPtr*>(&kernel_physical_base)
             );
 
             if (EFI_ERROR(status)) {
@@ -309,12 +309,12 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
             break;
         }
 
-        kernel_physical_base = descriptor->physical_start;
+        kernel_physical_base = PhysicalAddress { descriptor->physical_start };
         EFIStatus status = sys_table->boot_services->AllocatePages(
             AllocateAddress,
             EfiLoaderData,
             kernel_pages,
-            &kernel_physical_base
+            reinterpret_cast<FlatPtr*>(&kernel_physical_base)
         );
 
         if (EFI_ERROR(status)) {
@@ -334,25 +334,26 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     
     parse_memory_map();
     for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MB)) {
-        PhysicalAddress physical = kernel_physical_base + (address - kernel_virtual_base);
+        PhysicalAddress pa = kernel_physical_base.offset(address - kernel_virtual_base);
 
         u32 pdpt = (address >> 30) & 0x1ff;
         u32 pdt = (address >> 21) & 0x1ff;
 
-        kernel_pd[pdpt - 0x1fe][pdt] = physical | 0x83;
+        kernel_pd[pdpt - 0x1fe][pdt] = pa.value() | 0x83;
     }
 
+    PhysicalAddress kernel_image_address { kernel_image };
     for (auto& ph : kernel_program_headers) {
         if (ph.p_type != PT_LOAD) {
             continue;
         }
 
-        PhysicalAddress dst = kernel_physical_base + (ph.p_vaddr - kernel_virtual_base);
-        PhysicalAddress src = ph.p_offset + reinterpret_cast<PhysicalAddress>(kernel_image);
+        PhysicalAddress dst = kernel_physical_base.offset(ph.p_vaddr - kernel_virtual_base);
+        PhysicalAddress src = kernel_image_address.offset(ph.p_offset);
 
         size_t size = ph.p_filesz;
 
-        std::memcpy(reinterpret_cast<void*>(dst), reinterpret_cast<void*>(src), size);
+        std::memcpy(dst.to_ptr(), src.to_ptr(), size);
         std::memset(reinterpret_cast<void*>(dst + size), 0, ph.p_memsz - size);
     }
     
@@ -375,7 +376,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
             continue;
         }
 
-        PhysicalAddress base = descriptor->physical_start;
+        PhysicalAddress base { descriptor->physical_start };
         size_t length = descriptor->number_of_pages * PAGE_SIZE;
 
         kernel::MemoryType type = efi_to_kernel_memory_type(descriptor->type);

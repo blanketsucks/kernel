@@ -53,7 +53,7 @@ void PCI::init() {
 
     size_t entries = (mcfg->header.length - sizeof(acpi::SDTHeader)) / sizeof(mcfg->entries[0]);
     for (size_t i = 0; i < entries; i++) {
-        auto controller = pci::MMIOController::create(i, mcfg->entries[i].base_address);
+        auto controller = pci::MMIOController::create(i, PhysicalAddress { mcfg->entries[i].base_address });
 
         controller->enumerate([this](const pci::Device& device) {
             m_devices.append(device);

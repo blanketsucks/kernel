@@ -23,10 +23,10 @@ E1000NetworkAdapter::E1000NetworkAdapter(pci::Address address) : IRQHandler(addr
             m_io_port = address.bar(0) & ~1;
             break;
         default: {
-            PhysicalAddress bar0 = address.bar(0) & ~3;
+            PhysicalAddress bar0 { address.bar(0) & ~3 };
             size_t size = address.bar_size(0);
 
-            m_memory = reinterpret_cast<u8*>(MUST(MM->map_physical_region(reinterpret_cast<void*>(bar0), size)));
+            m_memory = reinterpret_cast<u8*>(MUST(MM->map_physical_region(bar0, size)));
             break;
         }
     }

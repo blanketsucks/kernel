@@ -48,7 +48,7 @@ private:
     void setup_transfer();
 
     uhci::TransferDescriptor* create_transfer_descriptor(Pipe*, uhci::PacketType direction, size_t size);
-    TDChain create_td_chain(Pipe*, uhci::PacketType direction, u32 buffer, size_t size);
+    TDChain create_td_chain(Pipe*, uhci::PacketType direction, PhysicalAddress buffer, size_t size);
 
     io::Port m_port;
     Array<RefPtr<Device>, 2> m_devices;

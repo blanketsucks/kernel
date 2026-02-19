@@ -86,7 +86,7 @@ void VirtIOGPUDevice::send_command(size_t request, size_t response) {
     PhysicalAddress address = MM->get_physical_address(m_command_buffer);
 
     chain.add_buffer(address, request, false);
-    chain.add_buffer(address + request, response, true);
+    chain.add_buffer(address.offset(request), response, true);
 
     chain.submit();
     this->notify(0);

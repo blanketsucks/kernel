@@ -45,7 +45,7 @@ PhysicalAddress Queue::get_physical_address(void* ptr) {
     size_t offset = reinterpret_cast<u8*>(ptr) - m_buffer;
     PhysicalAddress address = MM->get_physical_address(m_buffer);
 
-    return address + offset;
+    return address.offset(offset);
 }
 
 u16 Queue::find_free_descriptor() {

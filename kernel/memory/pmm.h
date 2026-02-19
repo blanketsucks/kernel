@@ -15,7 +15,7 @@ public:
     PhysicalRegion(PhysicalAddress base, size_t size);
 
     PhysicalAddress base() const { return m_base; }
-    PhysicalAddress end() const { return m_base + m_size; }
+    PhysicalAddress end() const { return m_base.offset(m_size); }
 
     size_t size() const { return m_size; }
 

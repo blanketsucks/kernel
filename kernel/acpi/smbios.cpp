@@ -30,11 +30,11 @@ void DMIParser::init() {
 
     this->find_entry_points();
     if (m_64_bit_entry_point) {
-        m_table_address = m_64_bit_entry_point->table_address;
+        m_table_address = PhysicalAddress { m_64_bit_entry_point->table_address };
         m_table_length = m_64_bit_entry_point->table_maximum_size;
         m_table_count = m_64_bit_entry_point->table_maximum_size;
     } else if (m_32_bit_entry_point) {
-        m_table_address = m_32_bit_entry_point->table_address;
+        m_table_address = PhysicalAddress { m_32_bit_entry_point->table_address };
         m_table_length = m_32_bit_entry_point->table_length;
         m_table_count = m_32_bit_entry_point->tables_count;
     }
@@ -46,8 +46,7 @@ void DMIParser::init() {
 }
 
 void DMIParser::find_entry_points() {
-    void* ptr = reinterpret_cast<void*>(BASE_ADDRESS);
-    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(ptr, MAX_SIZE)));
+    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(BASE_ADDRESS, MAX_SIZE)));
     if (!region) {
         return;
     }
@@ -64,7 +63,7 @@ void DMIParser::find_entry_points() {
 }
 
 void DMIParser::read_table_headers() {
-    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(reinterpret_cast<void*>(m_table_address), m_table_length)));
+    u8* region = reinterpret_cast<u8*>(MUST(MM->map_physical_region(m_table_address, m_table_length)));
     if (!region) {
         return;
     }

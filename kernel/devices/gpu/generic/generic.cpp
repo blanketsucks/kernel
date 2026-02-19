@@ -28,7 +28,7 @@ ErrorOr<void> GenericGPUConnector::flush() {
 
 RefPtr<GenericGPUDevice> GenericGPUDevice::create_from_boot() {
     return GenericGPUDevice::create(
-        reinterpret_cast<PhysicalAddress>(g_boot_info->framebuffer.address),
+        PhysicalAddress { g_boot_info->framebuffer.address },
         g_boot_info->framebuffer.width,
         g_boot_info->framebuffer.height,
         g_boot_info->framebuffer.pitch,

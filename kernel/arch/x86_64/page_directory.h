@@ -13,8 +13,8 @@
     bool is_cache_disabled() const { return m_value & CacheDisable; }                                               \
     bool is_no_execute() const { return m_value & NoExecute; }                                                      \
                                                                                                                     \
-    PhysicalAddress physical_address() const { return m_value & PHYSICAL_ADDRESS_MASK; }                            \
-    void set_physical_address(PhysicalAddress address) { m_value = (m_value & ~PHYSICAL_ADDRESS_MASK) | address; }  \
+    PhysicalAddress physical_address() const { return PhysicalAddress { m_value & PHYSICAL_ADDRESS_MASK }; }        \
+    void set_physical_address(PhysicalAddress address) { m_value = (m_value & ~PHYSICAL_ADDRESS_MASK) | address.value(); }  \
                                                                                                                     \
     void set_present(bool present) { set_bit(m_value, Present, present); }                                          \
     void set_writable(bool writable) { set_bit(m_value,Writable, writable); }                                       \
@@ -63,7 +63,7 @@ public:
         NoExecute = 0x8000000000000000ull
     };
     
-    PhysicalAddress page_directory_table_address() const { return m_value & PHYSICAL_ADDRESS_MASK; }
+    PhysicalAddress page_directory_table_address() const { return PhysicalAddress { m_value & PHYSICAL_ADDRESS_MASK }; }
     void set_page_directory_table_address(PhysicalAddress address) {
         m_value = (m_value & ~PHYSICAL_ADDRESS_MASK) | address;
     }
@@ -89,7 +89,7 @@ public:
     bool is_huge() const { return m_value & PageSize; }
     void set_huge(bool huge) { set_bit(m_value, PageSize, huge); }
 
-    PhysicalAddress page_directory_address() const { return m_value & PHYSICAL_ADDRESS_MASK; }
+    PhysicalAddress page_directory_address() const { return PhysicalAddress { m_value & PHYSICAL_ADDRESS_MASK }; }
     void set_page_directory_address(PhysicalAddress address) {
         m_value = (m_value & ~PHYSICAL_ADDRESS_MASK) | address;
     }
@@ -115,7 +115,7 @@ public:
     bool is_huge() const { return m_value & PageSize; }
     void set_huge(bool huge) { set_bit(m_value, PageSize, huge); }
 
-    PhysicalAddress page_table_address() const { return m_value & PHYSICAL_ADDRESS_MASK; }
+    PhysicalAddress page_table_address() const { return PhysicalAddress { m_value & PHYSICAL_ADDRESS_MASK }; }
     void set_page_table_address(PhysicalAddress address) {
         m_value = (m_value & ~PHYSICAL_ADDRESS_MASK) | address;
     }

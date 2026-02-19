@@ -47,7 +47,7 @@ template<typename T> PageTableEntry* PageDirectory::walk_page_table(T table, Vir
         entry.set_writable(true);
         entry.set_user(std::has_flag(flags, PageFlags::User));
 
-        entry.set_physical_address(reinterpret_cast<PhysicalAddress>(frame));
+        entry.set_physical_address(PhysicalAddress { frame });
         memset(reinterpret_cast<void*>(entry.physical_address() + g_boot_info->hhdm), 0, PAGE_SIZE);
     }
 
@@ -78,7 +78,7 @@ template<> PageTableEntry* PageDirectory::walk_page_table(
         entry.set_writable(true);
         entry.set_user(std::has_flag(flags, PageFlags::User));
 
-        entry.set_physical_address(reinterpret_cast<PhysicalAddress>(frame));
+        entry.set_physical_address(PhysicalAddress { frame });
         memset(reinterpret_cast<void*>(entry.physical_address() + g_boot_info->hhdm), 0, PAGE_SIZE);
     }
 
@@ -157,7 +157,8 @@ bool PageDirectory::is_mapped(VirtualAddress va) const {
 }
 
 PhysicalAddress PageDirectory::cr3() const {
-    return reinterpret_cast<PhysicalAddress>(m_pml4.entries) - g_boot_info->hhdm;
+    PhysicalAddress address { m_pml4.entries };
+    return address - g_boot_info->hhdm;
 }
 
 void PageDirectory::switch_to() {
@@ -184,12 +185,14 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info) {
 
     for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += 2 * MB) {
         VirtualAddress va { boot_info.hhdm + i };
-        page_directory.map(va, i, PageFlags::Write | PageFlags::Huge);
+        PhysicalAddress pa { i };
+
+        page_directory.map(va, pa, PageFlags::Write | PageFlags::Huge);
     }
 
     // FIXME: This currently maps both the kernel text and data sections as writable
     for (size_t i = 0; i < boot_info.kernel_size; i += 2 * MB) {
-        PhysicalAddress pa = boot_info.kernel_physical_base + i;
+        PhysicalAddress pa { boot_info.kernel_physical_base + i };
         VirtualAddress va { boot_info.kernel_virtual_base + i };
 
         page_directory.map(va, pa, PageFlags::Write | PageFlags::Huge);

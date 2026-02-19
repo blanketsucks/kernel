@@ -13,9 +13,9 @@ PhysicalAddress get_apic_base() {
     asm volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(IA32_APIC_BASE));
 
     if constexpr (sizeof(PhysicalAddress) > 4) {
-        return (low & 0xfffff000) | (static_cast<u64>(high & 0x0f) << 32);
+        return PhysicalAddress { (low & 0xfffff000) | (static_cast<u64>(high & 0x0f) << 32) };
     } else {
-        return low & 0xfffff000;
+        return PhysicalAddress { low & 0xfffff000 };
     }
 }
 
@@ -53,7 +53,7 @@ void init() {
     set_apic_base(base);
 
     // Map the APIC registers
-    g_apic_base = VirtualAddress { MUST(MM->map_physical_region(reinterpret_cast<void*>(base), PAGE_SIZE)) };
+    g_apic_base = VirtualAddress { MUST(MM->map_physical_region(base, PAGE_SIZE)) };
 
     u32 value = read_reg(APICRegisters::SpuriousInterruptVector);
     write_reg(APICRegisters::SpuriousInterruptVector, value | SPURIOUS_INTERRUPT_VECTOR | 0x100);

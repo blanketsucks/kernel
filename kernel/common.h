@@ -7,6 +7,7 @@
 #include <std/types.h>
 
 #include <kernel/memory/virtual_address.h>
+#include <kernel/memory/physical_address.h>
 
 #define PACKED __attribute__((packed))
 #define INTERRUPT [[gnu::interrupt]]
@@ -30,10 +31,6 @@
     Class& operator=(Class&&) = default;
 
 namespace kernel {
-
-using PhysicalAddress = uintptr_t;
-
-constexpr PhysicalAddress PHYSICAL_VGA_ADDRESS = 0xB8000;
 
 constexpr size_t PAGE_SIZE = 0x1000;
 constexpr size_t SECTOR_SIZE = 0x200;

@@ -157,7 +157,7 @@ void UHCIController::setup_transfer() {
 
     for (size_t i = 0; i < ISO_TD_COUNT; i++) {
         auto* td = &m_iso_tds[i];
-        new (td) TransferDescriptor(address + i * sizeof(TransferDescriptor));
+        new (td) TransferDescriptor(address.offset(i * sizeof(TransferDescriptor)));
 
         td->set_isochronous();
         td->link(m_anchor_qh->address());
@@ -201,7 +201,7 @@ TransferDescriptor* UHCIController::create_transfer_descriptor(Pipe* pipe, uhci:
     return td;
 }
 
-auto UHCIController::create_td_chain(Pipe* pipe, uhci::PacketType direction, u32 buffer, size_t size) -> TDChain {
+auto UHCIController::create_td_chain(Pipe* pipe, uhci::PacketType direction, PhysicalAddress buffer, size_t size) -> TDChain {
     size_t offset = 0;
 
     TransferDescriptor* head = nullptr;
@@ -212,7 +212,7 @@ auto UHCIController::create_td_chain(Pipe* pipe, uhci::PacketType direction, u32
         size_t packet_size = std::min(size - offset, static_cast<size_t>(max_packet_size));
         auto* td = this->create_transfer_descriptor(pipe, direction, packet_size);
 
-        td->set_buffer_address(buffer + offset);
+        td->set_buffer_address(buffer.offset(offset));
         if (tail) {
             tail->link(td);
         } else {
@@ -235,7 +235,12 @@ size_t UHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     auto* setup = this->create_transfer_descriptor(pipe, PacketType::Setup, sizeof(DeviceRequest));
     setup->set_buffer_address(buffer);
 
-    auto chain = this->create_td_chain(pipe, is_device_to_host ? PacketType::In : PacketType::Out, buffer + sizeof(DeviceRequest), length);
+    auto chain = this->create_td_chain(
+        pipe,
+        is_device_to_host ? PacketType::In : PacketType::Out,
+        buffer.offset(sizeof(DeviceRequest)),
+        length
+    );
 
     pipe->set_data_toggle(true);
     auto* status = this->create_transfer_descriptor(pipe, is_device_to_host ? PacketType::Out : PacketType::In, 0);
