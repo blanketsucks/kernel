@@ -166,7 +166,7 @@ private:
 };
 
 template<typename E>
-class Result<void, E> {
+class [[nodiscard]] Result<void, E> {
 public:
     Result() : m_error(), has_err(false) {}
     Result(const E& error) : m_error(error), has_err(true) {}
@@ -179,6 +179,25 @@ public:
 
     const E& error() const { return m_error; }
     E& error() { return m_error; }
+
+    void unwrap(const SourceLocation& location = SourceLocation::current()) {
+        if (this->is_err()) {
+            dbgln("{}({}:{}) at `{}`: Result::unwrap() called on an error", 
+                location.file_name(), 
+                location.line(), 
+                location.column(),
+                location.function_name()
+            );
+
+        #ifdef __KERNEL__
+            kernel::panic();
+        #else
+            exit(1);
+        #endif
+        }
+
+        return;
+    }
     
 private:
     E m_error;
