@@ -91,6 +91,8 @@ public:
 
     void flush() override;
 
+    ErrorOr<void> allocate_blocks(size_t count);
+
 private:
     ext2fs::Inode m_inode;
     FileSystem* m_fs = nullptr;

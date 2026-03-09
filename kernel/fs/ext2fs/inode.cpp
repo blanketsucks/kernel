@@ -1,4 +1,3 @@
-#include "kernel/posix/errno.h"
 #include <kernel/fs/ext2fs/inode.h>
 #include <kernel/fs/ext2fs/filesystem.h>
 #include <kernel/fs/ext2fs/ext2.h>
@@ -8,6 +7,8 @@
 
 #include <std/format.h>
 #include <std/function.h>
+#include <std/result.h>
+#include <std/bytes_buffer.h>
 
 #define VERIFY_BLOCK(block)                         \
     if (!block) {                                   \
@@ -260,11 +261,11 @@ Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
         while (offset < m_fs->block_size()) {
             DirEntry* entry = reinterpret_cast<DirEntry*>(buffer + offset);
             StringView name { entry->name, entry->name_length };
-
+            
             if (entry->inode == 0) {
                 break;
             }
-
+            
             offset += entry->size;
             entries.append(fs::DirectoryEntry(entry->inode, static_cast<fs::DirectoryEntry::Type>(entry->type_indicator), String(name)));
         }
@@ -290,7 +291,51 @@ void InodeEntry::write_directory_entries() {
         return;
     }
 
-    ASSERT(false, "Writing directory entries is not implemented yet.");
+    size_t size = m_entries.size() * (sizeof(fs::DirectoryEntry) - sizeof(String));
+    for (auto& entry : m_entries) {
+        size += entry.name.size();
+    }
+
+    size_t block_size = m_fs->block_size();
+
+    size_t blocks = std::align_up(size, block_size) / block_size;
+    if (blocks > block_count()) {
+        MUST(this->allocate_blocks(blocks - block_count()));
+    }
+
+    u8 buffer[block_size];
+    size_t current_block = 0;
+
+    size_t offset = 0;
+    for (auto& entry : m_entries) {
+        size_t size = std::align_up(entry.name.size() + sizeof(DirEntry), 4);
+        if (size + offset > block_size) {
+            m_fs->write_block(get_block_pointer(current_block), buffer);
+            memset(buffer, 0, block_size);
+
+            current_block++;
+            offset = 0;
+        }
+
+        auto* dir_entry = reinterpret_cast<DirEntry*>(buffer + offset);
+
+        dir_entry->inode = entry.inode;
+        dir_entry->name_length = entry.name.size();
+        dir_entry->size = size;
+        dir_entry->type_indicator = static_cast<u8>(entry.type);
+
+        memcpy(buffer + offset + sizeof(DirEntry), entry.name.data(), entry.name.size());
+        offset += size;
+    }
+
+    auto* null = reinterpret_cast<DirEntry*>(buffer + offset);
+
+    null->inode = 0;
+    null->type_indicator = fs::DirectoryEntry::Unknown;
+    null->name_length = 0;
+    null->size = block_size - offset;
+
+    m_fs->write_block(get_block_pointer(current_block), buffer);
 }
 
 ErrorOr<void> InodeEntry::add_directory_entry(ino_t inode, String name, fs::DirectoryEntry::Type type) {
@@ -454,8 +499,6 @@ ErrorOr<void> InodeEntry::write_block_pointers() {
 #undef WRITE_BLOCK_POINTER
 }
 
-
-
 ErrorOr<void> InodeEntry::write_singly_indirect_block_pointers(u32 block) {
     u32 block_size = m_fs->block_size();
 
@@ -539,6 +582,8 @@ RefPtr<fs::Inode> InodeEntry::create_entry(String name, mode_t mode, dev_t dev, 
     }
 
     this->add_entry(name, inode);
+    this->write_directory_entries();
+
     return inode;
 }
 
@@ -565,6 +610,15 @@ void InodeEntry::flush() {
     memcpy(buffer + offset, &m_inode, sizeof(ext2fs::Inode));
 
     m_fs->write_block(block, buffer);
+}
+
+ErrorOr<void> InodeEntry::allocate_blocks(size_t count) {
+    Vector<u32> blocks = TRY(m_fs->allocate_blocks(count));
+    for (auto& block : blocks) {
+        m_block_pointers.append(block);
+    }
+
+    return {};
 }
 
 }
