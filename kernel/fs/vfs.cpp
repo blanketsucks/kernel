@@ -4,10 +4,24 @@
 #include <kernel/devices/device.h>
 #include <kernel/common.h>
 #include <kernel/serial.h>
+#include <kernel/panic.h>
 
 #include <std/format.h>
 
 namespace kernel::fs {
+
+static constexpr StringView basename(StringView path) {
+    if (path.empty()) {
+        return {};
+    }
+
+    size_t index = path.rfind('/');
+    if (index != StringView::npos) {
+        return path.substr(index + 1);
+    }
+
+    return path;
+}
 
 static VFS s_vfs_instance = {};
 
@@ -109,18 +123,39 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
     return current;
 }
 
-ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t, RefPtr<ResolvedInode> relative_to) {
+ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t mode, RefPtr<ResolvedInode> relative_to) {
     if (path.empty()) {
         return Error(ENOENT);
     } else if ((options & O_DIRECTORY) && (options & O_CREAT)) {
         return Error(EINVAL);
+    } else if ((options & O_EXCL) && !(options & O_CREAT)) {
+        return Error(EINVAL);
     }
 
-    
     // TODO: Handle O_CREAT and O_EXCL
-    auto resolved = TRY(this->resolve(path, nullptr, relative_to));
-    auto& inode = resolved->inode();
+    RefPtr<ResolvedInode> parent = nullptr;
+    auto result = this->resolve(path, &parent, relative_to);
 
+    RefPtr<ResolvedInode> resolved;
+    if (result.is_err()) {
+        auto& err = result.error();
+        if (err.code() != ENOENT && !(options & O_CREAT)) {
+            return err;
+        }
+
+        ASSERT(parent, "parent should not be null");
+        auto inode = parent->inode().create_entry(basename(path), mode | S_IFREG, 0, 0, 0);
+
+        resolved = ResolvedInode::create(basename(path), parent->fs(), move(inode), parent);
+    } else {
+        if (options & O_EXCL) {
+            return Error(EEXIST);
+        }
+
+        resolved = result.release_value();
+    }
+
+    auto& inode = resolved->inode();
     if (inode.is_directory() && (options & O_DIRECTORY) == 0) {
         return Error(EISDIR);
     } else if (!inode.is_directory() && (options & O_DIRECTORY)) {
@@ -160,16 +195,8 @@ ErrorOr<void> VFS::mknod(StringView path, mode_t mode, dev_t dev, RefPtr<Resolve
     }
 
     auto& inode = parent->inode();
+    inode.create_entry(basename(path), mode, dev, 0, 0); // TODO: uid/gid
 
-    StringView basename;
-    size_t index = path.rfind('/');
-    if (index == StringView::npos) {
-        basename = path;
-    } else {
-        basename = path.substr(index + 1);
-    }
-
-    inode.create_entry(basename, mode, dev, 0, 0); // TODO: uid/gid
     return {};
 }
 
@@ -190,17 +217,7 @@ ErrorOr<void> VFS::mkdir(StringView path, mode_t mode, RefPtr<ResolvedInode> rel
     }
 
     auto& inode = parent->inode();
-
-    StringView basename;
-    size_t index = path.rfind('/');
-    if (index == StringView::npos) {
-        basename = path;
-    } else {
-        basename = path.substr(index + 1);
-    }
-
-    mode |= S_IFDIR;
-    inode.create_entry(basename, mode, 0, 0, 0); // TODO: uid/gid
+    inode.create_entry(basename(path), mode | S_IFDIR, 0, 0, 0); // TODO: uid/gid
 
     return {};
 }
@@ -222,17 +239,7 @@ ErrorOr<void> VFS::touch(StringView path, mode_t mode, RefPtr<ResolvedInode> rel
     }
 
     auto& inode = parent->inode();
-
-    StringView basename;
-    size_t index = path.rfind('/');
-    if (index == StringView::npos) {
-        basename = path;
-    } else {
-        basename = path.substr(index + 1);
-    }
-
-    mode |= S_IFREG;
-    inode.create_entry(basename, mode, 0, 0, 0); // TODO: uid/gid
+    inode.create_entry(basename(path), mode | S_IFREG, 0, 0, 0); // TODO: uid/gid
 
     return {};
 }
@@ -250,16 +257,7 @@ ErrorOr<void> VFS::remove(StringView path, RefPtr<ResolvedInode> relative_to) {
     }
 
     auto& inode = parent->inode();
-
-    StringView basename;
-    size_t index = path.rfind('/');
-    if (index == StringView::npos) {
-        basename = path;
-    } else {
-        basename = path.substr(index + 1);
-    }
-
-    return inode.remove_entry(basename);
+    return inode.remove_entry(basename(path));
 }
 
 ErrorOr<Mount*> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
