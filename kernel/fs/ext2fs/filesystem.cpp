@@ -172,9 +172,10 @@ RefPtr<fs::Inode> FileSystem::create_inode(mode_t mode, dev_t dev, uid_t uid, gi
 
     // FIXME: Set the creation time.
 
-    auto* entry = new InodeEntry(this, result, inode);
-    entry->flush();
+    auto entry = RefPtr<InodeEntry>(new InodeEntry(this, result, inode));
+    m_inodes.set(inode, entry);
 
+    entry->flush();
     return entry;
 }
 

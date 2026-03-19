@@ -550,7 +550,7 @@ ErrorOr<void> InodeEntry::add_entry(String name, RefPtr<fs::Inode> inode) {
 
     switch (mode & S_IFMT) {
         case S_IFDIR:
-            this->m_inode.hard_link_count++;
+            m_inode.hard_link_count++;
             type = fs::DirectoryEntry::Directory; break;
         case S_IFREG:
             type = fs::DirectoryEntry::RegularFile; break;
