@@ -8,7 +8,8 @@
 extern "C" {
 
 int fstat(int fd, struct stat* st) {
-    return syscall(SYS_fstat, fd, st);
+    int ret = syscall(SYS_fstat, fd, st);
+    __set_errno_return(ret, ret, -1);
 }
 
 int stat_length(const char* path, size_t path_length, struct stat* st) {
