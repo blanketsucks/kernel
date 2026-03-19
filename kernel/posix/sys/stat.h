@@ -21,6 +21,25 @@
 #define S_ISLNK(m) (((m) & S_IFMT) == S_IFLNK)
 #define S_ISSOCK(m) (((m) & S_IFMT) == S_IFSOCK)
 
+#define S_IRUSR 00400
+#define S_IWUSR 00200
+#define S_IXUSR 00100
+#define S_IRWXU (S_IRUSR | S_IWUSR | S_IXUSR)
+
+#define S_IRGRP 00040
+#define S_IWGRP 00020
+#define S_IXGRP 00010
+#define S_IRWXG (S_IRGRP | S_IWGRP | S_IXGRP)
+
+#define S_IROTH 00004
+#define S_IWOTH 00002
+#define S_IXOTH 00001
+#define S_IRWXO (S_IROTH | S_IWOTH | S_IXOTH)
+
+#define S_ISUID 0004000
+#define S_ISGID 0002000
+#define S_ISVTX 0001000
+
 struct stat {
     dev_t      st_dev;          /* ID of device containing file */
     ino_t      st_ino;          /* Inode number */
