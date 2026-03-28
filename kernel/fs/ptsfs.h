@@ -40,9 +40,9 @@ public:
 
     ErrorOr<void> add_entry(String, RefPtr<Inode>) override { return Error(EROFS); }
     ErrorOr<void> remove_entry(StringView) override { return Error(EROFS); }
-    RefPtr<Inode> create_entry(String, mode_t, dev_t, uid_t, gid_t) override { return nullptr; }
+    ErrorOr<RefPtr<Inode>> create_entry(String, mode_t, dev_t, uid_t, gid_t) override { return Error(EROFS); }
 
-    void flush() override {}
+    ErrorOr<void> flush() override { return {}; }
 
 private:
     PTSFS* m_fs;

@@ -48,9 +48,9 @@ public:
 
     ErrorOr<void> add_entry(String name, RefPtr<fs::Inode> inode) override;
     ErrorOr<void> remove_entry(StringView name) override;
-    RefPtr<fs::Inode> create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) override;
+    ErrorOr<RefPtr<fs::Inode>> create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) override;
 
-    void flush() override;
+    ErrorOr<void> flush() override;
 
 private:
     Inode(FileSystem* fs, ino_t id, String name, mode_t mode, dev_t dev, ino_t parent) : fs::Inode(id), m_fs(fs), m_name(name), m_mode(mode), m_dev(dev), m_parent(parent) {}

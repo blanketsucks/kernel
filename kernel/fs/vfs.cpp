@@ -144,7 +144,7 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t m
         }
 
         ASSERT(parent, "parent should not be null");
-        auto inode = parent->inode().create_entry(basename(path), mode | S_IFREG, 0, 0, 0);
+        auto inode = TRY(parent->inode().create_entry(basename(path), mode | S_IFREG, 0, 0, 0));
 
         resolved = ResolvedInode::create(basename(path), parent->fs(), move(inode), parent);
     } else {
@@ -227,7 +227,7 @@ ErrorOr<void> VFS::touch(StringView path, mode_t mode, RefPtr<ResolvedInode> rel
         return Error(ENOENT);
     }
 
-    RefPtr<ResolvedInode> parent;
+    RefPtr<ResolvedInode> parent = nullptr;
     auto result = this->resolve(path, &parent, relative_to);
 
     if (!result.is_err()) {

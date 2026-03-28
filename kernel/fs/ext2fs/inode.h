@@ -87,9 +87,9 @@ public:
 
     ErrorOr<void> add_entry(String name, RefPtr<fs::Inode> inode) override;
     ErrorOr<void> remove_entry(StringView name) override;
-    RefPtr<fs::Inode> create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) override;
+    ErrorOr<RefPtr<fs::Inode>> create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) override;
 
-    void flush() override;
+    ErrorOr<void> flush() override;
 
     ErrorOr<void> allocate_blocks(size_t count);
 

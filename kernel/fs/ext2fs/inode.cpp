@@ -527,7 +527,7 @@ ErrorOr<void> InodeEntry::write_doubly_indirect_block_pointers(u32 block) {
     u32* doubly_indirect_pointers = reinterpret_cast<u32*>(buffer);
     for (size_t i = 0; i < block_size / sizeof(u32); i++) {
         VERIFY_BLOCK(doubly_indirect_pointers[i]);
-        this->write_singly_indirect_block_pointers(doubly_indirect_pointers[i]);
+        TRY(this->write_singly_indirect_block_pointers(doubly_indirect_pointers[i]));
     }
 
     m_fs->write_block(block, buffer);
@@ -575,20 +575,23 @@ ErrorOr<void> InodeEntry::remove_entry(StringView) {
     return Error(ENOSYS); // TODO: Implement remove_entry for InodeEntry
 }
 
-RefPtr<fs::Inode> InodeEntry::create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) {
-    auto inode = m_fs->create_inode(mode, dev, uid, gid);
-    if (!inode) {
-        return nullptr;
+ErrorOr<RefPtr<fs::Inode>> InodeEntry::create_entry(String name, mode_t mode, dev_t dev, uid_t uid, gid_t gid) {
+    if (!is_directory()) {
+        return Error(ENOTDIR);
+    } else if (name.size() > MAX_NAME_SIZE) {
+        return Error(ENAMETOOLONG);
     }
 
-    this->add_entry(name, inode);
+    auto inode = TRY(m_fs->create_inode(mode, dev, uid, gid));
+
+    TRY(this->add_entry(name, inode));
     this->write_directory_entries();
 
     return inode;
 }
 
-void InodeEntry::flush() {
-    this->write_block_pointers();
+ErrorOr<void> InodeEntry::flush() {
+    TRY(this->write_block_pointers());
 
     u32 block_size = m_fs->block_size();
     auto superblock = m_fs->superblock();
@@ -598,7 +601,7 @@ void InodeEntry::flush() {
 
     BlockGroup* group = m_fs->get_block_group(block_group);
     if (!group) {
-        return;
+        return Error(ENOENT);
     }
 
     u32 block = group->inode_table() + index * sizeof(ext2fs::Inode) / block_size;

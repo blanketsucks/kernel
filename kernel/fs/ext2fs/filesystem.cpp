@@ -6,62 +6,69 @@
 
 namespace kernel::ext2fs {
 
-FileSystem* FileSystem::create(BlockDevice* disk) {
+ErrorOr<FileSystem*> FileSystem::create(BlockDevice* disk) {
     if (disk->block_size() != SECTOR_SIZE) {
-        return nullptr;
+        return Error(EINVAL);
     }
 
     auto* superblock = new Superblock;
-    MUST(disk->read_blocks(superblock, 2, 2));
+    TRY(disk->read_blocks(superblock, 2, 2));
 
     if (superblock->magic != MAGIC) {
         delete superblock;
-        return nullptr;
+        return Error(EINVAL);
     }
 
-    auto* fs = new FileSystem(superblock, disk);
-    fs->m_block_groups.resize(fs->block_group_count());
-
-    return fs;
+    return new FileSystem(superblock, disk);
 }
 
-FileSystem::FileSystem(Superblock* superblock, BlockDevice* disk) : m_superblock(superblock), m_disk(disk) {}
+FileSystem::FileSystem(Superblock* superblock, BlockDevice* disk) : m_superblock(superblock), m_disk(disk) {
+    m_block_groups.resize(block_group_count());
+}
 
 void FileSystem::flush_superblock() const {
     MUST(m_disk->write_blocks(m_superblock, 2, 2));
 }
 
-void FileSystem::read_block(u32 block, u8* buffer) const {
-    this->read_blocks(block, 1, buffer);
+ErrorOr<void> FileSystem::read_block(u32 block, u8* buffer) const {
+    return this->read_blocks(block, 1, buffer);
 }
 
-void FileSystem::read_blocks(u32 block, u32 count, u8* buffer) const {
+ErrorOr<void> FileSystem::read_blocks(u32 block, u32 count, u8* buffer) const {
     u32 sector = block * (this->block_size() / SECTOR_SIZE);
     u32 sector_count = count * (this->block_size() / SECTOR_SIZE);
 
-    MUST(m_disk->read_blocks(buffer, sector_count, sector));
+    TRY(m_disk->read_blocks(buffer, sector_count, sector));
+    return {};
 }
 
-void FileSystem::write_block(u32 block, const u8* buffer) const {
-    this->write_blocks(block, 1, buffer);
+ErrorOr<void> FileSystem::write_block(u32 block, const u8* buffer) const {
+    return this->write_blocks(block, 1, buffer);
 }
 
-void FileSystem::write_blocks(u32 block, u32 count, const u8* buffer) const {
+ErrorOr<void> FileSystem::write_blocks(u32 block, u32 count, const u8* buffer) const {
     u32 sector = block * (this->block_size() / SECTOR_SIZE);
     u32 sector_count = count * (this->block_size() / SECTOR_SIZE);
 
-    MUST(m_disk->write_blocks(buffer, sector_count, sector));
+    TRY(m_disk->write_blocks(buffer, sector_count, sector));
+    return {};
+}
+
+u32 FileSystem::get_block_group_block(u32 block_group) const {
+    size_t block_size = this->block_size();
+    auto [block, offset] = divmod(block_group * sizeof(BlockGroupDescriptor), block_size);
+
+    if (block_size == 1024) {
+        // If the block size is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. 
+        return block + 2;
+    } else {
+        // For any other block size, it will begin at block 1.
+        return block + 1;
+    }
 }
 
 void FileSystem::read_block_group(u32 index, BlockGroupDescriptor* group) const {
-    u32 block = (index * sizeof(BlockGroupDescriptor)) / this->block_size();
-    if (this->block_size() == 1024) {
-        // If the block size is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. 
-        block += 2;
-    } else {
-        // For any other block size, it will begin at block 1.
-        block += 1;
-    }
+    u32 block = this->get_block_group_block(index);
 
     u8 buffer[this->block_size()];
     this->read_block(block, buffer);
@@ -71,14 +78,7 @@ void FileSystem::read_block_group(u32 index, BlockGroupDescriptor* group) const 
 }
 
 void FileSystem::write_block_group(u32 index, const BlockGroupDescriptor* group) const {
-    u32 block = (index * sizeof(BlockGroupDescriptor)) / this->block_size();
-    if (this->block_size() == 1024) {
-        // If the block size is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. 
-        block += 2;
-    } else {
-        // For any other block size, it will begin at block 1.
-        block += 1;
-    }
+    u32 block = this->get_block_group_block(index); 
 
     u8 buffer[this->block_size()];
     this->read_block(block, buffer);
@@ -144,13 +144,13 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
     return entry;
 }
 
-RefPtr<fs::Inode> FileSystem::create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid) {
+ErrorOr<RefPtr<fs::Inode>> FileSystem::create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid) {
     BlockGroup* block_group = this->find_block_group([](BlockGroup* group) {
         return group->free_inodes() > 0 ? IterationAction::Break : IterationAction::Continue;
     });
 
     if (!block_group) {
-        return nullptr;
+        return Error(ENOSPC);
     }
     
     u32 inode = block_group->allocate_inode(S_ISDIR(mode));
@@ -173,10 +173,10 @@ RefPtr<fs::Inode> FileSystem::create_inode(mode_t mode, dev_t dev, uid_t uid, gi
     // FIXME: Set the creation time.
 
     auto entry = RefPtr<InodeEntry>(new InodeEntry(this, result, inode));
-    m_inodes.set(inode, entry);
+    TRY(entry->flush());
 
-    entry->flush();
-    return entry;
+    m_inodes.set(inode, entry);
+    return { entry };
 }
 
 ErrorOr<Vector<u32>> FileSystem::allocate_blocks(u32 count) {

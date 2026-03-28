@@ -17,7 +17,7 @@ namespace kernel::ext2fs {
 
 class FileSystem : public fs::FileSystem {
 public:
-    static FileSystem* create(BlockDevice* disk);
+    static ErrorOr<FileSystem*> create(BlockDevice* disk);
 
     RefPtr<fs::Inode> inode(ino_t inode) override;
     ino_t root() const override { return ROOT_INODE; }
@@ -37,6 +37,8 @@ public:
     u32 block_size() const { return 1024 << m_superblock->block_size; }
     u32 block_group_count() const { return (m_superblock->total_blocks + m_superblock->blocks_per_group - 1) / m_superblock->blocks_per_group; }
 
+    u32 get_block_group_block(u32 block_group) const;
+
     void flush_superblock() const;
 
     BlockGroup* get_block_group(u32 index);
@@ -47,11 +49,11 @@ public:
     void read_block_group(u32 index, BlockGroupDescriptor* group) const;
     void write_block_group(u32 index, const BlockGroupDescriptor* group) const;
 
-    void read_block(u32 block, u8* buffer) const;
-    void read_blocks(u32 block, u32 count, u8* buffer) const;
+    ErrorOr<void> read_block(u32 block, u8* buffer) const;
+    ErrorOr<void> read_blocks(u32 block, u32 count, u8* buffer) const;
 
-    void write_block(u32 block, const u8* buffer) const;
-    void write_blocks(u32 block, u32 count, const u8* buffer) const;
+    ErrorOr<void> write_block(u32 block, const u8* buffer) const;
+    ErrorOr<void> write_blocks(u32 block, u32 count, const u8* buffer) const;
 
     ErrorOr<Vector<u32>> allocate_blocks(u32 count);
     ErrorOr<u32> allocate_block();
@@ -59,7 +61,7 @@ public:
     void free_blocks(const Vector<u32>& blocks);
     void free_block(u32 block);
 
-    RefPtr<fs::Inode> create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid);
+    ErrorOr<RefPtr<fs::Inode>> create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid);
 
 private:
     FileSystem(Superblock* superblock, BlockDevice* drive);

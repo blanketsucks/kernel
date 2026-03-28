@@ -134,18 +134,14 @@ void stage2() {
         process->sys$exit(1);
     }
 
-    auto* fs = ext2fs::FileSystem::create(disk);
-    if (!fs) {
-        dbgln("Could not create main ext2 filesystem for '{}'.\n", cmdline->root());
-        process->sys$exit(1);
-    }
+    fs::FileSystem* fs = MUST(ext2fs::FileSystem::create(disk));
 
     auto* vfs = fs::vfs();
     vfs->mount_root(fs);
 
     parse_symbols();
 
-    devfs::mount();
+    MUST(devfs::mount());
 
     PTYMultiplexer::create();
 

@@ -95,18 +95,20 @@ ErrorOr<void> Inode::remove_entry(StringView name) {
 }
 
 // TODO: Handle mode (correctly), uid, gid
-RefPtr<fs::Inode> Inode::create_entry(String name, mode_t mode, dev_t dev, uid_t, gid_t) {
-    if (!this->is_directory()) {
-        return nullptr;
+ErrorOr<RefPtr<fs::Inode>> Inode::create_entry(String name, mode_t mode, dev_t dev, uid_t, gid_t) {
+    if (!is_directory()) {
+        return Error(ENOTDIR);
     }
 
     auto inode = Inode::create(m_fs, name, mode, dev, m_id);
     m_children.set(name, inode);
 
-    return inode;
+    return { inode };
 }
 
-void Inode::flush() {}
+ErrorOr<void> Inode::flush() {
+    return {};
+}
 
 FileSystem::FileSystem() {
     m_root = Inode::create(this, "/", S_IFDIR | 0755, 0, 0);
