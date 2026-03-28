@@ -1,3 +1,4 @@
+#include <kernel/fs/ext2fs/ext2.h>
 #include <kernel/fs/ext2fs/filesystem.h>
 #include <kernel/posix/sys/stat.h>
 #include <kernel/serial.h>
@@ -56,7 +57,7 @@ ErrorOr<void> FileSystem::write_blocks(u32 block, u32 count, const u8* buffer) c
 
 u32 FileSystem::get_block_group_block(u32 block_group) const {
     size_t block_size = this->block_size();
-    auto [block, offset] = divmod(block_group * sizeof(BlockGroupDescriptor), block_size);
+    u32 block = block_group * sizeof(BlockGroupDescriptor) / block_size;
 
     if (block_size == 1024) {
         // If the block size is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. 
