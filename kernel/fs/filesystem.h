@@ -26,7 +26,7 @@ public:
     virtual StringView name() const = 0;
 
     virtual ino_t root() const = 0;
-    virtual RefPtr<Inode> inode(ino_t id) = 0;
+    virtual ErrorOr<RefPtr<Inode>> inode(ino_t id) = 0;
 
     void add_inode(ino_t id, RefPtr<Inode> inode) { m_inodes.set(id, inode); }
 

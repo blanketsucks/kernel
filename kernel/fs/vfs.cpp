@@ -34,7 +34,7 @@ bool VFS::mount_root(FileSystem* fs) {
         return false;
     }
 
-    auto inode = fs->inode(fs->root());
+    auto inode = MUST(fs->inode(fs->root()));
     if (!inode->is_directory()) {
         return false;
     }
@@ -96,10 +96,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
             continue;
         }
         
-        auto entry = current->inode().lookup(component);
-        if (!entry) {
-            return Error(ENOENT);
-        }
+        auto entry = TRY(current->inode().lookup(component));
 
         // TODO: Handle symbolic links
         auto inode = ResolvedInode::create(component, fs, entry, current);
@@ -109,7 +106,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
             auto* guest = mount->guest();
             fs = guest;
 
-            auto root = guest->inode(guest->root());
+            auto root = TRY(guest->inode(guest->root()));
             current = ResolvedInode::create(component, fs, root, current);
         } else {
             current = inode;
@@ -132,14 +129,15 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t m
         return Error(EINVAL);
     }
 
-    // TODO: Handle O_CREAT and O_EXCL
     RefPtr<ResolvedInode> parent = nullptr;
     auto result = this->resolve(path, &parent, relative_to);
 
     RefPtr<ResolvedInode> resolved;
     if (result.is_err()) {
         auto& err = result.error();
-        if (err.code() != ENOENT && !(options & O_CREAT)) {
+        if (!(options & O_CREAT)) {
+            return err;
+        } else if (err.code() != ENOENT) {
             return err;
         }
 
@@ -195,7 +193,7 @@ ErrorOr<void> VFS::mknod(StringView path, mode_t mode, dev_t dev, RefPtr<Resolve
     }
 
     auto& inode = parent->inode();
-    inode.create_entry(basename(path), mode, dev, 0, 0); // TODO: uid/gid
+    TRY(inode.create_entry(basename(path), mode, dev, 0, 0)); // TODO: uid/gid
 
     return {};
 }
@@ -217,29 +215,7 @@ ErrorOr<void> VFS::mkdir(StringView path, mode_t mode, RefPtr<ResolvedInode> rel
     }
 
     auto& inode = parent->inode();
-    inode.create_entry(basename(path), mode | S_IFDIR, 0, 0, 0); // TODO: uid/gid
-
-    return {};
-}
-
-ErrorOr<void> VFS::touch(StringView path, mode_t mode, RefPtr<ResolvedInode> relative_to) {
-    if (path.empty()) {
-        return Error(ENOENT);
-    }
-
-    RefPtr<ResolvedInode> parent = nullptr;
-    auto result = this->resolve(path, &parent, relative_to);
-
-    if (!result.is_err()) {
-        return Error(EEXIST);
-    } else if (!parent) {
-        return Error(ENOENT);
-    } else if (result.error().code() != ENOENT) {
-        return result.release_error();
-    }
-
-    auto& inode = parent->inode();
-    inode.create_entry(basename(path), mode | S_IFREG, 0, 0, 0); // TODO: uid/gid
+    TRY(inode.create_entry(basename(path), mode | S_IFDIR, 0, 0, 0)); // TODO: uid/gid
 
     return {};
 }

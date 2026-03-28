@@ -355,9 +355,9 @@ ErrorOr<void> InodeEntry::add_directory_entry(ino_t inode, String name, fs::Dire
     return {};
 }
 
-RefPtr<fs::Inode> InodeEntry::lookup(StringView name) const {
+ErrorOr<RefPtr<fs::Inode>> InodeEntry::lookup(StringView name) const {
     if (!this->is_directory()) {
-        return nullptr;
+        return Error(ENOTDIR);
     }
 
     for (auto& entry : m_entries) {
@@ -366,7 +366,7 @@ RefPtr<fs::Inode> InodeEntry::lookup(StringView name) const {
         }
     }
 
-    return nullptr;
+    return Error(ENOENT);
 }
 
 u32 InodeEntry::get_block_pointer(size_t index) const {

@@ -42,7 +42,7 @@ void PTSInode::readdir(std::Function<IterationAction(const DirectoryEntry&)> cal
     return;
 }
 
-RefPtr<Inode> PTSInode::lookup(StringView name) const {
+ErrorOr<RefPtr<Inode>> PTSInode::lookup(StringView name) const {
     if (name == "." || name == "..") {
         return m_fs->inode(m_index);
     }
@@ -51,7 +51,7 @@ RefPtr<Inode> PTSInode::lookup(StringView name) const {
 
     auto iterator = s_ptys.find(index);
     if (iterator == s_ptys.end()) {
-        return nullptr;
+        return Error(ENOENT);
     }
 
     return m_fs->inode(index + 2);
@@ -61,17 +61,19 @@ void PTSFS::init() {
     m_root = RefPtr<PTSInode>::make(this, DeviceID {}, 1);
 }
 
-RefPtr<Inode> PTSFS::inode(ino_t id) {
+ErrorOr<RefPtr<Inode>> PTSFS::inode(ino_t id) {
     if (id == 1) {
-        return m_root;
+        return { m_root };
     }
 
     auto device = Device::get_device(DeviceMajor::MasterPTY, id - 2);
     if (!device) {
-        return nullptr;
+        return Error(ENXIO);
     }
 
-    return RefPtr<PTSInode>::make(this, device->id(), id - 2);
+
+    auto inode = RefPtr<PTSInode>(new PTSInode(this, device->id(), id - 2));
+    return { inode };
 }
 
 void PTSFS::register_pty(u32 pts) {

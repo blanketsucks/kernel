@@ -36,7 +36,7 @@ public:
     struct stat stat() const override;
 
     void readdir(std::Function<IterationAction(const DirectoryEntry&)>) const override;
-    RefPtr<Inode> lookup(StringView name) const override;
+    ErrorOr<RefPtr<Inode>> lookup(StringView name) const override;
 
     ErrorOr<void> add_entry(String, RefPtr<Inode>) override { return Error(EROFS); }
     ErrorOr<void> remove_entry(StringView) override { return Error(EROFS); }
@@ -59,7 +59,7 @@ public:
     void init();
 
     ino_t root() const override { return 1; }
-    RefPtr<Inode> inode(ino_t id) override;
+    ErrorOr<RefPtr<Inode>> inode(ino_t id) override;
 
     static void register_pty(u32 pts);
     static void unregister_pty(u32 pts);

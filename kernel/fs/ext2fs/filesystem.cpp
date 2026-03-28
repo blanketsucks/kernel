@@ -68,26 +68,29 @@ u32 FileSystem::get_block_group_block(u32 block_group) const {
     }
 }
 
-void FileSystem::read_block_group(u32 index, BlockGroupDescriptor* group) const {
+ErrorOr<void> FileSystem::read_block_group(u32 index, BlockGroupDescriptor* group) const {
     u32 block = this->get_block_group_block(index);
 
     u8 buffer[this->block_size()];
-    this->read_block(block, buffer);
+    TRY(this->read_block(block, buffer));
 
     u32 offset = (index * sizeof(BlockGroupDescriptor)) % this->block_size();
     memcpy(group, buffer + offset, sizeof(BlockGroupDescriptor));
+
+    return {};
 }
 
-void FileSystem::write_block_group(u32 index, const BlockGroupDescriptor* group) const {
+ErrorOr<void> FileSystem::write_block_group(u32 index, const BlockGroupDescriptor* group) const {
     u32 block = this->get_block_group_block(index); 
 
     u8 buffer[this->block_size()];
-    this->read_block(block, buffer);
+    TRY(this->read_block(block, buffer));
 
     u32 offset = (index * sizeof(BlockGroupDescriptor)) % this->block_size();
     memcpy(buffer + offset, group, sizeof(BlockGroupDescriptor));
 
-    this->write_block(block, buffer);
+    TRY(this->write_block(block, buffer));
+    return {};
 }
 
 BlockGroup* FileSystem::get_block_group(u32 index) {
@@ -114,7 +117,7 @@ BlockGroup* FileSystem::find_block_group(const Function<IterationAction(BlockGro
     return nullptr;
 }
 
-RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
+ErrorOr<RefPtr<fs::Inode>> FileSystem::inode(ino_t inode) {
     auto iterator = m_inodes.find(inode);
     if (iterator != m_inodes.end()) {
         return iterator->value;
@@ -127,13 +130,13 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
 
     BlockGroup* group = this->get_block_group(block_group);
     if (!group) {
-        return nullptr;
+        return Error(EINVAL);
     }
 
     u32 block = group->inode_table() + (index) * sizeof(ext2fs::Inode) / block_size;
     u8 buffer[block_size];
 
-    this->read_block(block, buffer);
+    TRY(this->read_block(block, buffer));
     ext2fs::Inode result = {};
 
     u32 offset = (index * sizeof(ext2fs::Inode)) % block_size;
@@ -142,7 +145,7 @@ RefPtr<fs::Inode> FileSystem::inode(ino_t inode) {
     auto entry = RefPtr<InodeEntry>(new InodeEntry(this, result, inode));
     m_inodes.set(inode, entry);
 
-    return entry;
+    return { entry };
 }
 
 ErrorOr<RefPtr<fs::Inode>> FileSystem::create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid) {

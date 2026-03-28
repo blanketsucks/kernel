@@ -44,7 +44,7 @@ public:
     struct stat stat() const override;
 
     void readdir(std::Function<IterationAction(const fs::DirectoryEntry&)>) const override;
-    RefPtr<fs::Inode> lookup(StringView name) const override;
+    ErrorOr<RefPtr<fs::Inode>> lookup(StringView name) const override;
 
     ErrorOr<void> add_entry(String name, RefPtr<fs::Inode> inode) override;
     ErrorOr<void> remove_entry(StringView name) override;
@@ -81,7 +81,7 @@ public:
     ino_t allocate_inode() { return m_next_inode++; }
 
     ino_t root() const override { return ROOT_INODE; }
-    RefPtr<fs::Inode> inode(ino_t id) override;
+    ErrorOr<RefPtr<fs::Inode>> inode(ino_t id) override;
 
 private:
     FileSystem();

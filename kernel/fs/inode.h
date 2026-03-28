@@ -70,7 +70,7 @@ public:
 
     virtual void readdir(std::Function<IterationAction(const fs::DirectoryEntry&)>) const = 0;
 
-    virtual RefPtr<Inode> lookup(StringView name) const = 0;
+    virtual ErrorOr<RefPtr<Inode>> lookup(StringView name) const = 0;
 
     virtual ErrorOr<void> add_entry(String name, RefPtr<Inode> inode) = 0;
     virtual ErrorOr<void> remove_entry(StringView name) = 0;

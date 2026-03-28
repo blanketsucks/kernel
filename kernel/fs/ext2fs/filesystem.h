@@ -19,7 +19,7 @@ class FileSystem : public fs::FileSystem {
 public:
     static ErrorOr<FileSystem*> create(BlockDevice* disk);
 
-    RefPtr<fs::Inode> inode(ino_t inode) override;
+    ErrorOr<RefPtr<fs::Inode>> inode(ino_t inode) override;
     ino_t root() const override { return ROOT_INODE; }
 
     fs::FileSystemID id() const override { return fs::FileSystemID::Ext2FS; }
@@ -46,8 +46,8 @@ public:
         const Function<IterationAction(BlockGroup*)>& predicate
     );
 
-    void read_block_group(u32 index, BlockGroupDescriptor* group) const;
-    void write_block_group(u32 index, const BlockGroupDescriptor* group) const;
+    ErrorOr<void> read_block_group(u32 index, BlockGroupDescriptor* group) const;
+    ErrorOr<void> write_block_group(u32 index, const BlockGroupDescriptor* group) const;
 
     ErrorOr<void> read_block(u32 block, u8* buffer) const;
     ErrorOr<void> read_blocks(u32 block, u32 count, u8* buffer) const;

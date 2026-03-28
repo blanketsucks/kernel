@@ -60,13 +60,13 @@ void Inode::readdir(std::Function<IterationAction(const fs::DirectoryEntry&)> ca
     }
 }
 
-RefPtr<fs::Inode> Inode::lookup(StringView name) const {
+ErrorOr<RefPtr<fs::Inode>> Inode::lookup(StringView name) const {
     auto it = m_children.find(name);
     if (it == m_children.end()) {
-        return nullptr;
+        return Error(ENOENT);
     }
 
-    return it->value;
+    return { it->value };
 }
 
 ErrorOr<void> Inode::add_entry(String name, RefPtr<fs::Inode> inode) {
@@ -114,12 +114,12 @@ FileSystem::FileSystem() {
     m_root = Inode::create(this, "/", S_IFDIR | 0755, 0, 0);
 }
 
-RefPtr<fs::Inode> FileSystem::inode(ino_t id) {
+ErrorOr<RefPtr<fs::Inode>> FileSystem::inode(ino_t id) {
     if (id == this->root()) {
-        return m_root;
+        return { m_root };
     }
 
-    return nullptr;
+    return Error(ENOENT);
 }
 
 }
