@@ -49,6 +49,13 @@ ErrorOr<void> Inode::truncate(size_t size) {
 
 struct stat Inode::stat() const {
     struct stat stat = {};
+    
+    stat.st_blksize = 0;
+    stat.st_blocks = 0;
+    stat.st_size = m_size;
+    stat.st_ino = m_id;
+    stat.st_mode = m_mode;
+
     return stat;
 }
 
