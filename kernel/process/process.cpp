@@ -265,7 +265,7 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         page = MM->get_physical_page(frame);
         page->ref_count++;
 
-        MM->copy_physical_memory(frame, pa, PAGE_SIZE);
+        MUST(MM->copy_physical_memory(frame, pa, PAGE_SIZE));
         entry->set_physical_address(frame);
 
         entry->set_writable(true);
@@ -435,8 +435,8 @@ void Process::kill() {
         } else if (!region->used() || region->is_kernel_managed()) {
             return;
         }
-        
-        MM->free(m_allocator->page_directory(), region->base(), region->size());
+
+        MUST(MM->free(m_allocator->page_directory(), region->base(), region->size()));
         m_allocator->free(region);
     });
     

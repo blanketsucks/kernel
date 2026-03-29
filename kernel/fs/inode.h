@@ -37,10 +37,10 @@ class Inode {
 public:
     virtual ~Inode() = default;
 
-    virtual ssize_t read(void* buffer, size_t size, size_t offset) const = 0;
-    virtual ssize_t write(const void* buffer, size_t size, size_t offset) = 0;
+    virtual ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) const = 0;
+    virtual ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) = 0;
 
-    virtual void truncate(size_t size) = 0;
+    virtual ErrorOr<void> truncate(size_t size) = 0;
 
     bool operator==(const Inode& other) const {
         return this->id() == other.id();

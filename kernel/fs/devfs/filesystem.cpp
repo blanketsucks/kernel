@@ -29,11 +29,11 @@ void init() {
     auto root = MUST(s_fs->inode(s_fs->root()));
     s_root = fs::ResolvedInode::create({}, s_fs, root, nullptr);
 
-    mkdir("pts", 0);
+    MUST(mkdir("pts", 0));
 
-    mknod("null", S_IFCHR, Device::encode(1, 1));
-    mknod("zero", S_IFCHR, Device::encode(1, 2));
-    mknod("ptmx", S_IFCHR, Device::encode(99, 0));
+    MUST(mknod("null", S_IFCHR, Device::encode(1, 1)));
+    MUST(mknod("zero", S_IFCHR, Device::encode(1, 2)));
+    MUST(mknod("ptmx", S_IFCHR, Device::encode(99, 0)));
 
     auto* process = Process::create_kernel_process("Device Poller", poll);
     Scheduler::add_process(process);
@@ -86,7 +86,7 @@ ErrorOr<void> remove(StringView path, dev_t dev) {
 
 Subsystem& create_subsystem(String name) {
     auto* vfs = fs::vfs();
-    vfs->mkdir(name, 0755, s_root);
+    MUST(vfs->mkdir(name, 0755, s_root));
 
     s_subsystems.append(Subsystem(move(name)));
     return s_subsystems.last();
@@ -166,11 +166,11 @@ static void handle_device_event(DeviceEvent event) {
 
     switch (event.event_type) {
         case DeviceEvent::Added: {
-            mknod(name, mode, Device::encode(event.major, event.minor));
+            MUST(mknod(name, mode, Device::encode(event.major, event.minor)));
             break;
         }
         case DeviceEvent::Removed: {
-            remove(name, Device::encode(event.major, event.minor));
+            MUST(remove(name, Device::encode(event.major, event.minor)));
             break;
         }
     }

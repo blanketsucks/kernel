@@ -53,7 +53,7 @@ Symbol* resolve_symbol(FlatPtr address) {
 
 void parse_symbols_from_inode(fs::Inode& inode) {
     u8* buffer = new u8[inode.size()];
-    inode.read(buffer, inode.size(), 0);
+    MUST(inode.read(buffer, inode.size(), 0));
 
     auto* header = reinterpret_cast<SymbolMapHeader*>(buffer);
 

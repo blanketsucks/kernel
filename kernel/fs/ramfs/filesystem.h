@@ -22,10 +22,10 @@ public:
 
     static RefPtr<Inode> create(FileSystem*, String name, mode_t mode, dev_t dev, ino_t parent);
 
-    ssize_t read(void* buffer, size_t size, size_t offset) const override;
-    ssize_t write(const void* buffer, size_t size, size_t offset) override;
+    ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) const override;
+    ErrorOr<size_t> write(const void* buffer, size_t size, size_t offset) override;
 
-    void truncate(size_t size) override;
+    ErrorOr<void> truncate(size_t size) override;
 
     mode_t mode() const override { return m_mode; }
     size_t size() const override { return m_size; }

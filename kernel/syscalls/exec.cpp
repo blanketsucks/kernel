@@ -11,7 +11,7 @@ ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
         auto elf = ELF(file);
 
         auto* process = new Process(m_id, path, false, nullptr, nullptr, m_cwd, move(arguments), m_tty);
-        process->create_user_entry(move(elf));
+        MUST(process->create_user_entry(move(elf)));
 
         process->m_file_descriptors.resize(m_file_descriptors.size());
         for (size_t i = 0; i < m_file_descriptors.size(); i++) {

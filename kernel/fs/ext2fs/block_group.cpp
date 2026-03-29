@@ -7,13 +7,12 @@
 namespace kernel::ext2fs {
 
 BlockGroup::BlockGroup(FileSystem* fs, u32 index) : m_index(index), m_fs(fs) {
-    fs->read_block_group(index, &m_descriptor);
+    MUST(fs->read_block_group(index, &m_descriptor)); // TODO: Handle the error instead of using MUST
 }
 
-void BlockGroup::flush() {
-    m_fs->write_block_group(m_index, &m_descriptor);
+ErrorOr<void> BlockGroup::flush() {
+    return m_fs->write_block_group(m_index, &m_descriptor);
 }
-
 
 ErrorOr<Vector<u32>> BlockGroup::allocate_blocks(u32 count) {
     if (this->free_block_count() < count) {
@@ -34,7 +33,7 @@ ErrorOr<Vector<u32>> BlockGroup::allocate_blocks(u32 count) {
     }
 
     u8 buffer[m_fs->block_size()];
-    m_fs->read_block(this->block_bitmap(), buffer);
+    TRY(m_fs->read_block(this->block_bitmap(), buffer));
 
     auto bitmap = std::Bitmap(buffer, superblock->blocks_per_group);
     for (u32 i = 0; i < superblock->blocks_per_group; i++) {
@@ -53,25 +52,21 @@ ErrorOr<Vector<u32>> BlockGroup::allocate_blocks(u32 count) {
         superblock->free_blocks--;
     }
 
-    m_fs->write_block(this->block_bitmap(), buffer);
-    this->flush();
+    TRY(m_fs->write_block(this->block_bitmap(), buffer));
+    TRY(this->flush());
 
     m_fs->flush_superblock();
     return blocks;
 }
 
-u32 BlockGroup::allocate_block() {
-    auto result = this->allocate_blocks(1);
-    if (result.is_err()) {
-        return 0;
-    }
-
-    return result.value()[0];
+ErrorOr<u32> BlockGroup::allocate_block() {
+    auto blocks = TRY(this->allocate_blocks(1));
+    return blocks[0];
 }
 
-void BlockGroup::free_blocks(const Vector<u32>& blocks) {
+ErrorOr<void> BlockGroup::free_blocks(const Vector<u32>& blocks) {
     u8 buffer[m_fs->block_size()];
-    m_fs->read_block(this->block_bitmap(), buffer);
+    TRY(m_fs->read_block(this->block_bitmap(), buffer));
 
     auto& descriptor = this->descriptor();
     auto* superblock = m_fs->superblock();
@@ -83,31 +78,37 @@ void BlockGroup::free_blocks(const Vector<u32>& blocks) {
         bitmap.set(block - first_block, false);
     }
 
-    m_fs->write_block(this->block_bitmap(), buffer);
+    TRY(m_fs->write_block(this->block_bitmap(), buffer));
 
     descriptor.free_blocks += blocks.size();
     superblock->free_blocks += blocks.size();
 
-    this->flush();
+    TRY(this->flush());
     m_fs->flush_superblock();
+
+    return {};
 }
 
-void BlockGroup::free_block(u32 block) {
-    this->free_blocks({ block });
+ErrorOr<void> BlockGroup::free_block(u32 block) {
+    return this->free_blocks({ block });
 }
 
-u32 BlockGroup::allocate_inode(bool is_directory) {
+ErrorOr<u32> BlockGroup::allocate_inode(bool is_directory) {
     auto& descriptor = this->descriptor();
     auto& superblock = *m_fs->superblock();
 
+    if (descriptor.free_inodes == 0 || superblock.free_inodes == 0) {
+        return Error(ENOSPC);
+    }
+
     u8 buffer[m_fs->block_size()];
-    m_fs->read_block(this->inode_bitmap(), buffer);
+    TRY(m_fs->read_block(this->inode_bitmap(), buffer));
 
     std::Bitmap bitmap(buffer, superblock.inodes_per_group);
     ino_t inode = bitmap.find_first_unset();
 
     bitmap.set(inode, true);
-    m_fs->write_block(this->inode_bitmap(), buffer);
+    TRY(m_fs->write_block(this->inode_bitmap(), buffer));
 
     descriptor.free_inodes--;
     superblock.free_inodes--;
@@ -116,7 +117,7 @@ u32 BlockGroup::allocate_inode(bool is_directory) {
         descriptor.dir_count++;
     }
     
-    this->flush();
+    TRY(this->flush());
     m_fs->flush_superblock();
 
     return inode;

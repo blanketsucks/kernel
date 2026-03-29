@@ -91,22 +91,23 @@ ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
         return Error(EINVAL);
     }
 
+    auto* mm = kernel::MemoryManager::instance();
     if (region->base() == address) {
         if (region->size() == size) {
-            MM->free(m_allocator->page_directory(), region->base(), region->size());
+            TRY(mm->free(m_allocator->page_directory(), region->base(), region->size()));
             m_allocator->free(region);
 
             return 0;
         }
 
         region->set_range({ region->offset_by(size), region->size() - size });
-        MM->free(m_page_directory, va, size);
+        TRY(mm->free(m_page_directory, va, size));
 
         return 0;
     } else {
         if (region->end() == address + size) {
             region->set_range({ region->base(), region->size() - size });
-            MM->free(m_page_directory, va, size);
+            TRY(mm->free(m_page_directory, va, size));
 
             return 0;
         }
@@ -118,7 +119,7 @@ ErrorOr<FlatPtr> Process::sys$munmap(FlatPtr address, size_t size) {
         region->set_range({ region->base(), address - region->base() });
 
         m_allocator->insert_after(region, new_region);
-        MM->free(m_page_directory, va, size);
+        TRY(mm->free(m_page_directory, va, size));
     }
 
     return 0;

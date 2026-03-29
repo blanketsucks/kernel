@@ -89,7 +89,7 @@ void VirtIOGPUDevice::send_command(size_t request, size_t response) {
     chain.add_buffer(address.offset(request), response, true);
 
     chain.submit();
-    this->notify(0);
+    MUST(this->notify(0));
 
     while (!queue.has_available_data()) {}
     queue.drain();

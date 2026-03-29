@@ -100,7 +100,7 @@ void PhysicalMemoryManager::init(BootInfo const& boot_info) {
     m_initialized = true;
     m_total_pages = m_total_usable_memory / PAGE_SIZE;
 
-    this->fill_preframe_buffer();
+    MUST(this->fill_preframe_buffer());
 
     dbgln("Total usable pages: {}", m_total_pages);
     dbgln("Total usable memory: {} MB\n", m_total_usable_memory / MB);

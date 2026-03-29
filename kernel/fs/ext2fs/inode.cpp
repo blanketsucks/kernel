@@ -33,8 +33,11 @@ InodeEntry::InodeEntry(FileSystem* fs, ext2fs::Inode inode, ino_t id) : Inode(id
         m_device_major = id.major;
         m_device_minor = id.minor;
     } else {
-        this->read_block_pointers();
-        m_entries = this->read_directory_entries();
+        // TODO: Properly handle the error instead of using MUST
+        MUST(this->read_block_pointers());
+        if (this->is_directory()) {
+            m_entries = MUST(this->read_directory_entries());
+        }
     }
 }
 
@@ -50,7 +53,7 @@ u32 InodeEntry::block_group_offset() const {
     return (m_id - 1) % m_fs->superblock()->inodes_per_group;
 }
 
-ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
+ErrorOr<size_t> InodeEntry::read(void* buffer, size_t size, size_t offset) const {
     if (offset >= this->size()) {
         return 0;
     } else if (offset + size > this->size()) {
@@ -70,7 +73,7 @@ ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
         u8 block_buffer[block_size];
     
         if (block_offset) {
-            this->read_blocks(block, 1, block_buffer);
+            TRY(this->read_blocks(block, 1, block_buffer));
             memcpy(buf, block_buffer + block_offset, block_size - block_offset);
 
             buf += block_size - block_offset;
@@ -79,9 +82,9 @@ ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
             total_blocks--;
         }
 
-        this->read_blocks(block, total_blocks, buf);
+        TRY(this->read_blocks(block, total_blocks, buf));
         if (remaining_bytes) {
-            this->read_blocks(block + total_blocks, 1, block_buffer);
+            TRY(this->read_blocks(block + total_blocks, 1, block_buffer));
             memcpy(buf + size - remaining_bytes, block_buffer, remaining_bytes);
         }
         
@@ -92,7 +95,7 @@ ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
     u8 block_buffer[block_size];
  
     while (bytes_read < size) {
-        this->read_blocks(block, 1, block_buffer);
+        TRY(this->read_blocks(block, 1, block_buffer));
 
         size_t bytes_to_read = std::min(size - bytes_read, block_size - block_offset);
         memcpy(reinterpret_cast<u8*>(buffer) + bytes_read, block_buffer + block_offset, bytes_to_read);
@@ -106,11 +109,11 @@ ssize_t InodeEntry::read(void* buffer, size_t size, size_t offset) const {
     return bytes_read;
 }
 
-ssize_t InodeEntry::write(const void* buffer, size_t size, size_t offset) {
+ErrorOr<size_t> InodeEntry::write(const void* buffer, size_t size, size_t offset) {
     if (!size) {
         return 0;
     } else if (offset + size > this->size()) {
-        this->truncate(offset + size);
+        TRY(this->truncate(offset + size));
     }
 
     u32 block_size = m_fs->block_size();
@@ -118,41 +121,37 @@ ssize_t InodeEntry::write(const void* buffer, size_t size, size_t offset) {
     size_t block = offset / block_size;
     size_t block_offset = offset % block_size;
 
-    size_t bytes_written = 0;
+    size_t written = 0;
     u8 block_buffer[block_size];
 
-    while (bytes_written < size) {
-        this->read_blocks(block, 1, block_buffer);
+    while (written < size) {
+        TRY(this->read_blocks(block, 1, block_buffer));
 
-        size_t bytes_to_write = std::min(size - bytes_written, block_size - block_offset);
-        memcpy(block_buffer + block_offset, reinterpret_cast<const u8*>(buffer) + bytes_written, bytes_to_write);
+        size_t bytes_to_write = std::min(size - written, block_size - block_offset);
+        memcpy(block_buffer + block_offset, reinterpret_cast<const u8*>(buffer) + written, bytes_to_write);
 
-        this->write_blocks(block, 1, block_buffer);
+        TRY(this->write_blocks(block, 1, block_buffer));
 
-        bytes_written += bytes_to_write;
+        written += bytes_to_write;
         block_offset = 0;
 
         block++;
     }
 
-    return 0;
+    return written;
 }
 
-void InodeEntry::truncate(size_t size) {
+ErrorOr<void> InodeEntry::truncate(size_t size) {
     if (this->size() == size) {
-        return;
+        return {};
     }
 
     u32 block_size = m_fs->block_size();
     size_t block_count = (size + block_size - 1) / block_size;
 
     if (block_count > this->block_count()) {
-        auto result = m_fs->allocate_blocks(block_count - this->block_count());
-        if (result.is_err()) {
-            return;
-        }
-
-        for (u32 block : result.value()) {
+        Vector<u32> blocks = TRY(m_fs->allocate_blocks(block_count - this->block_count()));
+        for (u32 block : blocks) {
             m_block_pointers.append(block);
         }
 
@@ -161,7 +160,8 @@ void InodeEntry::truncate(size_t size) {
         // TODO: Implement case where we need to shrink the inode.
     }
 
-    this->flush();
+    TRY(this->flush());
+    return {};
 }
 
 struct stat InodeEntry::stat() const {
@@ -183,14 +183,15 @@ struct stat InodeEntry::stat() const {
     return stat;
 }
 
-void InodeEntry::read_blocks(size_t block, size_t count, u8* buffer) const {
+ErrorOr<void> InodeEntry::read_blocks(size_t block, size_t count, u8* buffer) const {
     if (count == 1) {
-        u32 block_pointer = this->get_block_pointer(block);
-        if (block_pointer) {
-            m_fs->read_block(block_pointer, buffer);
+        u32 ptr = this->get_block_pointer(block);
+        if (!ptr) {
+            return Error(EINVAL);
         }
 
-        return;
+        TRY(m_fs->read_block(ptr, buffer));
+        return {};
     }
     
     bool is_contiguous = false;
@@ -200,54 +201,58 @@ void InodeEntry::read_blocks(size_t block, size_t count, u8* buffer) const {
 
     size_t max_contiguous_blocks = m_fs->max_io_block_count();
     for (size_t i = 0; i < count; i++) {
-        i32 block_pointer = this->get_block_pointer(block + i);
-        if (!block_pointer) {
-            continue;
+        u32 ptr = this->get_block_pointer(block + i);
+        if (!ptr) {
+            return Error(EINVAL);
         }
 
         if (!is_contiguous) {
             is_contiguous = true;
-            start_block = block_pointer;
+            start_block = ptr;
 
             contiguous_count = 1;
             continue;
         }
 
-        bool is_next_block_contiguous = static_cast<u32>(block_pointer) == (start_block + contiguous_count);
+        bool is_next_block_contiguous = ptr == (start_block + contiguous_count);
         if (is_next_block_contiguous && contiguous_count < max_contiguous_blocks) {
             contiguous_count++;
             continue;
         }
 
-        m_fs->read_blocks(start_block, contiguous_count, buffer);
+        TRY(m_fs->read_blocks(start_block, contiguous_count, buffer));
         buffer += m_fs->block_size() * contiguous_count;
 
         is_contiguous = true;
-        start_block = block_pointer;
+        start_block = ptr;
 
         contiguous_count = 1;
     }
 
-    if (is_contiguous) {
-        m_fs->read_blocks(start_block, contiguous_count, buffer);
+    if (!is_contiguous) {
+        return {};
     }
+
+    return m_fs->read_blocks(start_block, contiguous_count, buffer);
 }
 
-void InodeEntry::write_blocks(size_t block, size_t count, const u8* buffer) {
+ErrorOr<void> InodeEntry::write_blocks(size_t block, size_t count, const u8* buffer) {
     for (size_t i = 0; i < count; i++) {
-        i32 block_pointer = this->get_block_pointer(block + i);
-        if (block_pointer == 0) {
-            continue;
+        u32 ptr = this->get_block_pointer(block + i);
+        if (ptr == 0) {
+            return Error(EINVAL);
         }
 
-        m_fs->write_block(block_pointer, buffer);
+        TRY(m_fs->write_block(ptr, buffer));
         buffer += m_fs->block_size();
     }
+
+    return {};
 }
 
-Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
+ErrorOr<Vector<fs::DirectoryEntry>> InodeEntry::read_directory_entries() const {
     if (!this->is_directory()) {
-        return {};
+        return Error(ENOTDIR);
     }
 
     u8 buffer[m_fs->block_size()];
@@ -255,7 +260,7 @@ Vector<fs::DirectoryEntry> InodeEntry::read_directory_entries() const {
 
     for (size_t i = 0; i < this->block_count(); i++) {
         memset(buffer, 0, m_fs->block_size());
-        this->read_blocks(i, 1, buffer);
+        TRY(this->read_blocks(i, 1, buffer));
 
         size_t offset = 0;
         while (offset < m_fs->block_size()) {
@@ -286,9 +291,9 @@ void InodeEntry::readdir(std::Function<IterationAction(const fs::DirectoryEntry&
     }
 }
 
-void InodeEntry::write_directory_entries() {
+ErrorOr<void> InodeEntry::write_directory_entries() {
     if (!this->is_directory()) {
-        return;
+        return Error(ENOTDIR);
     }
 
     size_t size = m_entries.size() * (sizeof(fs::DirectoryEntry) - sizeof(String));
@@ -300,7 +305,7 @@ void InodeEntry::write_directory_entries() {
 
     size_t blocks = std::align_up(size, block_size) / block_size;
     if (blocks > block_count()) {
-        MUST(this->allocate_blocks(blocks - block_count()));
+        TRY(this->allocate_blocks(blocks - block_count()));
     }
 
     u8 buffer[block_size];
@@ -310,7 +315,7 @@ void InodeEntry::write_directory_entries() {
     for (auto& entry : m_entries) {
         size_t size = std::align_up(entry.name.size() + sizeof(DirEntry), 4);
         if (size + offset > block_size) {
-            m_fs->write_block(get_block_pointer(current_block), buffer);
+            TRY(m_fs->write_block(get_block_pointer(current_block), buffer));
             memset(buffer, 0, block_size);
 
             current_block++;
@@ -335,7 +340,8 @@ void InodeEntry::write_directory_entries() {
     null->name_length = 0;
     null->size = block_size - offset;
 
-    m_fs->write_block(get_block_pointer(current_block), buffer);
+    TRY(m_fs->write_block(get_block_pointer(current_block), buffer));
+    return {};
 }
 
 ErrorOr<void> InodeEntry::add_directory_entry(ino_t inode, String name, fs::DirectoryEntry::Type type) {
@@ -377,7 +383,7 @@ u32 InodeEntry::get_block_pointer(size_t index) const {
     return m_block_pointers[index];
 }
 
-void InodeEntry::read_block_pointers() {
+ErrorOr<void> InodeEntry::read_block_pointers() {
     for (u32 i = 0; i < 12; i++) {
         u32 block_pointer = m_inode.block_pointers[i];
         if (!block_pointer) {
@@ -387,18 +393,20 @@ void InodeEntry::read_block_pointers() {
         m_block_pointers.append(block_pointer);
     }
 
-#define READ_BLOCK_POINTERS(m) if (m_inode.m) { this->read_##m##s(m_inode.m); }
+#define READ_BLOCK_POINTERS(m) if (m_inode.m) { TRY(this->read_##m##s(m_inode.m)); }
 
     READ_BLOCK_POINTERS(singly_indirect_block_pointer);
     READ_BLOCK_POINTERS(doubly_indirect_block_pointer);
     READ_BLOCK_POINTERS(triply_indirect_block_pointer);
 
 #undef READ_BLOCK_POINTER
+
+    return {};
 }
 
-void InodeEntry::read_singly_indirect_block_pointers(u32 block) {
+ErrorOr<void> InodeEntry::read_singly_indirect_block_pointers(u32 block) {
     u8 buffer[m_fs->block_size()];
-    m_fs->read_block(block, buffer);
+    TRY(m_fs->read_block(block, buffer));
 
     m_indirect_block_pointers.append(block);
 
@@ -410,11 +418,13 @@ void InodeEntry::read_singly_indirect_block_pointers(u32 block) {
 
         m_block_pointers.append(pointers[i]);
     }
+
+    return {};
 }
 
-void InodeEntry::read_doubly_indirect_block_pointers(u32 block) {
+ErrorOr<void> InodeEntry::read_doubly_indirect_block_pointers(u32 block) {
     u8 buffer[m_fs->block_size()];
-    m_fs->read_block(block, buffer);
+    TRY(m_fs->read_block(block, buffer));
 
     m_indirect_block_pointers.append(block);
 
@@ -424,13 +434,15 @@ void InodeEntry::read_doubly_indirect_block_pointers(u32 block) {
             continue;
         }
 
-        this->read_singly_indirect_block_pointers(pointers[i]);
+        TRY(this->read_singly_indirect_block_pointers(pointers[i]));
     }
+
+    return {};
 }
 
-void InodeEntry::read_triply_indirect_block_pointers(u32 block) {
+ErrorOr<void> InodeEntry::read_triply_indirect_block_pointers(u32 block) {
     u8 buffer[m_fs->block_size()];
-    m_fs->read_block(block, buffer);
+    TRY(m_fs->read_block(block, buffer));
 
     m_indirect_block_pointers.append(block);
 
@@ -440,8 +452,10 @@ void InodeEntry::read_triply_indirect_block_pointers(u32 block) {
             continue;
         }
 
-        this->read_doubly_indirect_block_pointers(pointers[i]);
+        TRY(this->read_doubly_indirect_block_pointers(pointers[i]));
     }
+
+    return {};
 }
 
 ErrorOr<void> InodeEntry::write_block_pointers() {
@@ -503,7 +517,7 @@ ErrorOr<void> InodeEntry::write_singly_indirect_block_pointers(u32 block) {
     u32 block_size = m_fs->block_size();
 
     u8 buffer[block_size];
-    m_fs->read_block(block, buffer);
+    TRY(m_fs->read_block(block, buffer));
 
     m_indirect_block_pointers.append(block);
 
@@ -512,7 +526,7 @@ ErrorOr<void> InodeEntry::write_singly_indirect_block_pointers(u32 block) {
         singly_indirect_pointers[i] = this->get_block_pointer(i + 12);
     }
 
-    m_fs->write_block(block, buffer);
+    TRY(m_fs->write_block(block, buffer));
     return {};
 }
 
@@ -520,7 +534,7 @@ ErrorOr<void> InodeEntry::write_doubly_indirect_block_pointers(u32 block) {
     u32 block_size = m_fs->block_size();
 
     u8 buffer[block_size];
-    m_fs->read_block(block, buffer);
+    TRY(m_fs->read_block(block, buffer));
 
     m_indirect_block_pointers.append(block);
 
@@ -530,7 +544,7 @@ ErrorOr<void> InodeEntry::write_doubly_indirect_block_pointers(u32 block) {
         TRY(this->write_singly_indirect_block_pointers(doubly_indirect_pointers[i]));
     }
 
-    m_fs->write_block(block, buffer);
+    TRY(m_fs->write_block(block, buffer));
     return {};
 }
 
@@ -585,7 +599,7 @@ ErrorOr<RefPtr<fs::Inode>> InodeEntry::create_entry(String name, mode_t mode, de
     auto inode = TRY(m_fs->create_inode(mode, dev, uid, gid));
 
     TRY(this->add_entry(name, inode));
-    this->write_directory_entries();
+    TRY(this->write_directory_entries());
 
     return inode;
 }
@@ -607,12 +621,13 @@ ErrorOr<void> InodeEntry::flush() {
     u32 block = group->inode_table() + index * sizeof(ext2fs::Inode) / block_size;
     u8 buffer[block_size];
 
-    m_fs->read_block(block, buffer);
+    TRY(m_fs->read_block(block, buffer));
 
     u32 offset = (index * sizeof(ext2fs::Inode)) % block_size;
     memcpy(buffer + offset, &m_inode, sizeof(ext2fs::Inode));
 
-    m_fs->write_block(block, buffer);
+    TRY(m_fs->write_block(block, buffer));
+    return {};
 }
 
 ErrorOr<void> InodeEntry::allocate_blocks(size_t count) {

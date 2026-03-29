@@ -26,15 +26,15 @@ public:
     u16 free_inodes() const { return m_descriptor.free_inodes; }
     u16 directory_count() const { return m_descriptor.dir_count; }
 
-    void flush();
+    ErrorOr<void> flush();
 
     ErrorOr<Vector<u32>> allocate_blocks(u32 count);
-    u32 allocate_block();
+    ErrorOr<u32> allocate_block();
 
-    void free_blocks(const Vector<u32>& blocks);
-    void free_block(u32 block);
+    ErrorOr<void> free_blocks(const Vector<u32>& blocks);
+    ErrorOr<void> free_block(u32 block);
 
-    u32 allocate_inode(bool is_directory);
+    ErrorOr<u32> allocate_inode(bool is_directory);
 
 private:
     BlockGroupDescriptor m_descriptor;

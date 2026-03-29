@@ -13,10 +13,10 @@ class PTSInode : public Inode {
 public:
     PTSInode(PTSFS* fs, DeviceID id, u32 index) : m_fs(fs), m_device_id(id), m_index(index) {}
 
-    ssize_t read(void*, size_t, size_t) const override { return 0; }
-    ssize_t write(const void*, size_t, size_t) override { return 0; }
+    ErrorOr<size_t> read(void*, size_t, size_t) const override { return 0; }
+    ErrorOr<size_t> write(const void*, size_t, size_t) override { return 0; }
 
-    void truncate(size_t) override {}
+    ErrorOr<void> truncate(size_t) override { return {}; }
 
     mode_t mode() const override { return 0; }
     size_t size() const override { return 0; }

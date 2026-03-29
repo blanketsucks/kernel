@@ -58,8 +58,8 @@ public:
     ErrorOr<Vector<u32>> allocate_blocks(u32 count);
     ErrorOr<u32> allocate_block();
 
-    void free_blocks(const Vector<u32>& blocks);
-    void free_block(u32 block);
+    ErrorOr<void> free_blocks(const Vector<u32>& blocks);
+    ErrorOr<void> free_block(u32 block);
 
     ErrorOr<RefPtr<fs::Inode>> create_inode(mode_t mode, dev_t dev, uid_t uid, gid_t gid);
 

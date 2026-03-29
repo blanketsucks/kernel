@@ -157,7 +157,7 @@ ErrorOr<RefPtr<fs::Inode>> FileSystem::create_inode(mode_t mode, dev_t dev, uid_
         return Error(ENOSPC);
     }
     
-    u32 inode = block_group->allocate_inode(S_ISDIR(mode));
+    u32 inode = TRY(block_group->allocate_inode(S_ISDIR(mode)));
     inode += 1 + block_group->index() * m_superblock->inodes_per_group;
 
     Inode result = {};
@@ -220,15 +220,15 @@ ErrorOr<u32> FileSystem::allocate_block() {
     return blocks[0];
 }
 
-void FileSystem::free_block(u32 block) {
+ErrorOr<void> FileSystem::free_block(u32 block) {
     u32 block_group_index = (block - 1) / m_superblock->blocks_per_group;
     BlockGroup* block_group = this->get_block_group(block_group_index);
 
     if (!block_group) {
-        return;
+        return Error(EINVAL);
     }
 
-    block_group->free_block(block);
+    return block_group->free_block(block);
 }
 
 }

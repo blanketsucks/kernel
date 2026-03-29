@@ -7,7 +7,7 @@ RefPtr<Inode> Inode::create(FileSystem* fs, String name, mode_t mode, dev_t dev,
     return RefPtr(new Inode(fs, fs->allocate_inode(), move(name), mode, dev, parent));
 }
 
-ssize_t Inode::read(void* buffer, size_t size, size_t offset) const {
+ErrorOr<size_t> Inode::read(void* buffer, size_t size, size_t offset) const {
     if (offset >= m_size) {
         return 0;
     } else if (offset + size > m_size) {
@@ -18,27 +18,33 @@ ssize_t Inode::read(void* buffer, size_t size, size_t offset) const {
     return size;
 }
 
-ssize_t Inode::write(const void* buffer, size_t size, size_t offset) {
+ErrorOr<size_t> Inode::write(const void* buffer, size_t size, size_t offset) {
     if (offset + size > m_size) {
-        this->truncate(offset + size);
+        TRY(this->truncate(offset + size));
     }
 
     memcpy(reinterpret_cast<u8*>(m_data) + offset, buffer, size);
     return size;
 }
 
-void Inode::truncate(size_t size) {
+ErrorOr<void> Inode::truncate(size_t size) {
     if (size == m_size) {
-        return;
+        return {};
     }
 
     void* data = kmalloc(size);
+    if (!data) {
+        return Error(ENOSPC);
+    }
+
     memcpy(data, m_data, size);
 
     kfree(m_data);
 
     m_data = data;
     m_size = size;
+
+    return {};
 }
 
 struct stat Inode::stat() const {

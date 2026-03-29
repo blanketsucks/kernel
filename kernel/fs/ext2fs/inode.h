@@ -11,6 +11,7 @@
 #include <std/string.h>
 #include <std/memory.h>
 #include <std/result.h>
+#include <std/optional.h>
 #include <kernel/posix/sys/stat.h>
 
 namespace kernel::ext2fs {
@@ -49,9 +50,9 @@ public:
 
     size_t size() const override { return m_inode.size_lower; }
 
-    ssize_t read(void* buffer, size_t size, size_t offset) const override;
-    ssize_t write(void const* buffer, size_t size, size_t offset) override;
-    void truncate(size_t size) override;
+    ErrorOr<size_t> read(void* buffer, size_t size, size_t offset) const override;
+    ErrorOr<size_t> write(void const* buffer, size_t size, size_t offset) override;
+    ErrorOr<void> truncate(size_t size) override;
 
     struct stat stat() const override;
 
@@ -62,17 +63,17 @@ public:
     u32 block_group_index() const;
     u32 block_group_offset() const;
 
-    void read_blocks(size_t block, size_t count, u8* buffer) const;
-    void write_blocks(size_t block, size_t count, u8 const* buffer);
+    ErrorOr<void> read_blocks(size_t block, size_t count, u8* buffer) const;
+    ErrorOr<void> write_blocks(size_t block, size_t count, u8 const* buffer);
 
     u32 get_block_pointer(size_t index) const;
 
-    void read_block_pointers();
+    ErrorOr<void> read_block_pointers();
     ErrorOr<void> write_block_pointers();
 
-    void read_singly_indirect_block_pointers(u32 block);
-    void read_doubly_indirect_block_pointers(u32 block);
-    void read_triply_indirect_block_pointers(u32 block);
+    ErrorOr<void> read_singly_indirect_block_pointers(u32 block);
+    ErrorOr<void> read_doubly_indirect_block_pointers(u32 block);
+    ErrorOr<void> read_triply_indirect_block_pointers(u32 block);
 
     ErrorOr<void> write_singly_indirect_block_pointers(u32 block);
     ErrorOr<void> write_doubly_indirect_block_pointers(u32 block);
@@ -80,8 +81,8 @@ public:
 
     void set_disk_sectors();
 
-    Vector<fs::DirectoryEntry> read_directory_entries() const;
-    void write_directory_entries();
+    ErrorOr<Vector<fs::DirectoryEntry>> read_directory_entries() const;
+    ErrorOr<void> write_directory_entries();
 
     ErrorOr<void> add_directory_entry(ino_t id, String name, fs::DirectoryEntry::Type type);
 
