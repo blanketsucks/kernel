@@ -1,4 +1,6 @@
 #include <kernel/process/process.h>
+#include <kernel/process/threads.h>
+#include <kernel/process/blocker.h>
 
 namespace kernel {
 
@@ -32,6 +34,21 @@ ErrorOr<FlatPtr> Process::sys$read(int fd, void* buffer, size_t size) {
         return Error(EBADF);
     }
 
+    if (!file->is_readable()) {
+        return Error(EBADF);
+    }
+
+    if (!file->can_read()) {
+        if (file->options() & O_NONBLOCK) {
+            return Error(EAGAIN);
+        }
+
+        auto* thread = Thread::current();
+        auto* blocker = new FileBlocker(file, O_RDONLY);
+
+        thread->block(blocker);
+    }
+
     this->validate_read(buffer, size);
     return file->read(buffer, size);
 }
@@ -40,6 +57,21 @@ ErrorOr<FlatPtr> Process::sys$write(int fd, const void* buffer, size_t size) {
     auto file = this->get_file_descriptor(fd);
     if (!file) {
         return Error(EBADF);
+    }
+
+    if (!file->is_writable()) {
+        return Error(EBADF);
+    }
+
+    if (!file->can_write()) {
+        if (file->options() & O_NONBLOCK) {
+            return Error(EAGAIN);
+        }
+        
+        auto* thread = Thread::current();
+        auto* blocker = new FileBlocker(file, O_WRONLY);
+
+        thread->block(blocker);
     }
 
     this->validate_read(buffer, size);

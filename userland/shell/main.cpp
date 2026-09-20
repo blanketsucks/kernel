@@ -56,7 +56,7 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
     int tty = posix_openpt(O_RDWR);
 
     char* name = ptsname(tty);
-    int fd = open(name, O_RDWR);
+    int fd = open(name, O_RDWR | O_NONBLOCK);
 
     if (fd < 0) {
         terminal.writeln(std::format("Failed to open PTY slave {}: {}", name, strerror(errno)));
@@ -81,15 +81,15 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
     char buffer[4096];
     int status = 0;
     
-    while (true) {
+    while (waitpid(pid, &status, WNOHANG) <= 0) {
         ssize_t n = read(fd, buffer, sizeof(buffer));
         if (n > 0) {
             terminal.write(StringView { buffer, static_cast<size_t>(n) });
         } else if (n < 0) {
-            break;
-        }
-        
-        if (waitpid(pid, &status, WNOHANG) > 0) {
+            if (errno == EAGAIN) {
+                continue;
+            }
+
             break;
         }
     }

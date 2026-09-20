@@ -43,6 +43,22 @@ bool FileDescriptor::is_writable() const {
     return m_options & O_WRONLY || m_options & O_RDWR;
 }
 
+bool FileDescriptor::can_read() const {
+    if (!is_readable()) {
+        return false;
+    }
+
+    return m_file->can_read(*this);
+}
+
+bool FileDescriptor::can_write() const {
+    if (!is_writable()) {
+        return false;
+    }
+
+    return m_file->can_write(*this);
+}
+
 void FileDescriptor::seek(off_t offset, int whence) {
     switch (whence) {
         case SEEK_SET:

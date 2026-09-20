@@ -53,4 +53,14 @@ void WaitBlocker::try_wake(Process* process, int status) {
     m_ready = true;
 }
 
+bool FileBlocker::should_unblock() {
+    if (m_options & O_RDONLY) {
+        return m_fd->can_read();
+    } else if (m_options & O_WRONLY) {
+        return m_fd->can_write();
+    }
+
+    return false;
+}
+
 }

@@ -3,6 +3,7 @@
 #include <kernel/common.h>
 #include <kernel/posix/sys/types.h>
 #include <kernel/posix/time.h>
+#include <kernel/fs/fd.h>
 
 #include <std/time.h>
 
@@ -52,13 +53,8 @@ public:
     static void try_wake_all(Process*, int status);
     void try_wake(Process*, int status);
 
-    bool should_unblock() override {
-        return m_ready;
-    }
-
-    int status() const {
-        return m_status;
-    }
+    bool should_unblock() override { return m_ready; } 
+    int status() const { return m_status; }
 
 private:
     Thread* m_thread;
@@ -66,6 +62,19 @@ private:
 
     int m_status;
     bool m_ready = false;
+};
+
+class FileBlocker : public Blocker {
+public:
+    FileBlocker(RefPtr<fs::FileDescriptor> fd, int options) : m_fd(move(fd)), m_options(options) {}
+
+    int options() const { return m_options; }
+
+    bool should_unblock() override;
+
+private:
+    RefPtr<fs::FileDescriptor> m_fd;
+    int m_options;
 };
 
 }

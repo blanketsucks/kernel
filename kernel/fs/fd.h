@@ -38,6 +38,9 @@ public:
 
     bool is_readable() const;
     bool is_writable() const;
+
+    bool can_read() const;
+    bool can_write() const;
     
     ErrorOr<size_t> read(void* buffer, size_t size);
     ErrorOr<size_t> write(const void* buffer, size_t size);
