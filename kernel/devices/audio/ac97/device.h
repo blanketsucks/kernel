@@ -143,7 +143,7 @@ private:
     bool m_variable_rate = false;
     bool m_double_rate = false;
 
-    BooleanBlocker m_irq_blocker;
+    RefPtr<BooleanBlocker> m_irq_blocker;
 };
 
 }

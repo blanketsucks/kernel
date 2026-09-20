@@ -34,6 +34,8 @@ PATADevice::PATADevice(
         m_data = ata::SECONDARY_DATA_PORT;
         m_control = ata::SECONDARY_CONTROL_PORT;
     }
+
+    m_irq_blocker = BooleanBlocker::create();
 }
 
 ErrorOr<void> PATADevice::initialize() {
@@ -120,7 +122,7 @@ void PATADevice::handle_irq() {
     }
     
     m_bus_master.write<u8>(ata::BMStatus, status | 0x04);
-    m_irq_blocker.set_value(true);
+    m_irq_blocker->set_value(true);
 }
 
 size_t PATADevice::max_io_block_count() const {
@@ -137,7 +139,7 @@ void PATADevice::wait_while_busy() const {
 
 void PATADevice::wait_for_irq() {
     Thread* thread = Thread::current();
-    thread->block(&m_irq_blocker);
+    thread->block(m_irq_blocker);
 }
 
 void PATADevice::poll() const {
@@ -232,7 +234,7 @@ void PATADevice::write_sectors(size_t lba, u8 count, const u8* buffer) {
 }
 
 void PATADevice::read_sectors_with_dma(size_t lba, u8 count, u8* buffer) {
-    m_irq_blocker.set_value(false);
+    m_irq_blocker->set_value(false);
 
     m_prdt->size = count * SECTOR_SIZE;
     m_prdt->flags = 0x8000;

@@ -68,7 +68,7 @@ private:
     io::Port m_data;
     io::Port m_bus_master;
 
-    BooleanBlocker m_irq_blocker;
+    RefPtr<BooleanBlocker> m_irq_blocker;
 
     bool m_has_48bit_pio;
     bool m_has_dma;

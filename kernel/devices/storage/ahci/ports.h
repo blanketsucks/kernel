@@ -80,7 +80,7 @@ private:
 
     RefPtr<SATADevice> m_device;
 
-    BooleanBlocker m_irq_blocker;
+    RefPtr<BooleanBlocker> m_irq_blocker;
 };
 
 }

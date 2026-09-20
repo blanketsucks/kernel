@@ -69,7 +69,7 @@ private:
     uhci::QueueHead* m_control_anchor_qh;
     uhci::QueueHead* m_bulk_anchor_qh;
 
-    BooleanBlocker m_irq_blocker;
+    RefPtr<BooleanBlocker> m_irq_blocker;
 };
 
 }

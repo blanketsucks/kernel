@@ -44,9 +44,9 @@ ErrorOr<FlatPtr> Process::sys$read(int fd, void* buffer, size_t size) {
         }
 
         auto* thread = Thread::current();
-        auto* blocker = new FileBlocker(file, O_RDONLY);
+        auto blocker = FileBlocker::create(file, O_RDONLY);
 
-        thread->block(blocker);
+        thread->block(move(blocker));
     }
 
     this->validate_read(buffer, size);
@@ -69,9 +69,9 @@ ErrorOr<FlatPtr> Process::sys$write(int fd, const void* buffer, size_t size) {
         }
         
         auto* thread = Thread::current();
-        auto* blocker = new FileBlocker(file, O_WRONLY);
+        auto blocker = FileBlocker::create(file, O_WRONLY);
 
-        thread->block(blocker);
+        thread->block(move(blocker));
     }
 
     this->validate_read(buffer, size);

@@ -13,7 +13,10 @@ public:
     OwnPtr& operator=(const OwnPtr&) = delete;
 
     OwnPtr() : m_ptr(nullptr) {}
-    OwnPtr(T* ptr) : m_ptr(ptr) {}
+
+    OwnPtr(std::nullptr_t) : m_ptr(nullptr) {}
+    explicit OwnPtr(T* ptr) : m_ptr(ptr) {}
+
     OwnPtr(OwnPtr&& other) : m_ptr(other.m_ptr) { other.m_ptr = nullptr; }
 
     template<typename U>
@@ -92,7 +95,8 @@ class RefPtr {
 public:
     RefPtr() = default;
 
-    RefPtr(T* ptr) : m_ptr(ptr), m_ref_count(new RefCount) {
+    RefPtr(std::nullptr_t) : m_ptr(nullptr), m_ref_count(nullptr) {}
+    explicit RefPtr(T* ptr) : m_ptr(ptr), m_ref_count(new RefCount) {
         m_ref_count->ref();
     }
     
@@ -198,7 +202,8 @@ class RefPtr<T> {
 public:
     RefPtr() = default;
 
-    RefPtr(T* ptr) : m_ptr(ptr) {
+    RefPtr(std::nullptr_t) : m_ptr(nullptr) {}
+    explicit RefPtr(T* ptr) : m_ptr(ptr) {
         if (m_ptr) {
             m_ptr->ref();
         }

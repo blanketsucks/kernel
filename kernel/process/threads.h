@@ -3,6 +3,7 @@
 #include <kernel/posix/sys/types.h>
 #include <kernel/posix/time.h>
 #include <kernel/process/stack.h>
+#include <kernel/process/blocker.h>
 #include <kernel/arch/registers.h>
 #include <kernel/arch/cpu.h>
 
@@ -10,13 +11,12 @@
 #include <std/string.h>
 #include <std/time.h>
 #include <std/vector.h>
+#include <std/memory.h>
 
 namespace kernel {
 
 struct ProcessArguments;
 class Process;
-
-class Blocker;
 
 class Thread {
 public:
@@ -62,19 +62,19 @@ public:
 
     void* exit_value() const { return m_exit_value; }
 
-    Blocker* blocker() const { return m_blocker; }
+    RefPtr<Blocker> const& blocker() const { return m_blocker; }
 
     bool should_unblock_next() const { return m_should_unblock_next; }
     bool should_unblock() const;
     
-    void set_blocker(Blocker* blocker) { m_blocker = blocker; }
+    void set_blocker(RefPtr<Blocker> blocker) { m_blocker = blocker; }
 
     void sleep(clockid_t, const Duration& duration);
     void sleep(const Duration& duration) {
         this->sleep(CLOCK_MONOTONIC, duration);
     }
 
-    void block(Blocker*);
+    void block(RefPtr<Blocker>);
     void unblock();
 
     void exit(void* value);
@@ -119,7 +119,7 @@ private:
     
     void* m_exit_value = nullptr;
 
-    Blocker* m_blocker = nullptr;
+    mutable RefPtr<Blocker> m_blocker = nullptr;
 
     arch::FPUState* m_fpu_state = nullptr;
 

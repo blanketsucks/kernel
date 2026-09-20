@@ -26,6 +26,8 @@ public:
     void add_adapter(RefPtr<net::NetworkAdapter> adapter);
 
 private:
+    NetworkManager();
+
     RefPtr<net::NetworkAdapter> create_network_adapter(pci::Device);
 
     void enumerate();
@@ -37,7 +39,7 @@ private:
     RefPtr<net::NetworkAdapter> m_loopback_adapter;
 
     Thread* m_thread = nullptr;
-    BooleanBlocker m_blocker;
+    RefPtr<BooleanBlocker> m_blocker;
 };
 
 }

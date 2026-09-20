@@ -236,8 +236,8 @@ bool Thread::should_unblock() const {
     return m_blocker && m_blocker->should_unblock();
 }
 
-void Thread::block(Blocker* blocker) {
-    m_blocker = blocker;
+void Thread::block(RefPtr<Blocker> blocker) {
+    m_blocker = move(blocker);
     m_state = Blocked;
 
     Scheduler::yield();
@@ -251,8 +251,8 @@ void Thread::unblock() {
 }   
 
 void Thread::sleep(clockid_t clock_id, const Duration& duration) {
-    auto* blocker = new SleepBlocker(duration, clock_id);
-    this->block(blocker);
+    auto blocker = SleepBlocker::create(duration, clock_id);
+    this->block(move(blocker));
 }
 
 void Thread::enqueue(Thread* thread) {

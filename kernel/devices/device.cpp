@@ -53,7 +53,7 @@ RefPtr<Device> Device::get_device(DeviceMajor major, u32 minor) {
 }
 
 RefPtr<fs::FileDescriptor> Device::open(int options) {
-    return fs::FileDescriptor::create(this, options);
+    return fs::FileDescriptor::create(RefPtr<Device>(this), options);
 }
 
 }

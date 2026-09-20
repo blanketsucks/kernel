@@ -30,9 +30,9 @@ ErrorOr<FlatPtr> Process::sys$clock_nanosleep(clockid_t clock_id, int flags, con
     auto* thread = Thread::current();
 
     auto duration = Duration::from_timespec(*req);
-    auto* blocker = new SleepBlocker(duration, clock_id, is_absolute);
+    auto blocker = SleepBlocker::create(duration, clock_id, is_absolute);
 
-    thread->block(blocker);
+    thread->block(move(blocker));
     return 0;
 }
 

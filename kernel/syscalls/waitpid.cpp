@@ -28,7 +28,7 @@ ErrorOr<FlatPtr> Process::sys$waitpid(pid_t pid, int* status, int options) {
     }
 
     auto* thread = Thread::current();
-    auto* blocker = WaitBlocker::create(thread, pid);
+    auto blocker = WaitBlocker::create(thread, pid);
 
     thread->block(blocker);
     *status = blocker->status();

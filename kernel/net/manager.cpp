@@ -29,10 +29,10 @@ static constexpr NetworkAdapterInitializer s_network_initializers[] = {
     net::E1000NetworkAdapter::create,
 };
 
-static NetworkManager s_instance = {};
+static NetworkManager* s_instance;
 
 NetworkManager* NetworkManager::instance() {
-    return &s_instance;
+    return s_instance;
 }
 
 RefPtr<net::NetworkAdapter> NetworkManager::create_network_adapter(pci::Device device) {
@@ -70,19 +70,24 @@ void NetworkManager::spawn() {
     Scheduler::add_process(process);
 }
 
+NetworkManager::NetworkManager() {
+    m_blocker = BooleanBlocker::create();
+}
+
 void NetworkManager::initialize() {
-    s_instance.enumerate();
+    s_instance = new NetworkManager();
+    s_instance->enumerate();
 
     auto loopback = net::LoopbackAdapter::create();
-    s_instance.m_loopback_adapter = loopback;
+    s_instance->m_loopback_adapter = loopback;
 
-    s_instance.m_adapters.append(loopback);   
+    s_instance->m_adapters.append(loopback);
 
-    s_instance.spawn();
+    s_instance->spawn();
 }
 
 void NetworkManager::wakeup() {
-    s_instance.m_blocker.set_value(true);
+    s_instance->m_blocker->set_value(true);
 }
 
 void NetworkManager::add_adapter(RefPtr<net::NetworkAdapter> adapter) {
@@ -91,8 +96,8 @@ void NetworkManager::add_adapter(RefPtr<net::NetworkAdapter> adapter) {
 
 void NetworkManager::task() {
     while (true) {
-        m_blocker.set_value(false);
-        m_blocker.wait();
+        m_blocker->set_value(false);
+        m_blocker->wait();
 
         for (auto& adapter : m_adapters) {
             net::Packet packet = adapter->dequeue();

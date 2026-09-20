@@ -55,6 +55,8 @@ bool AHCIPort::initialize() {
         return false;
     }
 
+    m_irq_blocker = BooleanBlocker::create();
+
     this->stop();
 
     this->allocate_resources();
@@ -178,10 +180,10 @@ void AHCIPort::wait_while_busy() {
 }
 
 void AHCIPort::issue_command(int slot) {
-    m_irq_blocker.set_value(false);
+    m_irq_blocker->set_value(false);
 
     m_port->command_issue = 1 << slot;
-    m_irq_blocker.wait();
+    m_irq_blocker->wait();
 }
 
 int AHCIPort::prepare_for(ata::Command command, u64 lba, u16 sectors) {
@@ -270,7 +272,7 @@ void AHCIPort::handle_interrupt() {
         return;
     }
 
-    m_irq_blocker.set_value(true);
+    m_irq_blocker->set_value(true);
     this->clear_interrupt_status();
 }
 

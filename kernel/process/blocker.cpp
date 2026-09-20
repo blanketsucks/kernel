@@ -11,7 +11,7 @@ static Vector<WaitBlocker*> s_wait_blockers;
 
 void Blocker::wait() {
     auto* thread = Thread::current();
-    thread->block(this);
+    thread->block(RefPtr<Blocker>(this));
 }
 
 SleepBlocker::SleepBlocker(Duration duration, clockid_t clock_id, bool is_absolute) : m_clock_id(clock_id) {
@@ -29,18 +29,20 @@ bool SleepBlocker::should_unblock() {
     return remaining <= Duration::zero();
 }
 
-WaitBlocker* WaitBlocker::create(Thread* thread, pid_t pid) {
-    auto* blocker = new WaitBlocker(thread, pid);
-    s_wait_blockers.append(blocker);
+RefPtr<WaitBlocker> WaitBlocker::create(Thread* thread, pid_t pid) {
+    auto blocker = RefPtr(new WaitBlocker(thread, pid));
+    s_wait_blockers.append(blocker.ptr());
 
     return blocker;
 }
 
 void WaitBlocker::try_wake_all(Process* process, int status) {
     for (auto& blocker : s_wait_blockers) {
-        if (blocker) {
-            blocker->try_wake(process, status);
+        if (!blocker) {
+            continue;
         }
+
+        blocker->try_wake(process, status);
     }
 }
 
@@ -51,6 +53,8 @@ void WaitBlocker::try_wake(Process* process, int status) {
 
     m_status = __WIFEXITED | status;
     m_ready = true;
+
+    s_wait_blockers.remove(this);
 }
 
 bool FileBlocker::should_unblock() {
