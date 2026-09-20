@@ -64,7 +64,6 @@ public:
 
     RefPtr<Blocker> const& blocker() const { return m_blocker; }
 
-    bool should_unblock_next() const { return m_should_unblock_next; }
     bool should_unblock() const;
     
     void set_blocker(RefPtr<Blocker> blocker) { m_blocker = blocker; }
@@ -98,8 +97,6 @@ private:
 
     pid_t m_id;
     State m_state;
-
-    bool m_should_unblock_next = false;
 
     Entry m_entry;
     void* m_entry_data = nullptr;
