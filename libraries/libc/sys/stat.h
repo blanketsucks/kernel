@@ -11,4 +11,6 @@ int stat(const char* path, struct stat* buf);
 
 int fstat(int fd, struct stat* buf);
 
+int mkdir(const char* pathname, mode_t mode);
+
 __END_DECLS

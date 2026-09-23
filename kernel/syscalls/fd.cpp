@@ -161,4 +161,13 @@ ErrorOr<FlatPtr> Process::sys$ioctl(int fd, unsigned request, unsigned arg) {
     return TRY(file->ioctl(request, arg));
 }
 
+ErrorOr<FlatPtr> Process::sys$mkdir(const char* pathname, mode_t mode) {
+    StringView path = this->validate_string(pathname);
+
+    auto vfs = fs::vfs();
+    TRY(vfs->mkdir(path, mode, m_cwd));
+
+    return 0;
+}
+
 }

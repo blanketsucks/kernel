@@ -21,4 +21,9 @@ int stat(const char* path, struct stat* st) {
     return stat_length(path, strlen(path), st);
 }
 
+int mkdir(const char* pathname, mode_t mode) {
+    int ret = syscall(SYS_mkdir, pathname, mode);
+    __set_errno_return(ret, 0, -1);
+}
+
 }
