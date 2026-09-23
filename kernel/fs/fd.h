@@ -45,6 +45,8 @@ public:
     ErrorOr<size_t> read(void* buffer, size_t size);
     ErrorOr<size_t> write(const void* buffer, size_t size);
 
+    ErrorOr<size_t> readdir(void* buffer, size_t size);
+
     void seek(off_t offset, int whence);
 
     void close();

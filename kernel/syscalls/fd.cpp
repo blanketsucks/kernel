@@ -149,7 +149,7 @@ ErrorOr<FlatPtr> Process::sys$readdir(int fd, void* buffer, size_t size) {
         return Error(EBADF);
     }
 
-    return file->file()->readdir(buffer, size);
+    return TRY(file->readdir(buffer, size));
 }
 
 ErrorOr<FlatPtr> Process::sys$ioctl(int fd, unsigned request, unsigned arg) {

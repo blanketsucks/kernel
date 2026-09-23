@@ -26,9 +26,9 @@ ErrorOr<void*> InodeFile::mmap(Process& process, size_t size, int) {
     return process.allocate_file_backed_region(this, size);
 }
 
-ssize_t InodeFile::readdir(void* buf, size_t size) {
+ErrorOr<size_t> InodeFile::readdir(void* buf, size_t size) {
     if (!m_inode->is_directory()) {
-        return -ENOTDIR;
+        return Error(ENOTDIR);
     }
 
     size_t offset = 0;
@@ -62,7 +62,7 @@ ssize_t InodeFile::readdir(void* buf, size_t size) {
     });
 
     if (no_space) {
-        return -EINVAL;
+        return Error(EINVAL);
     }
 
     return offset;

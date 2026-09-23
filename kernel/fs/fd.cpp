@@ -35,6 +35,14 @@ ErrorOr<size_t> FileDescriptor::write(const void* buffer, size_t size) {
     return nwritten;
 }
 
+ErrorOr<size_t> FileDescriptor::readdir(void* buffer, size_t size) {
+    if (!this->is_readable()) {
+        return Error(EBADF);
+    }
+
+    return m_file->readdir(buffer, size);
+}
+
 bool FileDescriptor::is_readable() const {
     return m_options & O_RDONLY || m_options & O_RDWR;
 }
