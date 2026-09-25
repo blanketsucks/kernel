@@ -31,6 +31,8 @@ int unsetenv(const char* name);
 int putenv(char* string);
 
 int atoi(const char* nptr);
+long strtol(const char* nptr, char** endptr, int base);
+long long strtoll(const char* nptr, char** endptr, int base);
 
 int abs(int j);
 
@@ -40,5 +42,7 @@ void qsort_r(void* base, size_t nmemb, size_t size, int (*compar)(const void*, c
 int wctomb(char* s, wchar_t wc);
 
 int getopt(int argc, char *argv[], const char *optstring);
+
+
 
 __END_DECLS

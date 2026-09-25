@@ -22,9 +22,6 @@ int strncmp(const char* str1, const char* str2, size_t n);
 int strcoll(const char *s1, const char *s2);
 char* strstr(const char* haystack, const char* needle);
 
-long strtol(const char* nptr, char** endptr, int base);
-long long strtoll(const char* nptr, char** endptr, int base);
-
 size_t strspn(const char* s, const char* accept);
 size_t strcspn(const char* s, const char* reject);
 

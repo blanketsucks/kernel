@@ -97,5 +97,9 @@ int unsetenv(const char* name) {
 int putenv(char* string) {
     return -1;
 }
+
+long strtol(const char* nptr, char** endptr, int base) {
+    return 0;
+}
     
 }
