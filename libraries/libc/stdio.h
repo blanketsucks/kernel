@@ -15,6 +15,10 @@
 #define SEEK_CUR 1
 #define SEEK_END 2
 
+#define _IOFBF 0 // Fully buffered
+#define _IOLBF 1 // Line buffered
+#define _IONBF 2 // Unbuffered
+
 #define BUFSIZ 4096
 
 __BEGIN_DECLS
@@ -57,7 +61,10 @@ int fgetc(FILE *stream);
 int getc(FILE *stream);
 int getchar(void);
 
+int setvbuf(FILE* stream, char* buf, int mode, size_t size);
 void setbuf(FILE* stream, char* buf);
+void setbuffer(FILE* stream, char* buf, size_t size);
+void setlinebuf(FILE* stream);
 
 int printf(const char* format, ...);
 int fprintf(FILE* stream, const char* format, ...);
@@ -82,5 +89,8 @@ int vsscanf(const char* str, const char* format, va_list ap);
 char* tmpnam(char* s);
 
 void __fseterr(FILE* stream);
+
+void __init_stdio();
+void __deinit_stdio();
 
 __END_DECLS

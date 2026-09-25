@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 extern "C" {
 
@@ -21,6 +22,8 @@ void _start(int argc, char** argv, char** envp) {
     if (!__called_constructors) {
         _init();
     }
+
+    __init_stdio();
 
     int status = main(argc, argv, envp);
     exit(status);

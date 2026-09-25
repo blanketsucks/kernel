@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
+#include <stdio.h>
 #include <ctype.h>
 
 #include <std/format.h>
@@ -24,6 +25,8 @@ int optind, opterr, optopt;
 
 [[gnu::noreturn]] void exit(int status) {
     // TODO: Do extra cleanup tasks once we can actually do them.
+    __deinit_stdio();
+
     __cxa_finalize(nullptr);
     __call_fini_functions();
 
