@@ -200,6 +200,17 @@ void* memmove(void* dest, void const* src, size_t n) {
     return dest;
 }
 
+void* memchr(const void* s, int c, size_t n) {
+    const u8* bytes = reinterpret_cast<const u8*>(s);
+    for (size_t i = 0; i < n; i++) {
+        if (bytes[i] == c) {
+            return (void*)(&bytes[i]);
+        }
+    }
+
+    return nullptr;
+}
+
 char* strerror(int errnum) {
     if (errnum < 0 || errnum >= EMAXERRNO) {
         return const_cast<char*>("Unkown error");
