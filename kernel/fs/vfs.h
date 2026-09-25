@@ -36,6 +36,7 @@ public:
     ErrorOr<void> mknod(StringView path, mode_t mode, dev_t dev, RefPtr<ResolvedInode> relative_to = nullptr);
     ErrorOr<void> touch(StringView path, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
     ErrorOr<void> mkdir(StringView path, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
+    ErrorOr<void> access(StringView path, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
 
     bool mount_root(FileSystem* fs);
     ErrorOr<Mount*> mount(FileSystem* fs, RefPtr<ResolvedInode> target);

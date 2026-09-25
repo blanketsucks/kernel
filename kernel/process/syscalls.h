@@ -26,7 +26,8 @@
     Op(waitpid)                 \
     Op(clock_gettime)           \
     Op(clock_nanosleep)         \
-    Op(mkdir)
+    Op(mkdir)                   \
+    Op(access)
 
 enum {
 #define Op(name) SYS_##name,

@@ -170,4 +170,13 @@ ErrorOr<FlatPtr> Process::sys$mkdir(const char* pathname, mode_t mode) {
     return 0;
 }
 
+ErrorOr<FlatPtr> Process::sys$access(const char* pathname, mode_t mode) {
+    StringView path = this->validate_string(pathname);
+
+    auto vfs = fs::vfs();
+    TRY(vfs->access(path, mode, m_cwd));
+
+    return 0;
+}
+
 }

@@ -236,6 +236,20 @@ ErrorOr<void> VFS::remove(StringView path, RefPtr<ResolvedInode> relative_to) {
     return inode.remove_entry(basename(path));
 }
 
+ErrorOr<void> VFS::access(StringView path, mode_t, RefPtr<ResolvedInode> relative_to) {
+    if (path.empty()) {
+        return Error(ENOENT);
+    }
+
+    auto result = this->resolve(path, nullptr, relative_to);
+    if (result.is_err()) {
+        return result.release_error();
+    }
+
+    // TODO: Implement
+    return {};
+}
+
 ErrorOr<Mount*> VFS::mount(FileSystem* fs, RefPtr<ResolvedInode> target) {
     if (!target->inode().is_directory()) {
         return Error(ENOTDIR);

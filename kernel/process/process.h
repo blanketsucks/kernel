@@ -125,6 +125,7 @@ public:
     ErrorOr<FlatPtr> sys$dup2(int old_fd, int new_fd);
     ErrorOr<FlatPtr> sys$ioctl(int fd, unsigned request, unsigned arg);
     ErrorOr<FlatPtr> sys$mkdir(const char* path, mode_t mode);
+    ErrorOr<FlatPtr> sys$access(const char* path, mode_t mode);
 
     ErrorOr<FlatPtr> sys$mmap(mmap_args*);
     ErrorOr<FlatPtr> sys$munmap(FlatPtr address, size_t size);
