@@ -1,6 +1,7 @@
 #include <string.h>
 #include <errno.h>
 #include <std/types.h>
+#include <std/format.h>
 
 extern "C" {
 
@@ -205,6 +206,36 @@ char* strerror(int errnum) {
     }
 
     return const_cast<char*>(errno_descriptions[errnum]);
+}
+
+char* strchr(const char* s, int c) {
+    while (true) {
+        if (*s == c) {
+            return const_cast<char*>(s);
+        } else if (!*s) {
+            return nullptr;
+        }
+
+        s++;
+    }
+}
+
+char* strrchr(const char* s, int c) {
+    char* last = nullptr;
+    while (true) {
+        if (*s == c) {
+            last = const_cast<char*>(s);
+        }
+
+        s++;
+    }
+
+    return last;
+}
+
+void perror(const char* s) {
+    int err = errno;
+    dbgln("{}: {}", s, strerror(err));
 }
 
 }
