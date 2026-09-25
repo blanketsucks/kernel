@@ -10,4 +10,6 @@ __BEGIN_DECLS
 int open_length(const char* pathname, size_t pathname_length, int flags, mode_t mode);
 int open(const char* pathname, int flags, ...);
 
+int fcntl(int fd, int op, ...);
+
 __END_DECLS

@@ -17,6 +17,9 @@ extern char** environ;
 [[gnu::noreturn]] void _exit(int status);
 [[gnu::noreturn]] void _Exit(int status);
 
+int usleep(useconds_t usec);
+unsigned int sleep(unsigned int seconds);
+
 int close(int fd);
 ssize_t read(int fd, void* buffer, size_t count);
 ssize_t write(int fd, const void* buffer, size_t count);
@@ -37,5 +40,11 @@ int execvp(const char* file, char* const argv[]);
 
 char* getcwd(char* buffer, size_t size);
 int chdir(const char* path);
+
+int access(const char* path, mode_t mode);
+
+int isatty(int fd);
+
+int unlink(const char* pathname);
 
 __END_DECLS

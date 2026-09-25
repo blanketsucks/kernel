@@ -7,6 +7,8 @@ int main(int, char**, char**);
 extern void _init();
 extern char** environ;
 
+char* program_invocation_name;
+
 static bool __called_constructors = false;
 [[gnu::constructor]] void __dynamic_linker_init_check() {
     __called_constructors = true;
@@ -14,6 +16,7 @@ static bool __called_constructors = false;
 
 void _start(int argc, char** argv, char** envp) {
     environ = envp;
+    program_invocation_name = argv[0];
 
     if (!__called_constructors) {
         _init();

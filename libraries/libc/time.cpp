@@ -18,23 +18,4 @@ int nanosleep(const struct timespec* req, struct timespec* rem) {
     return clock_nanosleep(CLOCK_REALTIME, 0, req, rem);
 }
 
-int usleep(useconds_t usec) {
-    struct timespec req;
-    req.tv_sec = usec / 1'000'000;
-    req.tv_nsec = (usec % 1'000'000) * 1'000;
-
-    return nanosleep(&req, nullptr);
-}
-
-unsigned int sleep(unsigned int seconds) {
-    struct timespec req;
-    req.tv_sec = seconds;
-    req.tv_nsec = 0;
-
-    struct timespec rem;
-    nanosleep(&req, &rem); // FIXME: Should this set errno?
-
-    return rem.tv_sec;
-}
-
 }

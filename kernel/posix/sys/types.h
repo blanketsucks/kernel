@@ -8,6 +8,8 @@ typedef __SIZE_TYPE__ ssize_t;
 
 #undef unsigned
 
+typedef __SIZE_TYPE__ size_t;
+
 typedef unsigned char u_char;
 typedef unsigned short u_short;
 typedef unsigned int u_int;

@@ -152,6 +152,16 @@ int strncmp(const char* str1, const char* str2, size_t n) {
     return 0;
 }
 
+char* strncpy(char* dest, const char* src, size_t n) {
+    // TODO: Fix. This is not the way strncpy is described to work.
+    return (char*)memcpy(dest, src, n);
+}
+
+char* strcpy(char* dest, const char* src) {
+    size_t n = strlen(src);
+    return strncpy(dest, src, n);
+}
+
 void* memset(void* dest, int c, size_t n) {
     asm volatile("rep stosb" : "+D"(dest), "+c"(n) : "a"(c) : "memory");
     return dest;

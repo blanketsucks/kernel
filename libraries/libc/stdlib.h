@@ -8,6 +8,9 @@
 
 __BEGIN_DECLS
 
+extern char *optarg;
+extern int optind, opterr, optopt;
+
 [[gnu::noreturn]] void exit(int status);
 [[gnu::noreturn]] void abort(void);
 
@@ -23,9 +26,19 @@ void* calloc(size_t nmemb, size_t size);
 void* realloc(void* ptr, size_t size);
 
 char* getenv(const char* name);
+int setenv(const char* name, const char* value, int overwrite);
+int unsetenv(const char* name);
+int putenv(char* string);
 
 int atoi(const char* nptr);
 
 int abs(int j);
+
+void qsort(void* base, size_t nmemb, size_t size, int (*compar)(const void*, const void*));
+void qsort_r(void* base, size_t nmemb, size_t size, int (*compar)(const void*, const void*, void*), void* arg);
+
+int wctomb(char* s, wchar_t wc);
+
+int getopt(int argc, char *argv[], const char *optstring);
 
 __END_DECLS

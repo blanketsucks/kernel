@@ -22,4 +22,9 @@ int open(const char* pathname, int flags, ...) {
     return open_length(pathname, strlen(pathname), flags, mode);
 }
 
+// TODO: Implement
+int fcntl(int fd, int op, ...) {
+    return 0;
+}
+
 }

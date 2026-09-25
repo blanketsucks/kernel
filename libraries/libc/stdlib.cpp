@@ -17,6 +17,9 @@ extern void _fini();
 
 char** environ;
 
+char *optarg;
+int optind, opterr, optopt;
+
 [[gnu::noreturn]] void exit(int status) {
     // TODO: Do extra cleanup tasks once we can actually do them.
     __cxa_finalize(nullptr);
@@ -79,5 +82,20 @@ int ptsname_r(int fd, char* buffer, size_t size) {
     return 0;
 }
 
+int getopt(int argc, char *argv[], const char *optstring) {
+    return -ENOSYS;
+}
+
+int setenv(const char* name, const char* value, int overwrite) {
+    return -1;
+}
+
+int unsetenv(const char* name) {
+    return -1;
+}
+
+int putenv(char* string) {
+    return -1;
+}
     
 }

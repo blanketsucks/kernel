@@ -2,6 +2,7 @@
 #include <string.h>
 #include <sys/syscall.hpp>
 #include <errno.h>
+#include <time.h>
 
 extern "C" {
 
@@ -76,6 +77,25 @@ pid_t fork(void) {
 int execve(const char* path, char* const argv[], char* const envp[]) {
     int ret = syscall(SYS_execve, path, argv, envp);
     __set_errno_return(ret, 0, -1);
+}
+
+int usleep(useconds_t usec) {
+    struct timespec req;
+    req.tv_sec = usec / 1'000'000;
+    req.tv_nsec = (usec % 1'000'000) * 1'000;
+
+    return nanosleep(&req, nullptr);
+}
+
+unsigned int sleep(unsigned int seconds) {
+    struct timespec req;
+    req.tv_sec = seconds;
+    req.tv_nsec = 0;
+
+    struct timespec rem;
+    nanosleep(&req, &rem); // FIXME: Should this set errno?
+
+    return rem.tv_sec;
 }
 
 }

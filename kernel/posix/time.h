@@ -5,6 +5,14 @@
 
 #define TIMER_ABSTIME 1
 
+#define LC_ALL 1
+#define LC_COLLATE 2
+#define LC_CTYPE 3
+#define LC_MESSAGES 4
+#define LC_MONETARY 5
+#define LC_NUMERIC 6
+#define LC_TIME 7
+
 struct timespec {
     time_t tv_sec;
     long tv_nsec;
@@ -27,7 +35,13 @@ struct timezone {
     int tz_dsttime;
 };
 
+struct timeval {
+    time_t       tv_sec;   /* Seconds */
+    suseconds_t  tv_usec;  /* Microseconds */
+};
+
 typedef int clockid_t;
+typedef void* locale_t;
 
 enum {
     CLOCK_REALTIME,

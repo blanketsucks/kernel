@@ -3,6 +3,7 @@
 #include <sys/cdefs.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #define _HAVE_STDIO
 
@@ -14,6 +15,8 @@
 #define SEEK_CUR 1
 #define SEEK_END 2
 
+#define BUFSIZ 4096
+
 __BEGIN_DECLS
 
 typedef struct FILE FILE;
@@ -22,9 +25,8 @@ extern FILE* stdin;
 extern FILE* stdout;
 extern FILE* stderr;
 
-int sprintf(char* str, const char* format, ...);
-
 FILE* fopen(const char* pathname, const char* mode);
+FILE* fdopen(int fd, const char* mode);
 int fclose(FILE* stream);
 
 size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream);
@@ -32,13 +34,53 @@ size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream);
 
 int fseek(FILE* stream, long offset, int whence);
 long ftell(FILE* stream);
+void rewind(FILE *stream);
 int feof(FILE* stream);
 
 int fflush(FILE* stream);
+int fileno(FILE* stream);
+
+void clearerr(FILE *stream);
+int feof(FILE *stream);
+int ferror(FILE *stream);
+
+int fputc(int c, FILE *stream);
+int putc(int c, FILE *stream);
+int putchar(int c);
+
+char* fgets(char* s, int size, FILE* stream);
+
+int fputs(const char* s, FILE* stream);
+int puts(const char* s);
+
+int fgetc(FILE *stream);
+int getc(FILE *stream);
+int getchar(void);
 
 void setbuf(FILE* stream, char* buf);
 
+int printf(const char* format, ...);
 int fprintf(FILE* stream, const char* format, ...);
+int dprintf(int fd, const char* format, ...);
+int sprintf(char* str, const char* format, ...);
+int snprintf(char* str, size_t size, const char* format, ...);
+
+int vprintf(const char* format, va_list ap);
 int vfprintf(FILE* stream, const char* format, va_list ap);
+int vdprintf(int fd, const char* format, va_list ap);
+int vsprintf(char* str, const char* format, va_list ap);
+int vsnprintf(char* str, size_t size, const char* format, va_list ap);
+
+int scanf(const char* format, ...);
+int fscanf(FILE* stream, const char* format, ...);
+int sscanf(const char* str, const char* format, ...);
+
+int vscanf(const char* format, va_list ap);
+int vfscanf(FILE* stream, const char* format, va_list ap);
+int vsscanf(const char* str, const char* format, va_list ap);
+
+char* tmpnam(char* s);
+
+void __fseterr(FILE* stream);
 
 __END_DECLS

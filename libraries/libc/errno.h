@@ -17,4 +17,6 @@ __BEGIN_DECLS
 int* __errno_location() __attribute__((const));
 #define errno (*__errno_location())
 
+extern char* program_invocation_name;
+
 __END_DECLS
