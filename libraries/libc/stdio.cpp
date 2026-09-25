@@ -285,6 +285,30 @@ int vfprintf(FILE* stream, const char* format, va_list ap) {
     }, stream, buffer, format, ap);
 }
 
+int fputc(int c, FILE *stream) {
+    fwrite(&c, 1, 1, stream);
+    return c;
+}
+
+int putc(int c, FILE *stream) {
+    return fputc(c, stream);
+}
+
+int putchar(int c) {
+    return fputc(c, stdout);
+}
+
+int fputs(const char* s, FILE* stream) {
+    return fwrite(s, strlen(s), 1, stream);
+}
+
+int puts(const char* s) {
+    fputs(s, stdout);
+    fwrite("\n", 1, 1, stdout);
+
+    return 0;
+}
+
 void __fseterr(FILE*) {}
 
 }
