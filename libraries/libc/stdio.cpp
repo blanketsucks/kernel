@@ -22,6 +22,7 @@ struct FILE {
     size_t size;
 
     ssize_t err;
+    bool eof;
 
     bool is_unbuffered() const { return mode == _IONBF; }
     bool is_line_buffered() const { return mode == _IOLBF; }
@@ -148,6 +149,43 @@ int fileno(FILE* stream) {
     return stream->fd;
 }
 
+void clearerr(FILE* stream) {
+    stream->err = 0;
+    stream->eof = 0;
+}
+
+int feof(FILE* stream) {
+    return stream->eof;
+}
+
+int ferror(FILE* stream) {
+    return stream->err;
+}
+
+int fseek(FILE* stream, long offset, int whence) {
+    fflush(stream);
+
+    stream->eof = false;
+    if (lseek(stream->fd, offset, whence) < 0) {
+        stream->err = errno;
+        return -1;
+    }
+
+    return 0;
+}
+
+long ftell(FILE* stream) {
+	if (fflush(stream) < 0) {
+		return -1;
+    }
+
+	return lseek(stream->fd, 0, SEEK_CUR);
+}
+
+void rewind(FILE* stream) {
+    fseek(stream, 0, SEEK_SET);
+}
+
 int fflush(FILE* stream) {
     if (stream->is_unbuffered()) {
         return 0;
@@ -160,7 +198,7 @@ int fflush(FILE* stream) {
         }
     }
 
-    stream->offset    = 0;
+    stream->offset = 0;
 
     return 0;
 }
