@@ -227,6 +227,54 @@ size_t strspn(const char* s, const char* accept) {
     return p - s;
 }
 
+size_t strcspn(const char* s, const char* reject) {
+    const char* p = s;
+    const char* r = reject;
+
+    for (; *p != '\0'; p++) {
+        for (r = reject; *r != '\0'; r++) {
+            if (*p == *r) {
+                return p - s;
+            }
+        }
+    }
+
+    return p - s;
+}
+
+char* strtok(char* str, const char* delim) {
+    static char* saveptr;
+    return strtok_r(str, delim, &saveptr);
+}
+
+char* strtok_r(char* str, const char* delim, char** saveptr) {
+    if (str == nullptr) {
+        str = *saveptr;
+    }
+
+    if (*str == '\0') {
+        *saveptr = str;
+        return nullptr;   
+    }
+
+    str += strspn(str, delim);
+    if (*str == '\0') {
+        *saveptr = str;
+        return nullptr;   
+    }
+
+    char* end = str + strcspn(str, delim);
+    if (*end == '\0') {
+        *saveptr = end;
+        return nullptr;   
+    }
+
+    *end = '\0';
+    *saveptr = end + 1;
+
+    return str;
+}
+
 void* memset(void* dest, int c, size_t n) {
     asm volatile("rep stosb" : "+D"(dest), "+c"(n) : "a"(c) : "memory");
     return dest;
