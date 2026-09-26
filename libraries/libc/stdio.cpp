@@ -409,6 +409,51 @@ int puts(const char* s) {
     return 0;
 }
 
+int fgetc(FILE* stream) {
+    char c;
+    if (fread(&c, 1, 1, stream) < 1) {
+        return EOF;
+    }
+
+    return c;
+}
+
+int getc(FILE* stream) {
+    return fgetc(stream);
+}
+
+int getchar(void) {
+    return fgetc(stdin);
+}
+
+char* fgets(char* s, int size, FILE* stream) {
+    char* buffer = s;
+    int c = 0;
+
+    if (size == 1) {
+        *buffer = 0;
+        return buffer;
+    }
+
+    while ((c = fgetc(stream)) >= 0) {
+        *s++ = c;
+
+        size--;
+        *s = '\0';
+        
+        if (size == 1 || c == '\n') {
+            return buffer;
+        }
+    }
+
+    if (c == EOF) {
+        stream->eof = true;
+        return buffer == s ? nullptr : s;
+    } else {
+        return nullptr;
+    }
+}
+
 void __fseterr(FILE*) {}
 
 }

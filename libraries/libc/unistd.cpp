@@ -98,4 +98,9 @@ unsigned int sleep(unsigned int seconds) {
     return rem.tv_sec;
 }
 
+int access(const char* path, mode_t mode) {
+    int rc = syscall(SYS_access, path, mode);
+    __set_errno_return(rc, 0, -1);
+}
+
 }
