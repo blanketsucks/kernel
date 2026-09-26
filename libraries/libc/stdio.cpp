@@ -28,6 +28,13 @@ struct FILE {
 
     bool is_unbuffered() const { return mode == _IONBF; }
     bool is_line_buffered() const { return mode == _IOLBF; }
+
+    void reset() {
+        offset = 0;
+        err = 0;
+        eof = false;
+        available = 0;
+    }
 };
 
 FILE* stdin;
@@ -88,6 +95,22 @@ FILE* fopen(const char* filename, const char* mode) {
 FILE* fdopen(int fd, const char* mode) {
     int options = parse_mode(mode);
     return create_stream(fd, options);
+}
+
+FILE* freopen(const char* pathname, const char* mode, FILE* stream) {
+    int options = parse_mode(mode);
+    int fd = open(pathname, options, 0666);
+    if (fd < 0) {
+        return nullptr;
+    }
+
+    fflush(stream);
+    stream->reset();
+
+    stream->fd = fd;
+    stream->options = options;
+
+    return stream;
 }
 
 int fclose(FILE* stream) {
