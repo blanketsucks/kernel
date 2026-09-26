@@ -454,6 +454,11 @@ char* fgets(char* s, int size, FILE* stream) {
     }
 }
 
+char* tmpnam(char*) {
+    errno = ENOSYS;
+    return nullptr;
+}
+
 void __fseterr(FILE*) {}
 
 }
