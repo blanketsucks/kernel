@@ -10,6 +10,10 @@
     #define SEEK_END 2
 #endif
 
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
 __BEGIN_DECLS
 
 extern char** environ;
@@ -46,5 +50,8 @@ int access(const char* path, mode_t mode);
 int isatty(int fd);
 
 int unlink(const char* pathname);
+
+char* ttyname(int fd);
+int ttyname_r(int fd, char* buf, size_t buflen);
 
 __END_DECLS

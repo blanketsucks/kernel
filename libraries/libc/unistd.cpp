@@ -108,4 +108,9 @@ int isatty(int fd) {
     __set_errno_return(rc, 1, 0);
 }
 
+int unlink(const char* pathname) {
+    errno = ENOSYS;
+    return -1;
+}
+
 }

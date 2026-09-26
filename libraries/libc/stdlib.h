@@ -43,6 +43,4 @@ int wctomb(char* s, wchar_t wc);
 
 int getopt(int argc, char *argv[], const char *optstring);
 
-
-
 __END_DECLS
