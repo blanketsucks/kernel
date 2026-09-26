@@ -25,6 +25,8 @@ public:
 
     virtual size_t size() const = 0;
 
+    virtual bool is_tty() const { return false; }
+
     virtual bool can_read(FileDescriptor const&) const = 0;
     virtual bool can_write(FileDescriptor const&) const = 0;
 

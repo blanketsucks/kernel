@@ -27,7 +27,8 @@
     Op(clock_gettime)           \
     Op(clock_nanosleep)         \
     Op(mkdir)                   \
-    Op(access)
+    Op(access)                  \
+    Op(isatty)
 
 enum {
 #define Op(name) SYS_##name,

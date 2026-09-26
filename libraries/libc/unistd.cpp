@@ -103,4 +103,9 @@ int access(const char* path, mode_t mode) {
     __set_errno_return(rc, 0, -1);
 }
 
+int isatty(int fd) {
+    int rc = syscall(SYS_isatty, fd);
+    __set_errno_return(rc, 1, 0);
+}
+
 }

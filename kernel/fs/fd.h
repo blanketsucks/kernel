@@ -33,6 +33,8 @@ public:
 
     struct stat stat() const { return m_file->stat(); }
 
+    bool is_tty() const { return m_file->is_tty(); }
+
     off_t offset() const { return m_offset; }
     int options() const { return m_options; }
 

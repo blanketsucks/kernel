@@ -179,4 +179,13 @@ ErrorOr<FlatPtr> Process::sys$access(const char* pathname, mode_t mode) {
     return 0;
 }
 
+ErrorOr<FlatPtr> Process::sys$isatty(int fd) {
+    auto file = this->get_file_descriptor(fd);
+    if (!file) {
+        return Error(EBADF);
+    }
+
+    return file->is_tty() ? 0 : Error(ENOTTY);
+}
+
 }
