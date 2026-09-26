@@ -200,6 +200,33 @@ char* strncat(char* dst, const char* src, size_t n) {
     return dst;
 }
 
+char* strcat(char* dst, const char* src) {
+    char* ptr = dst + strlen(dst);
+    while (*src != '\0') {
+        *ptr = *src;
+        ptr++; src++;
+    }
+
+    *ptr = '\0';
+    return dst;
+}
+
+size_t strspn(const char* s, const char* accept) {
+    const char* p = s;
+    for (; *p != '\0'; p++) {
+        const char* a = accept;
+        while (*a != '\0' && *a != *p) {
+            a++;
+        }
+
+        if (*a == '\0') {
+            break;
+        }
+    }
+
+    return p - s;
+}
+
 void* memset(void* dest, int c, size_t n) {
     asm volatile("rep stosb" : "+D"(dest), "+c"(n) : "a"(c) : "memory");
     return dest;
