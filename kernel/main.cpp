@@ -150,6 +150,9 @@ void stage2() {
 
     MUST(vfs->mount(ptsfs, MUST(vfs->resolve("/dev/pts"))));
 
+    auto* tmpfs = ramfs::FileSystem::create();
+    MUST(vfs->mount(tmpfs, MUST(vfs->resolve("/tmp"))));
+
     // Before we hand off control to userspace, we need to ensure that all the previous device events have been processed.
     // If not we might end up with a situation where a userspace process tries to open a device that has been initialized but not yet registered
     // in the devfs.

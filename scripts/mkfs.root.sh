@@ -1,4 +1,5 @@
 mkdir -p ./mnt/dev
+mkdir -p ./mnt/tmp
 mkdir -p ./mnt/boot
 
 cp ./kernel.map ./mnt/boot
