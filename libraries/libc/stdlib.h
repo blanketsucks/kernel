@@ -31,6 +31,9 @@ int unsetenv(const char* name);
 int putenv(char* string);
 
 int atoi(const char* nptr);
+long atol(const char* nptr);
+long long atoll(const char* nptr);
+
 long strtol(const char* nptr, char** endptr, int base);
 long long strtoll(const char* nptr, char** endptr, int base);
 

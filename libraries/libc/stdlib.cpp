@@ -247,5 +247,13 @@ int atoi(const char* nptr) {
 
     return value;
 }
+
+long atol(const char* nptr) {
+    return strtol(nptr, nullptr, 10);
+}
+
+long long atoll(const char* nptr) {
+    return strtoll(nptr, nullptr, 10);
+}
     
 }
