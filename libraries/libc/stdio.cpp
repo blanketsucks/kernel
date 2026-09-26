@@ -24,6 +24,8 @@ struct FILE {
     ssize_t err;
     bool eof;
 
+    size_t available;
+
     bool is_unbuffered() const { return mode == _IONBF; }
     bool is_line_buffered() const { return mode == _IOLBF; }
 };
@@ -191,14 +193,22 @@ int fflush(FILE* stream) {
         return 0;
     }
 
-    if (stream->options & O_WRONLY && stream->buffer) {
+    if (stream->options & O_WRONLY && stream->buffer && !stream->available) {
         ssize_t n = write(stream->fd, stream->buffer, stream->offset);
         if (n < 0) {
             stream->err = errno;
         }
     }
 
-    stream->offset = 0;
+    if (stream->options & O_RDONLY && stream->available) {
+        int rc = lseek(stream->fd, -(stream->available - stream->offset), SEEK_CUR);
+        if (rc < 0) {
+            stream->err = errno;
+        }
+    }
+
+    stream->offset    = 0;
+    stream->available = 0;
 
     return 0;
 }
@@ -224,7 +234,7 @@ size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
             left = count;
         }
 
-        if (!left) {
+        if (!left || stream->available) {
             fflush(stream);
             continue;
         }
@@ -243,6 +253,58 @@ size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
     }
 
     return nwritten / size;
+}
+
+size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream) {
+    size_t count = size * nmemb;
+    if (stream->is_unbuffered()) {
+        ssize_t n = read(stream->fd, ptr, count);
+        if (n < 0) {
+            stream->err = errno;
+            return 0;
+        } else if (static_cast<size_t>(n) < count) {
+            stream->eof = true;
+        }
+
+        return n / size;
+    }
+
+    char* buffer = reinterpret_cast<char*>(ptr);
+    size_t nread = 0;
+
+    while (count) {
+        size_t left = stream->available - stream->offset;
+        if (left > count) {
+            left = count;
+        }
+
+        if (!left) {
+            if (stream->eof) {
+                break;
+            }
+
+            fflush(stream);
+            ssize_t n = read(stream->fd, stream->buffer, stream->size);
+            if (n < 0) {
+                stream->err = errno;
+                break;
+            } else if (n == 0) {
+                stream->eof = true;
+            }
+
+            stream->available = n;
+            continue;
+        }
+
+        memcpy(buffer, stream->buffer + stream->offset, left);
+        stream->offset += left;
+
+        buffer += left;
+        nread  += left;
+        count  -= left;
+    }
+
+    return nread / size;
 }
 
 int fprintf(FILE* stream, const char* format, ...) {
