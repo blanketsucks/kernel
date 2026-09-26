@@ -163,6 +163,43 @@ char* strcpy(char* dest, const char* src) {
     return strncpy(dest, src, n);
 }
 
+char* strstr(const char* haystack, const char* needle) {
+    while (*haystack != '\0') {
+        if (*haystack != *needle) {
+            haystack++;
+            continue;
+        }
+
+        const char* h = haystack;
+        const char* n = needle;
+    
+        while (*h != '\0' && *n != '\0' && *h == *n) {
+            h++; n++;
+        }
+
+        if (*n == '\0') {
+            return const_cast<char*>(haystack);
+        }
+
+        haystack++;
+    }
+
+    return nullptr;
+}
+
+char* strncat(char* dst, const char* src, size_t n) {
+    char* ptr = dst + strlen(dst);
+    while (n > 0 && *src != '\0') {
+        *ptr = *src;
+
+        ptr++; src++;
+        n--;
+    }
+
+    *ptr = '\0';
+    return dst;
+}
+
 void* memset(void* dest, int c, size_t n) {
     asm volatile("rep stosb" : "+D"(dest), "+c"(n) : "a"(c) : "memory");
     return dest;
