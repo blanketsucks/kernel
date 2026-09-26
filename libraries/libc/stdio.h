@@ -66,11 +66,11 @@ void setbuf(FILE* stream, char* buf);
 void setbuffer(FILE* stream, char* buf, size_t size);
 void setlinebuf(FILE* stream);
 
-int printf(const char* format, ...);
-int fprintf(FILE* stream, const char* format, ...);
-int dprintf(int fd, const char* format, ...);
-int sprintf(char* str, const char* format, ...);
-int snprintf(char* str, size_t size, const char* format, ...);
+int printf(const char* format, ...) __attribute__((format(printf, 1, 2)));
+int fprintf(FILE* stream, const char* format, ...) __attribute__((format(printf, 2, 3)));
+int dprintf(int fd, const char* format, ...) __attribute__((format(printf, 2, 3)));
+int sprintf(char* str, const char* format, ...) __attribute__((format(printf, 2, 3)));
+int snprintf(char* str, size_t size, const char* format, ...) __attribute__((format(printf, 3, 4)));
 
 int vprintf(const char* format, va_list ap);
 int vfprintf(FILE* stream, const char* format, va_list ap);
@@ -78,9 +78,9 @@ int vdprintf(int fd, const char* format, va_list ap);
 int vsprintf(char* str, const char* format, va_list ap);
 int vsnprintf(char* str, size_t size, const char* format, va_list ap);
 
-int scanf(const char* format, ...);
-int fscanf(FILE* stream, const char* format, ...);
-int sscanf(const char* str, const char* format, ...);
+int scanf(const char* format, ...) __attribute__((format(scanf, 1, 2)));
+int fscanf(FILE* stream, const char* format, ...) __attribute__((format(scanf, 2, 3)));
+int sscanf(const char* str, const char* format, ...) __attribute__((format(scanf, 2, 3)));
 
 int vscanf(const char* format, va_list ap);
 int vfscanf(FILE* stream, const char* format, va_list ap);
