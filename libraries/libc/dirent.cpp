@@ -113,4 +113,8 @@ struct dirent* readdir(DIR* dirp) {
     return dirent;
 }
 
+void rewinddir(DIR* dirp) {
+    dirp->offset = 0;
+}
+
 __END_DECLS

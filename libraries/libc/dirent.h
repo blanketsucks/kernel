@@ -36,5 +36,6 @@ DIR* opendir(const char* name);
 DIR* fdopendir(int fd);
 int closedir(DIR* dirp);
 struct dirent* readdir(DIR* dirp);
+void rewinddir(DIR* dirp);
 
 __END_DECLS
