@@ -8,4 +8,9 @@ char* setlocale(int, const char*) {
     return nullptr;
 }
 
+struct lconv* localeconv() {
+    errno = ENOSYS;
+    return nullptr;
+}
+
 }
