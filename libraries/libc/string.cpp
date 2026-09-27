@@ -1,5 +1,6 @@
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <std/types.h>
 #include <std/format.h>
 
@@ -359,6 +360,15 @@ char* strrchr(const char* s, int c) {
 void perror(const char* s) {
     int err = errno;
     dbgln("{}: {}", s, strerror(err));
+}
+
+char* strdup(const char* s) {
+    size_t n = strlen(s);
+
+    char* buffer = reinterpret_cast<char*>(malloc(n + 1));
+    memcpy(buffer, s, n + 1);
+
+    return buffer;
 }
 
 }
