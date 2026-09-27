@@ -2,6 +2,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <kernel/posix/unistd.h>
 #include <stddef.h>
 
 #ifndef _HAVE_STDIO
@@ -38,6 +39,7 @@ int dup2(int old_fd, int new_fd);
 
 pid_t fork(void);
 
+int execlp(const char* file, const char* arg, ...);
 int execv(const char* pathname, char* const argv[]);
 int execve(const char* pathname, char* const argv[], char* const envp[]);
 int execvp(const char* file, char* const argv[]);
@@ -53,5 +55,13 @@ int unlink(const char* pathname);
 
 char* ttyname(int fd);
 int ttyname_r(int fd, char* buf, size_t buflen);
+
+int pipe(int pipefd[2]);
+
+long fpathconf(int fd, int name);
+long pathconf(const char* path, int name);
+
+uid_t getuid(void);
+uid_t geteuid(void);
 
 __END_DECLS

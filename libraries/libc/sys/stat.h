@@ -13,4 +13,7 @@ int fstat(int fd, struct stat* buf);
 
 int mkdir(const char* pathname, mode_t mode);
 
+int chmod(const char* pathname, mode_t mode);
+int fchmod(int fd, mode_t mode);
+
 __END_DECLS

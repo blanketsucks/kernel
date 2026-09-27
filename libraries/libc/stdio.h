@@ -21,6 +21,8 @@
 
 #define BUFSIZ 4096
 
+#define P_tmpdir "/tmp"
+
 __BEGIN_DECLS
 
 typedef struct FILE FILE;
@@ -89,6 +91,11 @@ int vfscanf(FILE* stream, const char* format, va_list ap);
 int vsscanf(const char* str, const char* format, va_list ap);
 
 char* tmpnam(char* s);
+
+int mkstemp(char* pattern);
+int mkostemp(char* pattern, int flags);
+int mkstemps(char* pattern, int suffixlen);
+int mkostemps(char* pattern, int suffixlen, int flags);
 
 void __fseterr(FILE* stream);
 
