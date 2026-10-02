@@ -482,6 +482,14 @@ char* tmpnam(char*) {
     return nullptr;
 }
 
+int remove(const char* pathname) {
+    return 0;
+}
+
+int rename(const char* oldpath, const char* newpath) {
+    return 0;
+}
+
 void __fseterr(FILE*) {}
 
 }
