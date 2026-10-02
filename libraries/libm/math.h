@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sys/cdefs.h>
+
 #if FLT_EVAL_METHOD == 0
     typedef float float_t;
     typedef double double_t;
@@ -38,3 +40,9 @@
 #define HUGE_VALL __builtin_huge_vall()
 #define INFINITY __builtin_inf()
 #define NAN __builtin_nan("")
+
+__BEGIN_DECLS
+
+double fabs(double x);
+
+__END_DECLS
