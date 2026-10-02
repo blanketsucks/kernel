@@ -49,6 +49,9 @@ void print_stack_trace(StackFrame* frame) {
         }
 
         frame = frame->bp;
+        if (!MM->is_mapped(frame)) {
+            break;
+        }
     }
 }
 
