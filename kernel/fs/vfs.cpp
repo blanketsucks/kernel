@@ -45,7 +45,17 @@ bool VFS::mount_root(FileSystem* fs) {
     return true;
 }
 
-ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInode>* parent, RefPtr<ResolvedInode> relative_to) {
+ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(
+    StringView path,
+    RefPtr<ResolvedInode>* parent,
+    RefPtr<ResolvedInode> relative_to,
+    bool follow_symlinks,
+    size_t nrecursions
+) {
+    if (nrecursions > RESOLVE_RECURSE_LIMIT) {
+        return Error(ELOOP);
+    }
+
     if (path.empty()) {
         return Error(ENOENT);
     } else if (path == "/") {
@@ -98,7 +108,17 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(StringView path, RefPtr<ResolvedInod
         
         auto entry = TRY(current->inode().lookup(component));
 
-        // TODO: Handle symbolic links
+        if (entry->is_symlink()) {
+            if (!follow_symlinks) {
+                return Error(ELOOP);
+            }
+
+            String link = TRY(entry->readlink());
+            auto relative = TRY(this->resolve(link, parent, relative_to, true, nrecursions + 1));
+        
+            return this->resolve(path, parent, relative, true, nrecursions + 1);
+        }
+
         auto inode = ResolvedInode::create(component, fs, entry, current);
         auto* mount = this->find_mount(*inode);
 

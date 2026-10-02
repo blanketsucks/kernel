@@ -59,6 +59,8 @@ public:
     void readdir(std::Function<IterationAction(const fs::DirectoryEntry&)>) const override;
     ErrorOr<RefPtr<fs::Inode>> lookup(StringView name) const override;
 
+    ErrorOr<String> readlink() const override;
+
     size_t block_count() const;
     u32 block_group_index() const;
     u32 block_group_offset() const;

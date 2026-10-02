@@ -560,7 +560,7 @@ void InodeEntry::set_disk_sectors() {
 
 ErrorOr<void> InodeEntry::add_entry(String name, RefPtr<fs::Inode> inode) {
     mode_t mode = inode->mode();
-    fs::DirectoryEntry::Type type = fs::DirectoryEntry::Unknown;
+    auto type = fs::DirectoryEntry::Unknown;
 
     switch (mode & S_IFMT) {
         case S_IFDIR:
@@ -637,6 +637,22 @@ ErrorOr<void> InodeEntry::allocate_blocks(size_t count) {
     }
 
     return {};
+}
+
+ErrorOr<String> InodeEntry::readlink() const {
+    if (!is_symlink()) {
+        return Error(EINVAL);
+    }
+
+    String link;
+    link.resize(size());
+
+    size_t n = TRY(this->read(link.data(), link.size(), 0));
+    if (n != link.size()) {
+        return Error(EIO);
+    }
+
+    return link;
 }
 
 }

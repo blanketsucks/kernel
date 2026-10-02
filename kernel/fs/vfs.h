@@ -23,13 +23,21 @@ private:
 
 class VFS {
 public:
+    static constexpr size_t RESOLVE_RECURSE_LIMIT = 10;
+
     VFS() = default;
 
     static VFS* instance();
 
     RefPtr<ResolvedInode> root() const { return m_root; }
 
-    ErrorOr<RefPtr<ResolvedInode>> resolve(StringView path, RefPtr<ResolvedInode>* parent = nullptr, RefPtr<ResolvedInode> relative_to = nullptr);
+    ErrorOr<RefPtr<ResolvedInode>> resolve(
+        StringView path,
+        RefPtr<ResolvedInode>* parent = nullptr,
+        RefPtr<ResolvedInode> relative_to = nullptr,
+        bool follow_symlinks = true,
+        size_t nrecursions = 0
+    );
 
     ErrorOr<RefPtr<FileDescriptor>> open(StringView path, int options, mode_t mode, RefPtr<ResolvedInode> relative_to = nullptr);
     ErrorOr<void> remove(StringView path, RefPtr<ResolvedInode> relative_to = nullptr);
