@@ -1,4 +1,5 @@
 #include <string.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <std/types.h>
@@ -346,7 +347,7 @@ char* strchr(const char* s, int c) {
 
 char* strrchr(const char* s, int c) {
     char* last = nullptr;
-    while (true) {
+    while (*s) {
         if (*s == c) {
             last = const_cast<char*>(s);
         }
@@ -369,6 +370,20 @@ char* strdup(const char* s) {
     memcpy(buffer, s, n + 1);
 
     return buffer;
+}
+
+int strcoll(const char *s1, const char *s2) {
+    return strcmp(s1, s2);
+}
+
+char* strpbrk(const char* s, const char* accept) {
+    while (*s) {
+        if (strchr(accept, *s++)) {
+            return const_cast<char*>(--s);
+        }
+    }
+
+    return nullptr;
 }
 
 }
