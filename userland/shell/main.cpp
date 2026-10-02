@@ -10,7 +10,9 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdio.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #include <std/format.h>
 #include <std/types.h>
@@ -48,10 +50,6 @@ static int term_cd(shell::Terminal& terminal, int argc, char** argv) {
     return 0;
 }
 
-static HashMap<StringView, BuiltinCommand> BUILTIN_COMMANDS = {
-    { "cd", { .function = term_cd } }
-};
-
 static void spawn(shell::Terminal& terminal, shell::Command const& command, char** argv) {
     int tty = posix_openpt(O_RDWR);
 
@@ -75,7 +73,10 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
         dup2(fd, 1);
         dup2(fd, 2);
         
-        execve(command.pathname(), argv, nullptr);
+        if (execve(command.pathname(), argv, nullptr) < 0) {
+            dbgln("Failed to exec {}: {}", command.pathname(), strerror(errno));
+            exit(EXIT_FAILURE);
+        }
     }
 
     char buffer[4096];
@@ -104,6 +105,10 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
 }
 
 static void run_command(shell::Terminal& terminal, String line) {
+    static const HashMap<StringView, BuiltinCommand> BUILTIN_COMMANDS = {
+        { "cd", { .function = term_cd } }
+    };
+
     String name = shell::parse_command_name(line);
     line = line.substr(name.size() + 1);
 
