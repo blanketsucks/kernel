@@ -2,7 +2,10 @@
 #include <string.h>
 #include <sys/syscall.hpp>
 #include <errno.h>
+#include <stdarg.h>
 #include <time.h>
+
+#include <std/vector.h>
 
 extern "C" {
 
@@ -79,6 +82,32 @@ int execve(const char* path, char* const argv[], char* const envp[]) {
     __set_errno_return(ret, 0, -1);
 }
 
+int execlp(const char* file, const char* arg0, ...) {
+    Vector<const char*> args;
+    args.append(arg0);
+
+    va_list va;
+    va_start(va, arg0);
+
+    while (true) {
+        const char* arg = va_arg(va, const char*);
+        if (!arg) {
+            break;
+        }
+
+        args.append(arg);
+    }
+
+    va_end(va);
+    args.append(nullptr);
+
+    return execve(file, const_cast<char* const*>(args.data()), environ);
+}
+
+int execvp(const char* file, char* const* argv) {
+    return execve(file, argv, environ);
+}
+
 int usleep(useconds_t usec) {
     struct timespec req;
     req.tv_sec = usec / 1'000'000;
@@ -108,9 +137,26 @@ int isatty(int fd) {
     __set_errno_return(rc, 1, 0);
 }
 
+int pipe(int pipefd[2]) {
+    int rc = syscall(SYS_pipe, pipefd);
+    __set_errno_return(rc, 0, -1);
+}
+
 int unlink(const char* pathname) {
     errno = ENOSYS;
     return -1;
+}
+
+char* getlogin() {
+    return const_cast<char*>("root");
+}
+
+uid_t getuid() {
+    return 0;
+}
+
+uid_t geteuid() {
+    return 0;
 }
 
 }
