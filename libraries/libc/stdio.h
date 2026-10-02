@@ -97,6 +97,9 @@ int mkostemp(char* pattern, int flags);
 int mkstemps(char* pattern, int suffixlen);
 int mkostemps(char* pattern, int suffixlen, int flags);
 
+int remove(const char* pathname);
+int rename(const char* oldpath, const char* newpath);
+
 void __fseterr(FILE* stream);
 
 void __init_stdio();
