@@ -28,7 +28,8 @@
     Op(clock_nanosleep)         \
     Op(mkdir)                   \
     Op(access)                  \
-    Op(isatty)
+    Op(isatty)                  \
+    Op(pipe)
 
 enum {
 #define Op(name) SYS_##name,

@@ -1,17 +1,21 @@
 #include <kernel/process/process.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/blocker.h>
+#include <kernel/fs/pipe.h>
 
 namespace kernel {
+
+int Process::add_file_descriptor(RefPtr<fs::FileDescriptor> fd) {
+    m_file_descriptors.append(move(fd));
+    return m_file_descriptors.size() - 1;
+}
 
 ErrorOr<FlatPtr> Process::sys$open(const char* pathname, size_t pathname_length, int flags, mode_t mode) {
     StringView path = this->validate_string(pathname, pathname_length);
     auto vfs = fs::vfs();
 
     auto fd = TRY(vfs->open(path, flags, mode, m_cwd));
-
-    m_file_descriptors.append(move(fd));
-    return m_file_descriptors.size() - 1;
+    return this->add_file_descriptor(move(fd));
 }
 
 ErrorOr<FlatPtr> Process::sys$close(int fd) {
@@ -186,6 +190,20 @@ ErrorOr<FlatPtr> Process::sys$isatty(int fd) {
     }
 
     return file->is_tty() ? 0 : Error(ENOTTY);
+}
+
+ErrorOr<FlatPtr> Process::sys$pipe(int fd[2]) {
+    this->validate_write(fd, sizeof(int) * 2);
+
+    auto pipe = fs::Pipe::create();
+
+    auto reader = pipe->create_reader();
+    auto writer = pipe->create_writer();
+
+    fd[0] = this->add_file_descriptor(move(reader));
+    fd[1] = this->add_file_descriptor(move(writer));
+
+    return 0;
 }
 
 }

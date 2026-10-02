@@ -95,6 +95,8 @@ public:
 
     FlatPtr handle_syscall(arch::Registers*);
 
+    int add_file_descriptor(RefPtr<fs::FileDescriptor> fd);
+
     ErrorOr<void*> allocate(size_t size, PageFlags flags, String name = {});
     ErrorOr<void*> allocate_at(VirtualAddress address, size_t size, PageFlags flags, String name = {});
 
@@ -127,6 +129,8 @@ public:
     ErrorOr<FlatPtr> sys$mkdir(const char* path, mode_t mode);
     ErrorOr<FlatPtr> sys$access(const char* path, mode_t mode);
     ErrorOr<FlatPtr> sys$isatty(int fd);
+
+    ErrorOr<FlatPtr> sys$pipe(int fds[2]);
 
     ErrorOr<FlatPtr> sys$mmap(mmap_args*);
     ErrorOr<FlatPtr> sys$munmap(FlatPtr address, size_t size);
