@@ -21,4 +21,8 @@ speed_t cfgetispeed(const struct termios* term) {
     return term->c_ispeed;
 }
 
+int tcflush(int, int) {
+    return 0;
+}
+
 }

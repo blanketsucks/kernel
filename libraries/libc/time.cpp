@@ -31,4 +31,14 @@ time_t time(time_t* tloc) {
     return ts.tv_sec;
 }
 
+clock_t clock() {
+    // TODO: Implement
+    return 0;
+}
+
+size_t strftime(char*, size_t, const char*, const struct tm*) {
+    // TODO: Implement
+    return 0;
+}
+
 }
