@@ -255,5 +255,39 @@ long atol(const char* nptr) {
 long long atoll(const char* nptr) {
     return strtoll(nptr, nullptr, 10);
 }
-    
+
+int wctomb(char* s, wchar_t wc) {
+    if (!s) {
+        return 0;
+    }
+
+    if (wc <= 0x7f) {
+        *s++ = static_cast<char>(wc);
+        return 1;
+    } else if (wc <= 0x07ff) {
+        *s++ = static_cast<char>(((wc >> 6) & 0x1f) | 0xc0);
+        *s++ = static_cast<char>(((wc >> 0) & 0x3f) | 0x80);
+        return 2;
+    } else if (wc <= 0xffff) {
+        *s++ = static_cast<char>(((wc >> 12) & 0x0f) | 0xe0);
+        *s++ = static_cast<char>(((wc >> 6) & 0x3f) | 0x80);
+        *s++ = static_cast<char>(((wc >> 0) & 0x3f) | 0x80);
+        return 3;
+    } else if (wc <= 0x10ffff) {
+        *s++ = static_cast<char>(((wc >> 18) & 0x07) | 0xf0);
+        *s++ = static_cast<char>(((wc >> 12) & 0x3f) | 0x80);
+        *s++ = static_cast<char>(((wc >> 6) & 0x3f) | 0x80);
+        *s++ = static_cast<char>(((wc >> 0) & 0x3f) | 0x80);
+        return 4;
+    }
+
+    return -1;
+}
+
+void qsort(void*, size_t, size_t, int (*)(const void*, const void*)) {}
+
+double atof(const char* nptr) {
+    return 0.0;
+}
+
 }
