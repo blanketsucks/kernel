@@ -142,6 +142,11 @@ ErrorOr<void> DynamicObject::map_sections() {
                 return Error(errno);
             }
 
+            if constexpr (DEBUG_MMAP_NAMES) {
+                String name = std::format("'{}': Dynamic Object Section (zero'd)", m_name);
+                mmap_set_name_length(result, name.data(), name.size());
+            }
+
             std::memset(reinterpret_cast<void*>(base() + vaddr + ph.p_filesz), 0, ph.p_memsz - ph.p_filesz);
         }
 

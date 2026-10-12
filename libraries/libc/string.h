@@ -29,9 +29,6 @@ size_t strspn(const char* s, const char* accept);
 size_t strcspn(const char* s, const char* reject);
 char* strpbrk(const char* s, const char* accept);
 
-int strcasecmp(const char* s1, const char* s2);
-int strncasecmp(const char* s1, const char* s2, size_t n);
-
 char* strdup(const char* s);
 
 void* memset(void* dest, int c, size_t n);
