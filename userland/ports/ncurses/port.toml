@@ -1,0 +1,22 @@
+name = 'ncurses'
+version = '6.2'
+patches = ['ncurses.patch']
+
+[port.source]
+type = 'tar'
+url  = 'https://github.com/mirror/ncurses/archive/refs/tags/v6.2.tar.gz'
+directory = 'ncurses-6.2'
+
+[port.build]
+type = 'configure'
+directory = '.'
+override_prefix = true
+install = true
+extra_configure_flags = [
+    '--without-progs',
+    '--without-tack',
+    '--without-tests',
+    '--without-cxx-binding',
+    '--enable-overwrite',
+    '--with-termlib'
+]

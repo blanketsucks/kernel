@@ -1,0 +1,3650 @@
+diff --git a/doomgeneric.sln b/doomgeneric.sln
+deleted file mode 100644
+index 1591a78..0000000
+--- a/doomgeneric.sln
++++ /dev/null
+@@ -1,31 +0,0 @@
+-﻿
+-Microsoft Visual Studio Solution File, Format Version 12.00
+-# Visual Studio 15
+-VisualStudioVersion = 15.0.27130.2003
+-MinimumVisualStudioVersion = 10.0.40219.1
+-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "doomgeneric", "doomgeneric\doomgeneric.vcxproj", "{95A126D2-CC94-4840-BF05-80305041B5FB}"
+-EndProject
+-Global
+-	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+-		Debug|x64 = Debug|x64
+-		Debug|x86 = Debug|x86
+-		Release|x64 = Release|x64
+-		Release|x86 = Release|x86
+-	EndGlobalSection
+-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Debug|x64.ActiveCfg = Debug|x64
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Debug|x64.Build.0 = Debug|x64
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Debug|x86.ActiveCfg = Debug|Win32
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Debug|x86.Build.0 = Debug|Win32
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Release|x64.ActiveCfg = Release|x64
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Release|x64.Build.0 = Release|x64
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Release|x86.ActiveCfg = Release|Win32
+-		{95A126D2-CC94-4840-BF05-80305041B5FB}.Release|x86.Build.0 = Release|Win32
+-	EndGlobalSection
+-	GlobalSection(SolutionProperties) = preSolution
+-		HideSolutionNode = FALSE
+-	EndGlobalSection
+-	GlobalSection(ExtensibilityGlobals) = postSolution
+-		SolutionGuid = {E444537A-F1DB-44A6-8720-C7DC7BB2C74A}
+-	EndGlobalSection
+-EndGlobal
+diff --git a/doomgeneric/Makefile b/doomgeneric/Makefile
+index 503e0dc..1e0f6af 100644
+--- a/doomgeneric/Makefile
++++ b/doomgeneric/Makefile
+@@ -12,17 +12,19 @@ else
+ endif
+ 
+ 
+-CC=clang  # gcc or g++
+-CFLAGS+=-ggdb3 -Os
++CC=x86_64-corn-gcc  # gcc or g++
++CXX=x86_64-corn-g++
++CFLAGS+=-ggdb3
+ LDFLAGS+=-Wl,--gc-sections
+ CFLAGS+=-ggdb3 -Wall -DNORMALUNIX -DLINUX -DSNDSERV -D_DEFAULT_SOURCE # -DUSEASM
+-LIBS+=-lm -lc -lX11
++CXXFLAGS=$(CFLAGS) -fno-rtti -fno-exceptions
++LIBS+=-lm -lc
+ 
+ # subdirectory for objects
+ OBJDIR=build
+ OUTPUT=doomgeneric
+ 
+-SRC_DOOM = dummy.o am_map.o doomdef.o doomstat.o dstrings.o d_event.o d_items.o d_iwad.o d_loop.o d_main.o d_mode.o d_net.o f_finale.o f_wipe.o g_game.o hu_lib.o hu_stuff.o info.o i_cdmus.o i_endoom.o i_joystick.o i_scale.o i_sound.o i_system.o i_timer.o memio.o m_argv.o m_bbox.o m_cheat.o m_config.o m_controls.o m_fixed.o m_menu.o m_misc.o m_random.o p_ceilng.o p_doors.o p_enemy.o p_floor.o p_inter.o p_lights.o p_map.o p_maputl.o p_mobj.o p_plats.o p_pspr.o p_saveg.o p_setup.o p_sight.o p_spec.o p_switch.o p_telept.o p_tick.o p_user.o r_bsp.o r_data.o r_draw.o r_main.o r_plane.o r_segs.o r_sky.o r_things.o sha1.o sounds.o statdump.o st_lib.o st_stuff.o s_sound.o tables.o v_video.o wi_stuff.o w_checksum.o w_file.o w_main.o w_wad.o z_zone.o w_file_stdc.o i_input.o i_video.o doomgeneric.o doomgeneric_xlib.o
++SRC_DOOM = dummy.o am_map.o doomdef.o doomstat.o dstrings.o d_event.o d_items.o d_iwad.o d_loop.o d_main.o d_mode.o d_net.o f_finale.o f_wipe.o g_game.o hu_lib.o hu_stuff.o info.o i_cdmus.o i_endoom.o i_joystick.o i_scale.o i_sound.o i_system.o i_timer.o memio.o m_argv.o m_bbox.o m_cheat.o m_config.o m_controls.o m_fixed.o m_menu.o m_misc.o m_random.o p_ceilng.o p_doors.o p_enemy.o p_floor.o p_inter.o p_lights.o p_map.o p_maputl.o p_mobj.o p_plats.o p_pspr.o p_saveg.o p_setup.o p_sight.o p_spec.o p_switch.o p_telept.o p_tick.o p_user.o r_bsp.o r_data.o r_draw.o r_main.o r_plane.o r_segs.o r_sky.o r_things.o sha1.o sounds.o statdump.o st_lib.o st_stuff.o s_sound.o tables.o v_video.o wi_stuff.o w_checksum.o w_file.o w_main.o w_wad.o z_zone.o w_file_stdc.o i_input.o i_video.o doomgeneric.o doomgeneric_impl.o
+ OBJS += $(addprefix $(OBJDIR)/, $(SRC_DOOM))
+ 
+ all:	 $(OUTPUT)
+@@ -49,6 +51,10 @@ $(OBJDIR)/%.o:	%.c
+ 	@echo [Compiling $<]
+ 	$(VB)$(CC) $(CFLAGS) -c $< -o $@
+ 
++$(OBJDIR)/%.o:	%.cpp
++	@echo [Compiling $<]
++	$(VB)$(CXX) $(CXXFLAGS) -c $< -o $@
++
+ print:
+ 	@echo OBJS: $(OBJS)
+ 
+diff --git a/doomgeneric/config.h b/doomgeneric/config.h
+index 7e05102..d8a6887 100644
+--- a/doomgeneric/config.h
++++ b/doomgeneric/config.h
+@@ -7,7 +7,7 @@
+ #undef HAVE_DEV_SPEAKER_SPEAKER_H
+ 
+ /* Define to 1 if you have the <inttypes.h> header file. */
+-#define HAVE_INTTYPES_H 1
++#undef HAVE_INTTYPES_H 
+ 
+ /* Define to 1 if you have the `ioperm' function. */
+ #undef HAVE_IOPERM
+@@ -19,7 +19,7 @@
+ #undef HAVE_LIBI386
+ 
+ /* Define to 1 if you have the `m' library (-lm). */
+-#undef HAVE_LIBM
++#define HAVE_LIBM 1
+ 
+ /* Define to 1 if you have the `png' library (-lpng). */
+ #undef HAVE_LIBPNG
+diff --git a/doomgeneric/doomgeneric.vcxproj b/doomgeneric/doomgeneric.vcxproj
+deleted file mode 100644
+index 48684f9..0000000
+--- a/doomgeneric/doomgeneric.vcxproj
++++ /dev/null
+@@ -1,339 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+-  <ItemGroup Label="ProjectConfigurations">
+-    <ProjectConfiguration Include="Debug|Win32">
+-      <Configuration>Debug</Configuration>
+-      <Platform>Win32</Platform>
+-    </ProjectConfiguration>
+-    <ProjectConfiguration Include="Release|Win32">
+-      <Configuration>Release</Configuration>
+-      <Platform>Win32</Platform>
+-    </ProjectConfiguration>
+-    <ProjectConfiguration Include="Debug|x64">
+-      <Configuration>Debug</Configuration>
+-      <Platform>x64</Platform>
+-    </ProjectConfiguration>
+-    <ProjectConfiguration Include="Release|x64">
+-      <Configuration>Release</Configuration>
+-      <Platform>x64</Platform>
+-    </ProjectConfiguration>
+-  </ItemGroup>
+-  <PropertyGroup Label="Globals">
+-    <VCProjectVersion>15.0</VCProjectVersion>
+-    <ProjectGuid>{95A126D2-CC94-4840-BF05-80305041B5FB}</ProjectGuid>
+-    <Keyword>Win32Proj</Keyword>
+-    <RootNamespace>doomgeneric</RootNamespace>
+-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+-  </PropertyGroup>
+-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseDebugLibraries>true</UseDebugLibraries>
+-    <PlatformToolset>v141</PlatformToolset>
+-    <CharacterSet>Unicode</CharacterSet>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseDebugLibraries>false</UseDebugLibraries>
+-    <PlatformToolset>v141</PlatformToolset>
+-    <WholeProgramOptimization>true</WholeProgramOptimization>
+-    <CharacterSet>Unicode</CharacterSet>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseDebugLibraries>true</UseDebugLibraries>
+-    <PlatformToolset>v141</PlatformToolset>
+-    <CharacterSet>Unicode</CharacterSet>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+-    <ConfigurationType>Application</ConfigurationType>
+-    <UseDebugLibraries>false</UseDebugLibraries>
+-    <PlatformToolset>v141</PlatformToolset>
+-    <WholeProgramOptimization>true</WholeProgramOptimization>
+-    <CharacterSet>Unicode</CharacterSet>
+-  </PropertyGroup>
+-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+-  <ImportGroup Label="ExtensionSettings">
+-  </ImportGroup>
+-  <ImportGroup Label="Shared">
+-  </ImportGroup>
+-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-  </ImportGroup>
+-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-  </ImportGroup>
+-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-  </ImportGroup>
+-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+-  </ImportGroup>
+-  <PropertyGroup Label="UserMacros" />
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+-    <LinkIncremental>true</LinkIncremental>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+-    <LinkIncremental>true</LinkIncremental>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+-    <LinkIncremental>false</LinkIncremental>
+-  </PropertyGroup>
+-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+-    <LinkIncremental>false</LinkIncremental>
+-  </PropertyGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+-    <ClCompile>
+-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+-      <WarningLevel>Level3</WarningLevel>
+-      <Optimization>Disabled</Optimization>
+-      <SDLCheck>false</SDLCheck>
+-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <ConformanceMode>true</ConformanceMode>
+-      <DisableSpecificWarnings>4146;4996</DisableSpecificWarnings>
+-    </ClCompile>
+-    <Link>
+-      <SubSystem>Console</SubSystem>
+-      <GenerateDebugInformation>true</GenerateDebugInformation>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+-    <ClCompile>
+-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+-      <WarningLevel>Level3</WarningLevel>
+-      <Optimization>Disabled</Optimization>
+-      <SDLCheck>true</SDLCheck>
+-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <ConformanceMode>true</ConformanceMode>
+-      <DisableSpecificWarnings>4146;4996</DisableSpecificWarnings>
+-    </ClCompile>
+-    <Link>
+-      <SubSystem>Console</SubSystem>
+-      <GenerateDebugInformation>true</GenerateDebugInformation>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+-    <ClCompile>
+-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+-      <WarningLevel>Level3</WarningLevel>
+-      <Optimization>MaxSpeed</Optimization>
+-      <FunctionLevelLinking>true</FunctionLevelLinking>
+-      <IntrinsicFunctions>true</IntrinsicFunctions>
+-      <SDLCheck>false</SDLCheck>
+-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <ConformanceMode>true</ConformanceMode>
+-      <DisableSpecificWarnings>4146;4996</DisableSpecificWarnings>
+-    </ClCompile>
+-    <Link>
+-      <SubSystem>Console</SubSystem>
+-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+-      <OptimizeReferences>true</OptimizeReferences>
+-      <GenerateDebugInformation>true</GenerateDebugInformation>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+-    <ClCompile>
+-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+-      <WarningLevel>Level3</WarningLevel>
+-      <Optimization>MaxSpeed</Optimization>
+-      <FunctionLevelLinking>true</FunctionLevelLinking>
+-      <IntrinsicFunctions>true</IntrinsicFunctions>
+-      <SDLCheck>true</SDLCheck>
+-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+-      <ConformanceMode>true</ConformanceMode>
+-      <DisableSpecificWarnings>4146;4996</DisableSpecificWarnings>
+-    </ClCompile>
+-    <Link>
+-      <SubSystem>Console</SubSystem>
+-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+-      <OptimizeReferences>true</OptimizeReferences>
+-      <GenerateDebugInformation>true</GenerateDebugInformation>
+-    </Link>
+-  </ItemDefinitionGroup>
+-  <ItemGroup>
+-    <ClCompile Include="am_map.c" />
+-    <ClCompile Include="doomdef.c" />
+-    <ClCompile Include="doomgeneric.c" />
+-    <ClCompile Include="doomgeneric_win.c" />
+-    <ClCompile Include="doomstat.c" />
+-    <ClCompile Include="dstrings.c" />
+-    <ClCompile Include="dummy.c" />
+-    <ClCompile Include="d_event.c" />
+-    <ClCompile Include="d_items.c" />
+-    <ClCompile Include="d_iwad.c" />
+-    <ClCompile Include="d_loop.c" />
+-    <ClCompile Include="d_main.c" />
+-    <ClCompile Include="d_mode.c" />
+-    <ClCompile Include="d_net.c" />
+-    <ClCompile Include="f_finale.c" />
+-    <ClCompile Include="f_wipe.c" />
+-    <ClCompile Include="gusconf.c" />
+-    <ClCompile Include="g_game.c" />
+-    <ClCompile Include="hu_lib.c" />
+-    <ClCompile Include="hu_stuff.c" />
+-    <ClCompile Include="icon.c" />
+-    <ClCompile Include="info.c" />
+-    <ClCompile Include="i_cdmus.c" />
+-    <ClCompile Include="i_endoom.c" />
+-    <ClCompile Include="i_input.c" />
+-    <ClCompile Include="i_joystick.c" />
+-    <ClCompile Include="i_scale.c" />
+-    <ClCompile Include="i_sound.c" />
+-    <ClCompile Include="i_system.c" />
+-    <ClCompile Include="i_timer.c" />
+-    <ClCompile Include="i_video.c" />
+-    <ClCompile Include="memio.c" />
+-    <ClCompile Include="m_argv.c" />
+-    <ClCompile Include="m_bbox.c" />
+-    <ClCompile Include="m_cheat.c" />
+-    <ClCompile Include="m_config.c" />
+-    <ClCompile Include="m_controls.c" />
+-    <ClCompile Include="m_fixed.c" />
+-    <ClCompile Include="m_menu.c" />
+-    <ClCompile Include="m_misc.c" />
+-    <ClCompile Include="m_random.c" />
+-    <ClCompile Include="p_ceilng.c" />
+-    <ClCompile Include="p_doors.c" />
+-    <ClCompile Include="p_enemy.c" />
+-    <ClCompile Include="p_floor.c" />
+-    <ClCompile Include="p_inter.c" />
+-    <ClCompile Include="p_lights.c" />
+-    <ClCompile Include="p_map.c" />
+-    <ClCompile Include="p_maputl.c" />
+-    <ClCompile Include="p_mobj.c" />
+-    <ClCompile Include="p_plats.c" />
+-    <ClCompile Include="p_pspr.c" />
+-    <ClCompile Include="p_saveg.c" />
+-    <ClCompile Include="p_setup.c" />
+-    <ClCompile Include="p_sight.c" />
+-    <ClCompile Include="p_spec.c" />
+-    <ClCompile Include="p_switch.c" />
+-    <ClCompile Include="p_telept.c" />
+-    <ClCompile Include="p_tick.c" />
+-    <ClCompile Include="p_user.c" />
+-    <ClCompile Include="r_bsp.c" />
+-    <ClCompile Include="r_data.c" />
+-    <ClCompile Include="r_draw.c" />
+-    <ClCompile Include="r_main.c" />
+-    <ClCompile Include="r_plane.c" />
+-    <ClCompile Include="r_segs.c" />
+-    <ClCompile Include="r_sky.c" />
+-    <ClCompile Include="r_things.c" />
+-    <ClCompile Include="sha1.c" />
+-    <ClCompile Include="sounds.c" />
+-    <ClCompile Include="statdump.c" />
+-    <ClCompile Include="st_lib.c" />
+-    <ClCompile Include="st_stuff.c" />
+-    <ClCompile Include="s_sound.c" />
+-    <ClCompile Include="tables.c" />
+-    <ClCompile Include="v_video.c" />
+-    <ClCompile Include="wi_stuff.c" />
+-    <ClCompile Include="w_checksum.c" />
+-    <ClCompile Include="w_file.c" />
+-    <ClCompile Include="w_file_stdc.c" />
+-    <ClCompile Include="w_main.c" />
+-    <ClCompile Include="w_wad.c" />
+-    <ClCompile Include="z_zone.c" />
+-  </ItemGroup>
+-  <ItemGroup>
+-    <ClInclude Include="am_map.h" />
+-    <ClInclude Include="config.h" />
+-    <ClInclude Include="deh_main.h" />
+-    <ClInclude Include="deh_misc.h" />
+-    <ClInclude Include="deh_str.h" />
+-    <ClInclude Include="doom.h" />
+-    <ClInclude Include="doomdata.h" />
+-    <ClInclude Include="doomdef.h" />
+-    <ClInclude Include="doomfeatures.h" />
+-    <ClInclude Include="doomgeneric.h" />
+-    <ClInclude Include="doomkeys.h" />
+-    <ClInclude Include="doomstat.h" />
+-    <ClInclude Include="doomtype.h" />
+-    <ClInclude Include="dstrings.h" />
+-    <ClInclude Include="d_englsh.h" />
+-    <ClInclude Include="d_event.h" />
+-    <ClInclude Include="d_items.h" />
+-    <ClInclude Include="d_iwad.h" />
+-    <ClInclude Include="d_loop.h" />
+-    <ClInclude Include="d_main.h" />
+-    <ClInclude Include="d_mode.h" />
+-    <ClInclude Include="d_player.h" />
+-    <ClInclude Include="d_textur.h" />
+-    <ClInclude Include="d_think.h" />
+-    <ClInclude Include="d_ticcmd.h" />
+-    <ClInclude Include="f_finale.h" />
+-    <ClInclude Include="f_wipe.h" />
+-    <ClInclude Include="gusconf.h" />
+-    <ClInclude Include="g_game.h" />
+-    <ClInclude Include="hu_lib.h" />
+-    <ClInclude Include="hu_stuff.h" />
+-    <ClInclude Include="info.h" />
+-    <ClInclude Include="i_cdmus.h" />
+-    <ClInclude Include="i_endoom.h" />
+-    <ClInclude Include="i_joystick.h" />
+-    <ClInclude Include="i_scale.h" />
+-    <ClInclude Include="i_sound.h" />
+-    <ClInclude Include="i_swap.h" />
+-    <ClInclude Include="i_system.h" />
+-    <ClInclude Include="i_timer.h" />
+-    <ClInclude Include="i_video.h" />
+-    <ClInclude Include="memio.h" />
+-    <ClInclude Include="m_argv.h" />
+-    <ClInclude Include="m_bbox.h" />
+-    <ClInclude Include="m_cheat.h" />
+-    <ClInclude Include="m_config.h" />
+-    <ClInclude Include="m_controls.h" />
+-    <ClInclude Include="m_fixed.h" />
+-    <ClInclude Include="m_menu.h" />
+-    <ClInclude Include="m_misc.h" />
+-    <ClInclude Include="m_random.h" />
+-    <ClInclude Include="net_client.h" />
+-    <ClInclude Include="net_dedicated.h" />
+-    <ClInclude Include="net_defs.h" />
+-    <ClInclude Include="net_gui.h" />
+-    <ClInclude Include="net_io.h" />
+-    <ClInclude Include="net_loop.h" />
+-    <ClInclude Include="net_packet.h" />
+-    <ClInclude Include="net_query.h" />
+-    <ClInclude Include="net_sdl.h" />
+-    <ClInclude Include="net_server.h" />
+-    <ClInclude Include="p_inter.h" />
+-    <ClInclude Include="p_local.h" />
+-    <ClInclude Include="p_mobj.h" />
+-    <ClInclude Include="p_pspr.h" />
+-    <ClInclude Include="p_saveg.h" />
+-    <ClInclude Include="p_setup.h" />
+-    <ClInclude Include="p_spec.h" />
+-    <ClInclude Include="p_tick.h" />
+-    <ClInclude Include="r_bsp.h" />
+-    <ClInclude Include="r_data.h" />
+-    <ClInclude Include="r_defs.h" />
+-    <ClInclude Include="r_draw.h" />
+-    <ClInclude Include="r_local.h" />
+-    <ClInclude Include="r_main.h" />
+-    <ClInclude Include="r_plane.h" />
+-    <ClInclude Include="r_segs.h" />
+-    <ClInclude Include="r_sky.h" />
+-    <ClInclude Include="r_state.h" />
+-    <ClInclude Include="r_things.h" />
+-    <ClInclude Include="sha1.h" />
+-    <ClInclude Include="sounds.h" />
+-    <ClInclude Include="statdump.h" />
+-    <ClInclude Include="st_lib.h" />
+-    <ClInclude Include="st_stuff.h" />
+-    <ClInclude Include="s_sound.h" />
+-    <ClInclude Include="tables.h" />
+-    <ClInclude Include="v_patch.h" />
+-    <ClInclude Include="v_video.h" />
+-    <ClInclude Include="wi_stuff.h" />
+-    <ClInclude Include="w_checksum.h" />
+-    <ClInclude Include="w_file.h" />
+-    <ClInclude Include="w_main.h" />
+-    <ClInclude Include="w_merge.h" />
+-    <ClInclude Include="w_wad.h" />
+-    <ClInclude Include="z_zone.h" />
+-  </ItemGroup>
+-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+-  <ImportGroup Label="ExtensionTargets">
+-  </ImportGroup>
+-</Project>
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric.vcxproj.filters b/doomgeneric/doomgeneric.vcxproj.filters
+deleted file mode 100644
+index 749df13..0000000
+--- a/doomgeneric/doomgeneric.vcxproj.filters
++++ /dev/null
+@@ -1,558 +0,0 @@
+-﻿<?xml version="1.0" encoding="utf-8"?>
+-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+-  <ItemGroup>
+-    <Filter Include="Source Files">
+-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+-    </Filter>
+-    <Filter Include="Header Files">
+-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+-    </Filter>
+-    <Filter Include="Resource Files">
+-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+-    </Filter>
+-  </ItemGroup>
+-  <ItemGroup>
+-    <ClCompile Include="am_map.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="d_event.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="d_items.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="d_iwad.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="d_loop.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="d_main.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="d_mode.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="d_net.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="doomdef.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="doomstat.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="dstrings.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="dummy.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="f_finale.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="f_wipe.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="g_game.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="gusconf.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="hu_lib.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="hu_stuff.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_cdmus.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_endoom.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_joystick.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_scale.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_sound.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_system.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_timer.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="icon.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="info.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_argv.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_bbox.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_cheat.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_config.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_controls.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_fixed.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_menu.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_misc.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="m_random.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="memio.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_ceilng.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_doors.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_enemy.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_floor.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_inter.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_lights.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_map.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_maputl.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_mobj.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_plats.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_pspr.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_saveg.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_setup.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_sight.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_spec.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_switch.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_telept.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_tick.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="p_user.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_bsp.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_data.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_draw.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_main.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_plane.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_segs.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_sky.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="r_things.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="s_sound.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="sha1.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="sounds.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="st_lib.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="st_stuff.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="statdump.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="tables.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="v_video.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="w_checksum.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="w_file.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="w_file_stdc.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="w_main.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="w_wad.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="wi_stuff.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="z_zone.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="doomgeneric.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="doomgeneric_win.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_input.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-    <ClCompile Include="i_video.c">
+-      <Filter>Source Files</Filter>
+-    </ClCompile>
+-  </ItemGroup>
+-  <ItemGroup>
+-    <ClInclude Include="am_map.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="config.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_englsh.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_event.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_items.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_iwad.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_loop.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_main.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_mode.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_player.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_textur.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_think.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="d_ticcmd.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="deh_main.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="deh_misc.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="deh_str.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doom.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doomdata.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doomdef.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doomfeatures.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doomkeys.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doomstat.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doomtype.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="dstrings.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="f_finale.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="f_wipe.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="g_game.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="gusconf.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="hu_lib.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="hu_stuff.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_cdmus.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_endoom.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_joystick.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_scale.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_sound.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_swap.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_system.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_timer.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="i_video.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="info.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_argv.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_bbox.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_cheat.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_config.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_controls.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_fixed.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_menu.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_misc.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="m_random.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="memio.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_client.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_dedicated.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_defs.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_gui.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_io.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_loop.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_packet.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_query.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_sdl.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="net_server.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_inter.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_local.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_mobj.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_pspr.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_saveg.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_setup.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_spec.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="p_tick.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_bsp.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_data.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_defs.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_draw.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_local.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_main.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_plane.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_segs.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_sky.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_state.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="r_things.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="s_sound.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="sha1.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="sounds.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="st_lib.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="st_stuff.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="statdump.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="tables.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="v_patch.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="v_video.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="w_checksum.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="w_file.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="w_main.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="w_merge.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="w_wad.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="wi_stuff.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="z_zone.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-    <ClInclude Include="doomgeneric.h">
+-      <Filter>Header Files</Filter>
+-    </ClInclude>
+-  </ItemGroup>
+-</Project>
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric_allegro.c b/doomgeneric/doomgeneric_allegro.c
+deleted file mode 100644
+index b120366..0000000
+--- a/doomgeneric/doomgeneric_allegro.c
++++ /dev/null
+@@ -1,453 +0,0 @@
+-// doomgeneric for Allegro library
+-
+-#include "doomkeys.h"
+-#include "i_system.h"
+-#include "i_video.h"
+-#include "m_argv.h"
+-#include "doomgeneric.h"
+-
+-#include <stdbool.h>
+-#include <stdint.h>
+-#include <stdio.h>
+-#include <unistd.h>
+-
+-#define ALLEGRO_NO_KEY_DEFINES 1
+-#include <allegro.h>
+-#undef uint32_t // ugly hack because Allegro is Old and doesn't know modern GCC has stdint.h
+-
+-
+-static bool videomode_set = false;
+-
+-static BITMAP *temp_bitmap = NULL;
+-
+-static PALETTE pal;
+-
+-#define KEYQUEUE_SIZE 16
+-
+-static volatile unsigned int s_KeyQueue[KEYQUEUE_SIZE];
+-static volatile unsigned int s_KeyQueueWriteIndex = 0;
+-static unsigned int s_KeyQueueReadIndex = 0;
+-
+-static volatile unsigned int s_ticks = 0;
+-
+-
+-void key_callback(int scancode) {
+-	// this is in interrupt context, avoid heavy processing and be careful about volatile writes
+-	s_KeyQueue[s_KeyQueueWriteIndex] = scancode;
+-	s_KeyQueueWriteIndex = (s_KeyQueueWriteIndex + 1) % KEYQUEUE_SIZE;
+-}
+-END_OF_FUNCTION(key_callback);
+-
+-
+-void timer_callback(void) {
+-	// also in interrupt context
+-	s_ticks++;
+-}
+-END_OF_FUNCTION(timer_callback);
+-
+-
+-void DG_Init() {
+-	int result;
+-
+-	printf("Initializing Allegro\n");
+-
+-	result = allegro_init();
+-	if (result != 0)
+-	{
+-		I_Error("Allegro init failed: %d %s\n", result, allegro_error);
+-	}
+-
+-	I_AtExit(allegro_exit, true);
+-
+-	LOCK_FUNCTION(key_callback);
+-	LOCK_VARIABLE(s_KeyQueue);
+-	LOCK_VARIABLE(s_KeyQueueWriteIndex);
+-	LOCK_VARIABLE(s_KeyQueueReadIndex);
+-
+-	LOCK_FUNCTION(timer_callback);
+-	LOCK_VARIABLE(s_ticks);
+-
+-	install_keyboard();
+-	keyboard_lowlevel_callback = key_callback;
+-
+-	install_timer();
+-	result = install_int(timer_callback, 1);
+-	if (result < 0) {
+-		I_Error("Unable to install timer: %d %s\n", result, allegro_error);
+-	}
+-
+-	// don't set video mode yet so initialization messages stay on screen
+-}
+-
+-
+-static void back_to_text_mode(void) {
+-	set_gfx_mode(GFX_TEXT, 80, 25, 0, 0);
+-}
+-
+-
+-void DG_DrawFrame()
+-{
+-	if (!DG_ScreenBuffer) {
+-		return;
+-	}
+-
+-	if (!videomode_set) {
+-		int y;
+-		int result;
+-
+-#ifdef CMAP256
+-		set_color_depth(8);
+-#else  // CMAP256
+-		// does not seem to work on real DOS hardware
+-		set_color_depth(32);
+-#endif  // CMAP256
+-
+-		result = set_gfx_mode(GFX_AUTODETECT_FULLSCREEN, DOOMGENERIC_RESX, DOOMGENERIC_RESY, 0, 0);
+-		if (result < 0) {
+-			I_Error("Failed to set video mode: %s\n", allegro_error);
+-		}
+-
+-		// register an exit handler to return to text mode
+-		// while this is also done by allegro_exit handler registered earlier
+-		// that's too late for ENDOOM screen to work correctly
+-		I_AtExit(back_to_text_mode, true);
+-
+-		if (!screen) {
+-			I_Error("screen is null\n");
+-		}
+-
+-		temp_bitmap = create_bitmap(DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+-		if (!temp_bitmap) {
+-			I_Error("Failed to create temp bitmap\n");
+-		}
+-
+-		// this is an evil hack
+-		// replace the internal line pointers with pointers into DG_ScreenBuffer
+-		// this avoids some copying
+-		// it might crash when freeing the bitmap but we never do
+-		for (y = 0; y < DOOMGENERIC_RESY; y++) {
+-			temp_bitmap->line[y] = (unsigned char *) &DG_ScreenBuffer[y * DOOMGENERIC_RESX];
+-		}
+-
+-		clear_bitmap(temp_bitmap);
+-
+-		videomode_set = true;
+-		palette_changed = true;
+-	}
+-
+-#ifdef CMAP256
+-
+-	// changing palette implicitly waits for vsync
+-	// TODO: should do it explicitly in case where we don't change palette
+-	if (palette_changed) {
+-		int i;
+-
+-		for (i = 0; i < 256; i++) {
+-			// allegro uses VGA range 0..63
+-			pal[i].r = colors[i].r >> 2;
+-			pal[i].g = colors[i].g >> 2;
+-			pal[i].b = colors[i].b >> 2;
+-		}
+-		set_palette(pal);
+-
+-		palette_changed = false;
+-	}
+-
+-#endif  // CMAP256
+-
+-	blit(temp_bitmap, screen, 0, 0, 0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+-}
+-
+-
+-void DG_SleepMs(uint32_t ms)
+-{
+-	rest(ms);
+-}
+-
+-
+-uint32_t DG_GetTicksMs()
+-{
+-	return s_ticks;
+-}
+-
+-
+-int DG_GetKey(int *pressed, unsigned char *doomKey)
+-{
+-	if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex){
+-		//key queue is empty
+-		return 0;
+-	} else {
+-		bool released;
+-		short keyData = 0;
+-		int scancode = s_KeyQueue[s_KeyQueueReadIndex];
+-		s_KeyQueueReadIndex++;
+-		s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
+-
+-		released = scancode & 0x80;
+-		*pressed = !released;
+-
+-		scancode = scancode & 0x7F;
+-
+-		switch (scancode) {
+-		case  __allegro_KEY_RIGHT:
+-			keyData = KEY_RIGHTARROW;
+-			break;
+-
+-		case  __allegro_KEY_LEFT:
+-			keyData = KEY_LEFTARROW;
+-			break;
+-
+-		case  __allegro_KEY_UP:
+-			keyData = KEY_UPARROW;
+-			break;
+-
+-		case  __allegro_KEY_DOWN:
+-			keyData = KEY_DOWNARROW;
+-			break;
+-
+-		case  __allegro_KEY_COMMA:
+-			keyData = KEY_STRAFE_L;
+-			break;
+-
+-		case  __allegro_KEY_STOP:
+-			keyData = KEY_STRAFE_R;
+-			break;
+-
+-		case  __allegro_KEY_SPACE:
+-			keyData = KEY_USE;
+-			break;
+-
+-		case  __allegro_KEY_LCONTROL:
+-			keyData = KEY_FIRE;
+-			break;
+-
+-		case  __allegro_KEY_ESC:
+-			keyData = KEY_ESCAPE;
+-			break;
+-
+-		case  __allegro_KEY_ENTER:
+-			keyData = KEY_ENTER;
+-			break;
+-
+-		case  __allegro_KEY_TAB:
+-			keyData = KEY_TAB;
+-			break;
+-
+-		case  __allegro_KEY_F1:
+-			keyData = KEY_F1;
+-			break;
+-
+-		case  __allegro_KEY_F2:
+-			keyData = KEY_F2;
+-			break;
+-
+-		case  __allegro_KEY_F3:
+-			keyData = KEY_F3;
+-			break;
+-
+-		case  __allegro_KEY_F4:
+-			keyData = KEY_F4;
+-			break;
+-
+-		case  __allegro_KEY_F5:
+-			keyData = KEY_F5;
+-			break;
+-
+-		case  __allegro_KEY_F6:
+-			keyData = KEY_F6;
+-			break;
+-
+-		case  __allegro_KEY_F7:
+-			keyData = KEY_F7;
+-			break;
+-
+-		case  __allegro_KEY_F8:
+-			keyData = KEY_F8;
+-			break;
+-
+-		case  __allegro_KEY_F9:
+-			keyData = KEY_F9;
+-			break;
+-
+-		case  __allegro_KEY_F10:
+-			keyData = KEY_F10;
+-			break;
+-
+-		case  __allegro_KEY_F11:
+-			keyData = KEY_F11;
+-			break;
+-
+-		case  __allegro_KEY_F12:
+-			keyData = KEY_F12;
+-			break;
+-
+-		case  __allegro_KEY_BACKSPACE:
+-			keyData = KEY_BACKSPACE;
+-			break;
+-
+-		case  __allegro_KEY_PAUSE:
+-			keyData = KEY_PAUSE;
+-			break;
+-
+-		case  __allegro_KEY_EQUALS:
+-			keyData = KEY_EQUALS;
+-			break;
+-
+-		case  __allegro_KEY_MINUS:
+-			keyData = KEY_MINUS;
+-			break;
+-
+-		case  __allegro_KEY_LSHIFT:
+-		case  __allegro_KEY_RSHIFT:
+-			keyData = KEY_RSHIFT;
+-			break;
+-
+-		case  __allegro_KEY_RCONTROL:
+-			keyData = KEY_RCTRL;
+-			break;
+-
+-		case  __allegro_KEY_ALT:
+-			keyData = KEY_RALT;
+-			break;
+-
+-		case  __allegro_KEY_CAPSLOCK:
+-			keyData = KEY_CAPSLOCK;
+-			break;
+-
+-		case  __allegro_KEY_NUMLOCK:
+-			keyData = KEY_NUMLOCK;
+-			break;
+-
+-		case  __allegro_KEY_SCRLOCK:
+-			keyData = KEY_SCRLCK;
+-			break;
+-
+-		case  __allegro_KEY_PRTSCR:
+-			keyData = KEY_PRTSCR;
+-			break;
+-
+-		case  __allegro_KEY_HOME:
+-			keyData = KEY_HOME;
+-			break;
+-
+-		case  __allegro_KEY_END:
+-			keyData = KEY_END;
+-			break;
+-
+-		case  __allegro_KEY_PGUP:
+-			keyData = KEY_PGUP;
+-			break;
+-
+-		case  __allegro_KEY_PGDN:
+-			keyData = KEY_PGDN;
+-			break;
+-
+-		case  __allegro_KEY_INSERT:
+-			keyData = KEY_INS;
+-			break;
+-
+-		case  __allegro_KEY_DEL:
+-			keyData = KEY_DEL;
+-			break;
+-
+-		case  __allegro_KEY_0_PAD:
+-			keyData = KEYP_0;
+-			break;
+-
+-		case  __allegro_KEY_1_PAD:
+-			keyData = KEYP_1;
+-			break;
+-
+-		case  __allegro_KEY_2_PAD:
+-			keyData = KEYP_2;
+-			break;
+-
+-		case  __allegro_KEY_3_PAD:
+-			keyData = KEYP_3;
+-			break;
+-
+-		case  __allegro_KEY_4_PAD:
+-			keyData = KEYP_4;
+-			break;
+-
+-		case  __allegro_KEY_5_PAD:
+-			keyData = KEYP_5;
+-			break;
+-
+-		case  __allegro_KEY_6_PAD:
+-			keyData = KEYP_6;
+-			break;
+-
+-		case  __allegro_KEY_7_PAD:
+-			keyData = KEYP_7;
+-			break;
+-
+-		case  __allegro_KEY_8_PAD:
+-			keyData = KEYP_8;
+-			break;
+-
+-		case  __allegro_KEY_9_PAD:
+-			keyData = KEYP_9;
+-			break;
+-
+-		case  __allegro_KEY_SLASH_PAD:
+-			keyData = KEYP_DIVIDE;
+-			break;
+-
+-		case  __allegro_KEY_PLUS_PAD:
+-			keyData = KEYP_PLUS;
+-			break;
+-
+-		case  __allegro_KEY_MINUS_PAD:
+-			keyData = KEYP_MINUS;
+-			break;
+-
+-		case  __allegro_KEY_ASTERISK:
+-			keyData = KEYP_MULTIPLY;
+-			break;
+-
+-		case  __allegro_KEY_DEL_PAD:
+-			keyData = KEYP_PERIOD;
+-			break;
+-
+-		case  __allegro_KEY_EQUALS_PAD:
+-			keyData = KEYP_EQUALS;
+-			break;
+-
+-		case  __allegro_KEY_ENTER_PAD:
+-			keyData = KEYP_ENTER;
+-			break;
+-
+-		default:
+-			keyData = scancode_to_ascii(scancode);
+-			break;
+-		}
+-
+-		if (keyData != 0) {
+-			*doomKey = keyData & 0xFF;
+-		}
+-
+-		return 1;
+-	}
+-
+-	return 0;
+-}
+-
+-
+-void DG_SetWindowTitle(const char *title)
+-{
+-	set_window_title(title);
+-}
+-
+-
+-int main(int argc, char **argv)
+-{
+-	doomgeneric_Create(argc, argv);
+-
+-	while (true)
+-	{
+-		doomgeneric_Tick();
+-	}
+-
+-	return 0;
+-}
+diff --git a/doomgeneric/doomgeneric_emscripten.c b/doomgeneric/doomgeneric_emscripten.c
+deleted file mode 100644
+index 7076dd2..0000000
+--- a/doomgeneric/doomgeneric_emscripten.c
++++ /dev/null
+@@ -1,220 +0,0 @@
+-//doomgeneric emscripten port
+-
+-#include "doomkeys.h"
+-#include "m_argv.h"
+-#include "doomgeneric.h"
+-
+-#include <stdio.h>
+-#include <unistd.h>
+-
+-#include <stdbool.h>
+-#include <SDL.h>
+-
+-#include <emscripten.h>
+-
+-SDL_Window* window = NULL;
+-SDL_Renderer* renderer = NULL;
+-SDL_Texture* texture;
+-
+-#define KEYQUEUE_SIZE 16
+-
+-static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
+-static unsigned int s_KeyQueueWriteIndex = 0;
+-static unsigned int s_KeyQueueReadIndex = 0;
+-
+-static unsigned char convertToDoomKey(unsigned int key)
+-{
+-  switch (key)
+-    {
+-    case SDLK_RETURN:
+-      key = KEY_ENTER;
+-      break;
+-    case SDLK_ESCAPE:
+-      key = KEY_ESCAPE;
+-      break;
+-    case SDLK_LEFT:
+-      key = KEY_LEFTARROW;
+-      break;
+-    case SDLK_RIGHT:
+-      key = KEY_RIGHTARROW;
+-      break;
+-    case SDLK_UP:
+-      key = KEY_UPARROW;
+-      break;
+-    case SDLK_DOWN:
+-      key = KEY_DOWNARROW;
+-      break;
+-    case SDLK_LCTRL:
+-    case SDLK_RCTRL:
+-      key = KEY_FIRE;
+-      break;
+-    case SDLK_SPACE:
+-      key = KEY_USE;
+-      break;
+-    case SDLK_LSHIFT:
+-    case SDLK_RSHIFT:
+-      key = KEY_RSHIFT;
+-      break;
+-    case SDLK_LALT:
+-    case SDLK_RALT:
+-      key = KEY_LALT;
+-      break;
+-    case SDLK_F2:
+-      key = KEY_F2;
+-      break;
+-    case SDLK_F3:
+-      key = KEY_F3;
+-      break;
+-    case SDLK_F4:
+-      key = KEY_F4;
+-      break;
+-    case SDLK_F5:
+-      key = KEY_F5;
+-      break;
+-    case SDLK_F6:
+-      key = KEY_F6;
+-      break;
+-    case SDLK_F7:
+-      key = KEY_F7;
+-      break;
+-    case SDLK_F8:
+-      key = KEY_F8;
+-      break;
+-    case SDLK_F9:
+-      key = KEY_F9;
+-      break;
+-    case SDLK_F10:
+-      key = KEY_F10;
+-      break;
+-    case SDLK_F11:
+-      key = KEY_F11;
+-      break;
+-    case SDLK_EQUALS:
+-    case SDLK_PLUS:
+-      key = KEY_EQUALS;
+-      break;
+-    case SDLK_MINUS:
+-      key = KEY_MINUS;
+-      break;
+-    default:
+-      key = tolower(key);
+-      break;
+-    }
+-
+-  return key;
+-}
+-
+-static void addKeyToQueue(int pressed, unsigned int keyCode)
+-{
+-  unsigned char key = convertToDoomKey(keyCode);
+-
+-  unsigned short keyData = (pressed << 8) | key;
+-
+-  s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
+-  s_KeyQueueWriteIndex++;
+-  s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+-}
+-
+-static void handleKeyInput()
+-{
+-  SDL_Event e;
+-  while (SDL_PollEvent(&e))
+-  {
+-    if (e.type == SDL_QUIT)
+-    {
+-      puts("Quit requested");
+-      atexit(SDL_Quit);
+-      exit(1);
+-    }
+-
+-    if (e.type == SDL_KEYDOWN)
+-    {
+-      addKeyToQueue(1, e.key.keysym.sym);
+-    }
+-    else if (e.type == SDL_KEYUP)
+-    {
+-      addKeyToQueue(0, e.key.keysym.sym);
+-    }
+-  }
+-}
+-
+-
+-void DG_Init()
+-{
+-  window = SDL_CreateWindow("DOOM",
+-                            SDL_WINDOWPOS_UNDEFINED,
+-                            SDL_WINDOWPOS_UNDEFINED,
+-                            DOOMGENERIC_RESX,
+-                            DOOMGENERIC_RESY,
+-                            SDL_WINDOW_SHOWN
+-                            );
+-
+-  // Setup renderer
+-  renderer =  SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+-  // Clear winow
+-  SDL_RenderClear( renderer );
+-  // Render the rect to the screen
+-  SDL_RenderPresent(renderer);
+-
+-  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+-}
+-
+-void DG_DrawFrame()
+-{
+-  SDL_UpdateTexture(texture, NULL, DG_ScreenBuffer, DOOMGENERIC_RESX*sizeof(uint32_t));
+-
+-  SDL_RenderClear(renderer);
+-  SDL_RenderCopy(renderer, texture, NULL, NULL);
+-  SDL_RenderPresent(renderer);
+-
+-  handleKeyInput();
+-}
+-
+-void DG_SleepMs(uint32_t ms)
+-{
+-  SDL_Delay(ms);
+-}
+-
+-uint32_t DG_GetTicksMs()
+-{
+-  return SDL_GetTicks();
+-}
+-
+-int DG_GetKey(int* pressed, unsigned char* doomKey)
+-{
+-  if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
+-  {
+-    //key queue is empty
+-    return 0;
+-  }
+-  else
+-  {
+-    unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
+-    s_KeyQueueReadIndex++;
+-    s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
+-
+-    *pressed = keyData >> 8;
+-    *doomKey = keyData & 0xFF;
+-
+-    return 1;
+-  }
+-
+-  return 0;
+-}
+-
+-void DG_SetWindowTitle(const char * title)
+-{
+-  if (window != NULL)
+-  {
+-    SDL_SetWindowTitle(window, title);
+-  }
+-}
+-
+-int main(int argc, char **argv)
+-{
+-    doomgeneric_Create(argc, argv);
+-
+-    emscripten_set_main_loop(doomgeneric_Tick, 0, 1);
+-    
+-    return 0;
+-}
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric_impl.cpp b/doomgeneric/doomgeneric_impl.cpp
+new file mode 100644
+index 0000000..06b39fb
+--- /dev/null
++++ b/doomgeneric/doomgeneric_impl.cpp
+@@ -0,0 +1,160 @@
++#include <stdio.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/time.h>
++#include <sys/ioctl.h>
++#include <string.h>
++#include <errno.h>
++
++#include "doomgeneric.h"
++#include "doomkeys.h"
++
++extern "C" {
++
++struct KeyEvent {
++    char ascii;
++    uint8_t scancode;
++    uint8_t modifiers;
++};
++
++struct KeyQueue {
++    static constexpr size_t QUEUE_SIZE = 16;
++
++    uint8_t head;
++    uint8_t tail;
++    KeyEvent queue[QUEUE_SIZE];
++
++    bool empty() const {
++        return head == tail;
++    }
++
++    void insert(const KeyEvent& event) {
++        queue[head] = event;
++        head = (head + 1) % QUEUE_SIZE;
++    }
++
++    KeyEvent pop() {
++        KeyEvent event = queue[tail];
++        tail = (tail + 1) % QUEUE_SIZE;
++
++        return event;
++    }
++};
++
++struct DoomState {
++    uint32_t* framebuffer;
++    int kb;
++
++    KeyQueue keys;
++
++    void update() {
++        KeyEvent event;
++        while (read(kb, &event, sizeof(event)) > 0) {
++            keys.insert(event);
++        }
++    }
++};
++
++static DoomState s_state = {};
++
++void DG_Init() {
++    int gpu = open("/dev/gpu/card0", O_RDONLY);
++    if (gpu < 0) {
++        perror("open '/dev/gpu/card0'");
++        exit(EXIT_FAILURE);
++    }
++    
++    struct gpu_connector conn;
++    if (ioctl(gpu, GPU_GET_CONNECTORS, &conn) < 0) {
++        perror("ioctl");
++        exit(EXIT_FAILURE);
++    }
++    
++    struct gpu_connector_map_fb map_fb;
++    map_fb.id = conn.id;
++
++    if (ioctl(gpu, GPU_CONNECTOR_MAP_FB, &map_fb) < 0) {
++        perror("ioctl");
++        exit(EXIT_FAILURE);
++    }
++    
++    s_state.framebuffer = reinterpret_cast<uint32_t*>(map_fb.framebuffer);
++    memset(s_state.framebuffer, 0x00, conn.height * conn.pitch);
++
++    s_state.kb = open("/dev/input/keyboard0", O_RDONLY | O_NONBLOCK);
++    if (s_state.kb < 0) {
++        perror("open '/dev/input/keyboard0'");
++        exit(EXIT_FAILURE);
++    }
++}
++
++void DG_DrawFrame() {
++    memcpy(s_state.framebuffer, DG_ScreenBuffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
++}
++
++void DG_SleepMs(uint32_t ms) {
++    usleep(ms * 1000);
++}
++
++uint32_t DG_GetTicksMs() {
++    static uint32_t ticks = 0;
++    return ticks++;
++}
++
++int DG_GetKey(int* pressed, unsigned char* key) {
++    if (s_state.keys.empty()) {
++        return 0;
++    }
++
++    KeyEvent event = s_state.keys.pop();
++    *pressed = !(event.scancode & 0x80);
++
++    switch (event.scancode & ~0x80) {
++        case 0x1C:
++            *key = KEY_ENTER;
++            break;
++        case 0x01:
++            *key = KEY_ESCAPE;
++            break;
++        case 0x4B:
++            *key = KEY_LEFTARROW;
++            break;
++        case 0x4D:
++            *key = KEY_RIGHTARROW;
++            break;
++        case 0x48:
++            *key = KEY_UPARROW;
++            break;
++        case 0x50:
++            *key = KEY_DOWNARROW;
++            break;
++        case 0x1D:
++            *key = KEY_FIRE;
++            break;
++        case 0x39:
++            *key = KEY_USE;
++            break;
++        case 0x2a:
++            *key = KEY_RSHIFT;
++            break;
++        default:
++            *key = event.ascii;
++            break;
++    }
++
++    return 1;
++}
++
++void DG_SetWindowTitle(const char*) {}
++
++int main(int argc, char** argv) {
++    doomgeneric_Create(argc, argv);
++
++    while (true) {
++        s_state.update();
++        doomgeneric_Tick();
++    }
++}
++
++}
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric_linuxvt.c b/doomgeneric/doomgeneric_linuxvt.c
+deleted file mode 100644
+index ed94dd9..0000000
+--- a/doomgeneric/doomgeneric_linuxvt.c
++++ /dev/null
+@@ -1,528 +0,0 @@
+-//doomgeneric for a bare Linux VirtualTerminal
+-// Copyright (C) 2025 Techflash
+-// Based on doomgeneric_sdl.c
+-
+-#include "doomkeys.h"
+-#include "m_argv.h"
+-#include "doomgeneric.h"
+-#include "i_system.h"
+-
+-// XXX: HACK
+-// Linux's input-event-codes.h and doomkeys.h have many collisions.
+-// Redefine some of doomkeys.h's names here to work around this.
+-// I could try to redefine Linux's... but that sounds incredibly
+-// fragile, and is very likely not a good idea.
+-#undef KEY_TAB
+-#undef KEY_ENTER
+-#undef KEY_BACKSPACE
+-#undef KEY_MINUS
+-#undef KEY_F1
+-#undef KEY_F2
+-#undef KEY_F3
+-#undef KEY_F4
+-#undef KEY_F5
+-#undef KEY_F6
+-#undef KEY_F7
+-#undef KEY_F8
+-#undef KEY_F9
+-#undef KEY_F10
+-#undef KEY_F11
+-#define DOOM_KEY_TAB		9
+-#define DOOM_KEY_ENTER		13
+-#define DOOM_KEY_MINUS		0x2d
+-#define DOOM_KEY_BACKSPACE	0x7f
+-#define DOOM_KEY_F1		(0x80+0x3b)
+-#define DOOM_KEY_F2		(0x80+0x3c)
+-#define DOOM_KEY_F3		(0x80+0x3d)
+-#define DOOM_KEY_F4		(0x80+0x3e)
+-#define DOOM_KEY_F5		(0x80+0x3f)
+-#define DOOM_KEY_F6		(0x80+0x40)
+-#define DOOM_KEY_F7		(0x80+0x41)
+-#define DOOM_KEY_F8		(0x80+0x42)
+-#define DOOM_KEY_F9		(0x80+0x43)
+-#define DOOM_KEY_F10		(0x80+0x44)
+-#define DOOM_KEY_F11		(0x80+0x57)
+-#define DOOM_KEY_F12		(0x80+0x58)
+-
+-
+-#include <stdio.h>
+-#include <string.h>
+-#include <unistd.h>
+-#include <errno.h>
+-#include <fcntl.h>
+-#include <poll.h>
+-#include <dirent.h>
+-#include <sys/mman.h>
+-#include <sys/time.h>
+-#include <sys/ioctl.h>
+-#include <linux/input.h>
+-#include <linux/input-event-codes.h>
+-#include <linux/fb.h>
+-
+-#include <stdbool.h>
+-
+-#define KEYQUEUE_SIZE 16
+-
+-#define MAX_INPUT_DEVS 16
+-#define INPUT_TYPE_KEYBOARD 0
+-#define INPUT_TYPE_JOYSTICK 1
+-#define INPUT_TYPE_MOUSE    2
+-#define INPUT_TYPE_TOUCH    3
+-
+-// timing stuff
+-static struct timeval startTime;
+-
+-// framebuffer stuff 
+-static uint8_t *fbPtr;
+-static int fbFd;
+-static unsigned int fbWidth, fbHeight, fbStride, fbBytesPerPixel, fbOffsetX, fbOffsetY;
+-
+-// input stuff
+-static int numInputFds = 0;
+-static int inputFds[MAX_INPUT_DEVS];
+-static bool shiftPressed = false;
+-static struct pollfd pollfds[MAX_INPUT_DEVS];
+-
+-static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
+-static unsigned int s_KeyQueueWriteIndex = 0;
+-static unsigned int s_KeyQueueReadIndex = 0;
+-
+-// XXX: HACK
+-// Linux's evdev system doesn't make it feasible to just use
+-// tolower(key) like the existing conversions did, so we
+-// use a few ranges of maps here to avoid an obscenely long switch/case
+-static char evdevKeysToASCII1[10] = {
+-	'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'
+-};
+-static char evdevKeysToASCII2[12] = {
+-	'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']'
+-};
+-static char evdevKeysToASCII3[12] = {
+-	'a', 's', 'd', 'f', 'g', 'h', 'i', 'j', 'k', 'l', ';', '\''
+-};
+-static char evdevKeysToASCII4[11] = {
+-	'\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'
+-};
+-
+-
+-static char evdevShiftKeysToASCII1[12] = {
+-	'!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '{', '}'
+-};
+-static char evdevShiftKeysToASCII2[12] = {
+-	'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '{', '}'
+-};
+-static char evdevShiftKeysToASCII3[12] = {
+-	'a', 's', 'd', 'f', 'g', 'h', 'i', 'j', 'k', 'l', ':', '"'
+-};
+-static char evdevShiftKeysToASCII4[11] = {
+-	'|', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '<', '>', '?'
+-};
+-
+-
+-static unsigned char convertToDoomKey(unsigned int key){
+-	switch (key) {
+-		case KEY_ENTER:
+-			key = DOOM_KEY_ENTER;
+-			break;
+-		case KEY_ESC:
+-			key = KEY_ESCAPE;
+-			break;
+-		case KEY_LEFT:
+-			key = KEY_LEFTARROW;
+-			break;
+-		case KEY_RIGHT:
+-			key = KEY_RIGHTARROW;
+-			break;
+-		case KEY_UP:
+-			key = KEY_UPARROW;
+-			break;
+-		case KEY_DOWN:
+-			key = KEY_DOWNARROW;
+-			break;
+-		case KEY_LEFTCTRL:
+-		case KEY_RIGHTCTRL:
+-			key = KEY_FIRE;
+-			break;
+-		case KEY_SPACE:
+-			key = KEY_USE;
+-			break;
+-		case KEY_LEFTSHIFT:
+-		case KEY_RIGHTSHIFT:
+-			key = KEY_RSHIFT;
+-			break;
+-		case KEY_LEFTALT:
+-		case KEY_RIGHTALT:
+-			key = KEY_LALT;
+-			break;
+-		case KEY_F2:
+-			key = DOOM_KEY_F2;
+-			break;
+-		case KEY_F3:
+-			key = DOOM_KEY_F3;
+-			break;
+-		case KEY_F4:
+-			key = DOOM_KEY_F4;
+-			break;
+-		case KEY_F5:
+-			key = DOOM_KEY_F5;
+-			break;
+-		case KEY_F6:
+-			key = DOOM_KEY_F6;
+-			break;
+-		case KEY_F7:
+-			key = DOOM_KEY_F7;
+-			break;
+-		case KEY_F8:
+-			key = DOOM_KEY_F8;
+-			break;
+-		case KEY_F9:
+-			key = DOOM_KEY_F9;
+-			break;
+-		case KEY_F10:
+-			key = DOOM_KEY_F10;
+-			break;
+-		case KEY_F11:
+-			key = DOOM_KEY_F11;
+-			break;
+-		case KEY_EQUAL:
+-			key = KEY_EQUALS;
+-			break;
+-		case KEY_MINUS:
+-			key = DOOM_KEY_MINUS;
+-			break;
+-		case KEY_BACKSPACE:
+-			key = DOOM_KEY_BACKSPACE;
+-			break;
+-		case KEY_TAB:
+-			key = DOOM_KEY_TAB;
+-			break;
+-
+-		// sadly, yes, we need to handle every single alphanumeric
+-		// key here, since evdev doesn't spit out keys in anything
+-		// remotely resembling ASCII.....
+-		// though, we can take many shortcuts
+-		case KEY_1:
+-		case KEY_2:
+-		case KEY_3:
+-		case KEY_4:
+-		case KEY_5:
+-		case KEY_6:
+-		case KEY_7:
+-		case KEY_8:
+-		case KEY_9:
+-		case KEY_0:
+-			if (shiftPressed)
+-				key = evdevShiftKeysToASCII1[key - KEY_1];
+-			else
+-				key = evdevKeysToASCII1[key - KEY_1];
+-			break;
+-		case KEY_Q:
+-		case KEY_W:
+-		case KEY_E:
+-		case KEY_R:
+-		case KEY_T:
+-		case KEY_Y:
+-		case KEY_U:
+-		case KEY_I:
+-		case KEY_O:
+-		case KEY_P:
+-		case KEY_LEFTBRACE:
+-		case KEY_RIGHTBRACE:
+-			if (shiftPressed)
+-				key = evdevShiftKeysToASCII2[key - KEY_Q];
+-			else
+-				key = evdevKeysToASCII2[key - KEY_Q];
+-			break;
+-		case KEY_A:
+-		case KEY_S:
+-		case KEY_D:
+-		case KEY_F:
+-		case KEY_G:
+-		case KEY_H:
+-		case KEY_J:
+-		case KEY_K:
+-		case KEY_L:
+-		case KEY_SEMICOLON:
+-		case KEY_APOSTROPHE:
+-			if (shiftPressed)
+-				key = evdevShiftKeysToASCII3[key - KEY_A];
+-			else
+-				key = evdevKeysToASCII3[key - KEY_A];
+-			break;
+-		case KEY_BACKSLASH:
+-		case KEY_Z:
+-		case KEY_X:
+-		case KEY_C:
+-		case KEY_V:
+-		case KEY_B:
+-		case KEY_N:
+-		case KEY_M:
+-		case KEY_COMMA:
+-		case KEY_DOT:
+-		case KEY_SLASH:
+-			if (shiftPressed)
+-				key = evdevShiftKeysToASCII4[key - KEY_BACKSLASH];
+-			else
+-				key = evdevKeysToASCII4[key - KEY_BACKSLASH];
+-			break;
+-		default:
+-			key = 0xFF;
+-			break;
+-	}
+-
+-	return key;
+-}
+-
+-static void addKeyToQueue(int pressed, unsigned char keyCode) {
+-	if ((keyCode == KEY_LEFTSHIFT || keyCode == KEY_RIGHTSHIFT) &&
+-		(pressed == 1 || pressed == 0))
+-		shiftPressed = pressed;
+-
+-		
+-	unsigned char key = convertToDoomKey(keyCode);
+-	if (key == 0xFF) // unknown, don't process it
+-		return;
+-
+-	if (pressed > 1 || pressed < 0) // bogus value
+-		return;
+-
+-	unsigned short keyData = (pressed << 8) | key;
+-
+-	s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
+-	s_KeyQueueWriteIndex++;
+-	s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+-}
+-
+-
+-
+-static void checkKeys() {
+-	int ret, i;
+-	bool keepGoing;
+-	struct input_event ev;
+-
+-	keepGoing = true;
+-	while (keepGoing) {
+-		keepGoing = false; // exit if we haven't gotten anything
+-		ret = poll(pollfds, numInputFds, 0);  // don't wait at all, just give anything we've got
+-
+-		if (ret < 0) {
+-			// borked
+-			return;
+-		}
+-
+-		for (i = 0; i < MAX_INPUT_DEVS; i++) {
+-			if (pollfds[i].revents & POLLIN) {
+-				read(inputFds[i], &ev, sizeof(ev));
+-				keepGoing = true; // we read something, so keep trying
+-				addKeyToQueue(ev.value, ev.code);
+-			}
+-		}
+-	}
+-
+-	// we read the entire backlog, get back to doom
+-	return;
+-}
+-
+-
+-#define TEST_KEY(k) (keybits[(k)/8] & (1 << ((k)%8)))
+-static int isKeyboard(const char *devPath) {
+-	unsigned long evbits;
+-	unsigned char keybits[KEY_MAX/8 + 1];
+-	int fd = open(devPath, O_RDONLY);
+-	if (fd < 0) {
+-		perror("Failed to open device");
+-		return 0;
+-	}
+-
+-	evbits = 0;
+-	if (ioctl(fd, EVIOCGBIT(0, sizeof(evbits)), &evbits) < 0) {
+-		close(fd);
+-		return 0;
+-	}
+-
+-	/* Must support EV_KEY */
+-	if (!(evbits & (1 << EV_KEY))) {
+-		close(fd);
+-		return 0;
+-	}
+-
+-
+-	memset(keybits, 0, sizeof(keybits));
+-	if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits) < 0) {
+-		close(fd);
+-		return 0;
+-	}
+-
+-	if (TEST_KEY(KEY_A) && TEST_KEY(KEY_ENTER)) {
+-		close(fd);
+-		return 1;  /* looks like a keyboard */
+-	}
+-
+-	close(fd);
+-	return 0;
+-}
+-
+-static void checkInputDevs() {
+-	struct dirent *dp;
+-	DIR *dir;
+-
+-	/* check for devices */
+-	dir = opendir("/dev/input");
+-
+-	while ((dp = readdir(dir)) != NULL) {
+-		char fullpath[268]; /* d_name is 256 bytes */
+-		int fd;
+-
+-		if (numInputFds >= MAX_INPUT_DEVS)
+-			I_Error("Out of room in input devices array");
+-
+-		printf("checking %s\n", dp->d_name);
+-		if (strncmp(dp->d_name, "event", 5) != 0)
+-			continue;
+-
+-		sprintf(fullpath, "/dev/input/%s", dp->d_name);
+-
+-		printf("%s is a valid event device\n", fullpath);
+-		if (!isKeyboard(fullpath)) {
+-			printf("%s is not a keyboard, moving on\n", fullpath);
+-			continue;
+-		}
+-
+-		fd = open(fullpath, O_RDONLY | O_NONBLOCK);
+-		if (fd < 0) {
+-			// not necessarily fatal
+-			perror("Failed to open device");
+-			continue;
+-		}
+-
+-		pollfds[numInputFds].fd = fd;
+-		pollfds[numInputFds].events = POLLIN;
+-		inputFds[numInputFds++] = fd;
+-		printf("adding %s keyboard\n", fullpath);
+-		ioctl(fd, EVIOCGRAB, 1); // grab exclusive access to the device
+-	}
+-	closedir(dir);
+-}
+-
+-void DG_Init() {
+-	int ret;
+-	struct fb_var_screeninfo info;
+-	struct fb_fix_screeninfo finfo;
+-
+-	//
+-	// set up the framebuffer
+-	//
+-	fbFd = open("/dev/fb0", O_RDWR);
+-	if (fbFd < 0)
+-		I_Error("Failed to open /dev/fb0: %s", strerror(errno));
+-
+-	// get info
+-	ret = ioctl(fbFd, FBIOGET_VSCREENINFO, &info);
+-	if (ret != 0)
+-		I_Error("Failed to get framebuffer info: %s", strerror(errno));
+-
+-	// get other info (this can optionally fail, since we can guess the stride)
+-	ret = ioctl(fbFd, FBIOGET_FSCREENINFO, &finfo);
+-	if (ret != 0) {
+-		printf("Failed to get framebuffer info: %s", strerror(errno));
+-		fbStride = fbWidth * fbBytesPerPixel;
+-	}
+-	else {
+-		fbStride = finfo.line_length;
+-	}
+-
+-	fbWidth = info.xres;
+-	fbHeight = info.yres;
+-	fbBytesPerPixel = info.bits_per_pixel / 8;
+-
+-	// to center the image on screen
+-	fbOffsetX = ((fbWidth - DOOMGENERIC_RESX) / 2) * fbBytesPerPixel;
+-	fbOffsetY = ((fbHeight - DOOMGENERIC_RESY) / 2) * fbStride;
+-
+-	fbPtr = mmap(NULL, fbStride * fbHeight, PROT_READ | PROT_WRITE,
+-			MAP_SHARED, fbFd, 0);
+-
+-	if (!fbPtr)
+-		I_Error("Failed to mmap /dev/fb0: %s", strerror(errno));
+-
+-	// clear the screen
+-	memset(fbPtr, 0, fbStride * fbHeight);
+-
+-	//
+-	// set up input
+-	//
+-	checkInputDevs();
+-	
+-	if (numInputFds == 0)
+-		I_Error("Failed to find any compatible input device, see the logs above for potential problems");
+-
+-	// get the start time
+-	gettimeofday(&startTime, NULL);
+-}
+-
+-void DG_DrawFrame() {
+-	// we need to do it line-by-line like this to account for the
+-	// fact that the system framebuffer resolution is very likely
+-	// larger than the doomgeneric render resolution.
+-	for (int line = 0; line < DOOMGENERIC_RESY; line++) {
+-		memcpy(
+-			(void *)((uintptr_t)(fbPtr) + (fbStride * line) + fbOffsetY + fbOffsetX),
+-				(void *)(((uintptr_t)DG_ScreenBuffer) + (DOOMGENERIC_RESX * line * fbBytesPerPixel)),
+-			 (fbBytesPerPixel * DOOMGENERIC_RESX)
+-		);
+-	}
+-
+-	checkKeys();
+-}
+-
+-void DG_SleepMs(uint32_t ms) {
+-	usleep(ms * 1000);
+-}
+-
+-uint32_t DG_GetTicksMs() {
+-	struct timeval curTime;
+-	long seconds, usec;
+-
+-	gettimeofday(&curTime, NULL);
+-	seconds = curTime.tv_sec - startTime.tv_sec;
+-	usec = curTime.tv_usec - startTime.tv_usec;
+-
+-	return (seconds * 1000) + (usec / 1000);
+-}
+-
+-int DG_GetKey(int* pressed, unsigned char* doomKey) {
+-	checkKeys();
+-
+-	if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex) {
+-		//key queue is empty
+-
+-		return 0;
+-	}
+-	else {
+-		unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
+-		s_KeyQueueReadIndex++;
+-		s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
+-
+-		*pressed = keyData >> 8;
+-		*doomKey = keyData & 0xFF;
+-
+-		return 1;
+-	}
+-
+-}
+-
+-void DG_SetWindowTitle(const char * title) {
+-	printf("Window Title: %s\n", title);
+-}
+-
+-int main(int argc, char **argv) {
+-	doomgeneric_Create(argc, argv);
+-
+-	while (1)
+-	{
+-		doomgeneric_Tick();
+-	}
+-
+-
+-	return 0;
+-}
+diff --git a/doomgeneric/doomgeneric_sdl.c b/doomgeneric/doomgeneric_sdl.c
+deleted file mode 100644
+index fd4236a..0000000
+--- a/doomgeneric/doomgeneric_sdl.c
++++ /dev/null
+@@ -1,211 +0,0 @@
+-//doomgeneric for cross-platform development library 'Simple DirectMedia Layer'
+-
+-#include "doomkeys.h"
+-#include "m_argv.h"
+-#include "doomgeneric.h"
+-
+-#include <stdio.h>
+-#include <unistd.h>
+-
+-#include <stdbool.h>
+-#include <SDL.h>
+-
+-SDL_Window* window = NULL;
+-SDL_Renderer* renderer = NULL;
+-SDL_Texture* texture;
+-
+-#define KEYQUEUE_SIZE 16
+-
+-static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
+-static unsigned int s_KeyQueueWriteIndex = 0;
+-static unsigned int s_KeyQueueReadIndex = 0;
+-
+-static unsigned char convertToDoomKey(unsigned int key){
+-  switch (key)
+-    {
+-    case SDLK_RETURN:
+-      key = KEY_ENTER;
+-      break;
+-    case SDLK_ESCAPE:
+-      key = KEY_ESCAPE;
+-      break;
+-    case SDLK_LEFT:
+-      key = KEY_LEFTARROW;
+-      break;
+-    case SDLK_RIGHT:
+-      key = KEY_RIGHTARROW;
+-      break;
+-    case SDLK_UP:
+-      key = KEY_UPARROW;
+-      break;
+-    case SDLK_DOWN:
+-      key = KEY_DOWNARROW;
+-      break;
+-    case SDLK_LCTRL:
+-    case SDLK_RCTRL:
+-      key = KEY_FIRE;
+-      break;
+-    case SDLK_SPACE:
+-      key = KEY_USE;
+-      break;
+-    case SDLK_LSHIFT:
+-    case SDLK_RSHIFT:
+-      key = KEY_RSHIFT;
+-      break;
+-    case SDLK_LALT:
+-    case SDLK_RALT:
+-      key = KEY_LALT;
+-      break;
+-    case SDLK_F2:
+-      key = KEY_F2;
+-      break;
+-    case SDLK_F3:
+-      key = KEY_F3;
+-      break;
+-    case SDLK_F4:
+-      key = KEY_F4;
+-      break;
+-    case SDLK_F5:
+-      key = KEY_F5;
+-      break;
+-    case SDLK_F6:
+-      key = KEY_F6;
+-      break;
+-    case SDLK_F7:
+-      key = KEY_F7;
+-      break;
+-    case SDLK_F8:
+-      key = KEY_F8;
+-      break;
+-    case SDLK_F9:
+-      key = KEY_F9;
+-      break;
+-    case SDLK_F10:
+-      key = KEY_F10;
+-      break;
+-    case SDLK_F11:
+-      key = KEY_F11;
+-      break;
+-    case SDLK_EQUALS:
+-    case SDLK_PLUS:
+-      key = KEY_EQUALS;
+-      break;
+-    case SDLK_MINUS:
+-      key = KEY_MINUS;
+-      break;
+-    default:
+-      key = tolower(key);
+-      break;
+-    }
+-
+-  return key;
+-}
+-
+-static void addKeyToQueue(int pressed, unsigned int keyCode){
+-  unsigned char key = convertToDoomKey(keyCode);
+-
+-  unsigned short keyData = (pressed << 8) | key;
+-
+-  s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
+-  s_KeyQueueWriteIndex++;
+-  s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+-}
+-static void handleKeyInput(){
+-  SDL_Event e;
+-  while (SDL_PollEvent(&e)){
+-    if (e.type == SDL_QUIT){
+-      puts("Quit requested");
+-      atexit(SDL_Quit);
+-      exit(1);
+-    }
+-    if (e.type == SDL_KEYDOWN) {
+-      //KeySym sym = XKeycodeToKeysym(s_Display, e.xkey.keycode, 0);
+-      //printf("KeyPress:%d sym:%d\n", e.xkey.keycode, sym);
+-      addKeyToQueue(1, e.key.keysym.sym);
+-    } else if (e.type == SDL_KEYUP) {
+-      //KeySym sym = XKeycodeToKeysym(s_Display, e.xkey.keycode, 0);
+-      //printf("KeyRelease:%d sym:%d\n", e.xkey.keycode, sym);
+-      addKeyToQueue(0, e.key.keysym.sym);
+-    }
+-  }
+-}
+-
+-
+-void DG_Init(){
+-  window = SDL_CreateWindow("DOOM",
+-                            SDL_WINDOWPOS_UNDEFINED,
+-                            SDL_WINDOWPOS_UNDEFINED,
+-                            DOOMGENERIC_RESX,
+-                            DOOMGENERIC_RESY,
+-                            SDL_WINDOW_SHOWN
+-                            );
+-
+-  // Setup renderer
+-  renderer =  SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED);
+-  // Clear winow
+-  SDL_RenderClear( renderer );
+-  // Render the rect to the screen
+-  SDL_RenderPresent(renderer);
+-
+-  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+-}
+-
+-void DG_DrawFrame()
+-{
+-  SDL_UpdateTexture(texture, NULL, DG_ScreenBuffer, DOOMGENERIC_RESX*sizeof(uint32_t));
+-
+-  SDL_RenderClear(renderer);
+-  SDL_RenderCopy(renderer, texture, NULL, NULL);
+-  SDL_RenderPresent(renderer);
+-
+-  handleKeyInput();
+-}
+-
+-void DG_SleepMs(uint32_t ms)
+-{
+-  SDL_Delay(ms);
+-}
+-
+-uint32_t DG_GetTicksMs()
+-{
+-  return SDL_GetTicks();
+-}
+-
+-int DG_GetKey(int* pressed, unsigned char* doomKey)
+-{
+-  if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex){
+-    //key queue is empty
+-    return 0;
+-  }else{
+-    unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
+-    s_KeyQueueReadIndex++;
+-    s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
+-
+-    *pressed = keyData >> 8;
+-    *doomKey = keyData & 0xFF;
+-
+-    return 1;
+-  }
+-
+-  return 0;
+-}
+-
+-void DG_SetWindowTitle(const char * title)
+-{
+-  if (window != NULL){
+-    SDL_SetWindowTitle(window, title);
+-  }
+-}
+-
+-int main(int argc, char **argv)
+-{
+-    doomgeneric_Create(argc, argv);
+-
+-    for (int i = 0; ; i++)
+-    {
+-        doomgeneric_Tick();
+-    }
+-    
+-
+-    return 0;
+-}
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric_soso.c b/doomgeneric/doomgeneric_soso.c
+deleted file mode 100644
+index e1a3251..0000000
+--- a/doomgeneric/doomgeneric_soso.c
++++ /dev/null
+@@ -1,277 +0,0 @@
+-//doomgeneric for soso os
+-
+-#include "doomkeys.h"
+-#include "m_argv.h"
+-#include "doomgeneric.h"
+-
+-#include <stdio.h>
+-#include <fcntl.h>
+-#include <unistd.h>
+-#include <string.h>
+-#include <stdint.h>
+-#include <sys/time.h>
+-#include <sys/ioctl.h>
+-#include <sys/mman.h>
+-
+-#include <termios.h>
+-
+-static int FrameBufferFd = -1;
+-static int* FrameBuffer = 0;
+-
+-static int KeyboardFd = -1;
+-
+-#define KEYQUEUE_SIZE 16
+-
+-static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
+-static unsigned int s_KeyQueueWriteIndex = 0;
+-static unsigned int s_KeyQueueReadIndex = 0;
+-
+-static unsigned int s_PositionX = 0;
+-static unsigned int s_PositionY = 0;
+-
+-static unsigned int s_ScreenWidth = 0;
+-static unsigned int s_ScreenHeight = 0;
+-
+-enum EnFrameBuferIoctl
+-{
+-    FB_GET_WIDTH,
+-    FB_GET_HEIGHT,
+-    FB_GET_BITSPERPIXEL
+-};
+-
+-static unsigned char convertToDoomKey(unsigned char scancode)
+-{
+-    unsigned char key = 0;
+-
+-    switch (scancode)
+-    {
+-    case 0x9C:
+-    case 0x1C:
+-        key = KEY_ENTER;
+-        break;
+-    case 0x01:
+-        key = KEY_ESCAPE;
+-        break;
+-    case 0xCB:
+-    case 0x4B:
+-        key = KEY_LEFTARROW;
+-        break;
+-    case 0xCD:
+-    case 0x4D:
+-        key = KEY_RIGHTARROW;
+-        break;
+-    case 0xC8:
+-    case 0x48:
+-        key = KEY_UPARROW;
+-        break;
+-    case 0xD0:
+-    case 0x50:
+-        key = KEY_DOWNARROW;
+-        break;
+-    case 0x1D:
+-        key = KEY_FIRE;
+-        break;
+-    case 0x39:
+-        key = KEY_USE;
+-        break;
+-    case 0x2A:
+-    case 0x36:
+-        key = KEY_RSHIFT;
+-        break;
+-    case 0x15:
+-        key = 'y';
+-        break;
+-    default:
+-        break;
+-    }
+-
+-    return key;
+-}
+-
+-static void addKeyToQueue(int pressed, unsigned char keyCode)
+-{
+-	//printf("key hex %x decimal %d\n", keyCode, keyCode);
+-
+-        unsigned char key = convertToDoomKey(keyCode);
+-
+-        unsigned short keyData = (pressed << 8) | key;
+-
+-        s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
+-        s_KeyQueueWriteIndex++;
+-        s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+-}
+-
+-
+-struct termios orig_termios;
+-
+-void disableRawMode()
+-{
+-  //printf("returning original termios\n");
+-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+-}
+-
+-void enableRawMode()
+-{
+-  tcgetattr(STDIN_FILENO, &orig_termios);
+-  atexit(disableRawMode);
+-  struct termios raw = orig_termios;
+-  raw.c_lflag &= ~(ECHO);
+-  raw.c_cc[VMIN] = 0;
+-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+-}
+-
+-void DG_Init()
+-{
+-    FrameBufferFd = open("/dev/fb0", 0);
+-
+-    if (FrameBufferFd >= 0)
+-    {
+-        printf("Getting screen width...");
+-        s_ScreenWidth = ioctl(FrameBufferFd, FB_GET_WIDTH);
+-        printf("%d\n", s_ScreenWidth);
+-
+-        printf("Getting screen height...");
+-        s_ScreenHeight = ioctl(FrameBufferFd, FB_GET_HEIGHT);
+-        printf("%d\n", s_ScreenHeight);
+-
+-        if (0 == s_ScreenWidth || 0 == s_ScreenHeight)
+-        {
+-            printf("Unable to obtain screen info!");
+-            exit(1);
+-        }
+-
+-        FrameBuffer = mmap(NULL, s_ScreenWidth * s_ScreenHeight * 4, PROT_READ | PROT_WRITE, 0, FrameBufferFd, 0);
+-
+-        if (FrameBuffer != (int*)-1)
+-        {
+-            printf("FrameBuffer mmap success\n");
+-        }
+-        else
+-        {
+-            printf("FrameBuffermmap failed\n");
+-        }
+-    }
+-    else
+-    {
+-        printf("Opening FrameBuffer device failed!\n");
+-    }
+-
+-    enableRawMode();
+-
+-    KeyboardFd = open("/dev/keyboard", 0);
+-
+-    if (KeyboardFd >= 0)
+-    {
+-        //enter non-blocking mode
+-        ioctl(KeyboardFd, 1, (void*)1);
+-    }
+-
+-    int argPosX = 0;
+-    int argPosY = 0;
+-
+-    argPosX = M_CheckParmWithArgs("-posx", 1);
+-    if (argPosX > 0)
+-    {
+-        sscanf(myargv[argPosX + 1], "%d", &s_PositionX);
+-    }
+-
+-    argPosY = M_CheckParmWithArgs("-posy", 1);
+-    if (argPosY > 0)
+-    {
+-        sscanf(myargv[argPosY + 1], "%d", &s_PositionY);
+-    }
+-}
+-
+-static void handleKeyInput()
+-{
+-    if (KeyboardFd < 0)
+-    {
+-        return;
+-    }
+-
+-    unsigned char scancode = 0;
+-
+-    if (read(KeyboardFd, &scancode, 1) > 0)
+-    {
+-        unsigned char keyRelease = (0x80 & scancode);
+-
+-        scancode = (0x7F & scancode);
+-
+-        //printf("scancode:%x pressed:%d\n", scancode, 0 == keyRelease);
+-
+-        if (0 == keyRelease)
+-        {
+-            addKeyToQueue(1, scancode);
+-        }
+-        else
+-        {
+-            addKeyToQueue(0, scancode);
+-        }
+-    }
+-}
+-
+-void DG_DrawFrame()
+-{
+-    if (FrameBuffer)
+-    {
+-        for (int i = 0; i < DOOMGENERIC_RESY; ++i)
+-        {
+-            memcpy(FrameBuffer + s_PositionX + (i + s_PositionY) * s_ScreenWidth, DG_ScreenBuffer + i * DOOMGENERIC_RESX, DOOMGENERIC_RESX * 4);
+-        }
+-    }
+-
+-    handleKeyInput();
+-}
+-
+-void DG_SleepMs(uint32_t ms)
+-{
+-    usleep(ms * 1000);
+-}
+-
+-uint32_t DG_GetTicksMs()
+-{
+-    struct timeval  tp;
+-    struct timezone tzp;
+-
+-    gettimeofday(&tp, &tzp);
+-
+-    return (tp.tv_sec * 1000) + (tp.tv_usec / 1000); /* return milliseconds */
+-}
+-
+-int DG_GetKey(int* pressed, unsigned char* doomKey)
+-{
+-    if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
+-    {
+-        //key queue is empty
+-
+-        return 0;
+-    }
+-    else
+-    {
+-        unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
+-        s_KeyQueueReadIndex++;
+-        s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
+-
+-        *pressed = keyData >> 8;
+-        *doomKey = keyData & 0xFF;
+-
+-        return 1;
+-    }
+-}
+-
+-void DG_SetWindowTitle(const char * title)
+-{
+-}
+-
+-int main(int argc, char **argv)
+-{
+-    doomgeneric_Create(argc, argv);
+-
+-    while (1)
+-    {
+-        doomgeneric_Tick();
+-    }
+-    
+-
+-    return 0;
+-}
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric_sosox.c b/doomgeneric/doomgeneric_sosox.c
+deleted file mode 100644
+index e109f66..0000000
+--- a/doomgeneric/doomgeneric_sosox.c
++++ /dev/null
+@@ -1,248 +0,0 @@
+-//doomgeneric for soso os (nano-x version)
+-
+-#include "doomkeys.h"
+-#include "m_argv.h"
+-#include "doomgeneric.h"
+-
+-#include <stdio.h>
+-#include <fcntl.h>
+-#include <unistd.h>
+-#include <string.h>
+-#include <sys/time.h>
+-#include <sys/ioctl.h>
+-
+-#include <termios.h>
+-
+-#include "nano-X.h"
+-
+-
+-#define KEYQUEUE_SIZE 16
+-
+-static unsigned short g_key_queue[KEYQUEUE_SIZE];
+-static unsigned int g_key_queue_write_index = 0;
+-static unsigned int g_key_queue_read_index = 0;
+-
+-static unsigned char g_key_states[256];
+-
+-
+-static GR_WINDOW_ID  wid;
+-static GR_GC_ID      gc;
+-static unsigned char* windowBuffer = 0;
+-static const int winSizeX = DOOMGENERIC_RESX;
+-static const int winSizeY = DOOMGENERIC_RESY;
+-
+-
+-static void add_key_to_queue(int pressed, unsigned char key)
+-{
+-    unsigned short key_data = (pressed << 8) | key;
+-
+-    g_key_queue[g_key_queue_write_index] = key_data;
+-    g_key_queue_write_index++;
+-    g_key_queue_write_index %= KEYQUEUE_SIZE;
+-}
+-
+-struct termios orig_termios;
+-
+-void disable_raw_mode()
+-{
+-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+-}
+-
+-void enable_raw_mode()
+-{
+-  tcgetattr(STDIN_FILENO, &orig_termios);
+-  atexit(disable_raw_mode);
+-  struct termios raw = orig_termios;
+-  raw.c_lflag &= ~(ECHO);
+-  raw.c_cc[VMIN] = 0;
+-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+-}
+-
+-void DG_Init()
+-{
+-    if (GrOpen() < 0)
+-    {
+-        GrError("GrOpen failed");
+-        return;
+-    }
+-
+-    gc = GrNewGC();
+-    GrSetGCUseBackground(gc, GR_FALSE);
+-    GrSetGCForeground(gc, MWRGB( 255, 0, 0 ));
+-
+-    wid = GrNewBufferedWindow(GR_WM_PROPS_APPFRAME |
+-                        GR_WM_PROPS_CAPTION  |
+-                        GR_WM_PROPS_CLOSEBOX |
+-                        GR_WM_PROPS_BUFFER_MMAP |
+-                        GR_WM_PROPS_BUFFER_BGRA,
+-                        "Doom",
+-                        GR_ROOT_WINDOW_ID, 
+-                        50, 50, winSizeX, winSizeY, MWRGB( 255, 255, 255 ));
+-
+-    GrSelectEvents(wid, GR_EVENT_MASK_EXPOSURE | 
+-                        GR_EVENT_MASK_KEY_UP |
+-                        GR_EVENT_MASK_KEY_DOWN |
+-                        GR_EVENT_MASK_TIMER |
+-                        GR_EVENT_MASK_CLOSE_REQ);
+-
+-    GrMapWindow (wid);
+-
+-    windowBuffer = GrOpenClientFramebuffer(wid);
+-
+-    enable_raw_mode();
+-}
+-
+-static unsigned char convert_to_doom_keyx(int wkey)
+-{
+-    unsigned char doomkey = 0;
+-
+-    switch (wkey)
+-	{
+-	case MWKEY_ENTER:   doomkey = KEY_ENTER; break;
+-	case MWKEY_ESCAPE:   doomkey = KEY_ESCAPE; break;
+-	case MWKEY_TAB:      doomkey = KEY_TAB; break;
+-	case MWKEY_DOWN: case MWKEY_KP2:     doomkey = KEY_DOWNARROW; break;
+-	case MWKEY_UP: case MWKEY_KP8:      doomkey = KEY_UPARROW; break;
+-	case MWKEY_LEFT: case MWKEY_KP4:    doomkey = KEY_LEFTARROW; break;
+-	case MWKEY_RIGHT: case MWKEY_KP6:   doomkey = KEY_RIGHTARROW; break;
+-    case MWKEY_LCTRL: case MWKEY_RCTRL:    doomkey = KEY_FIRE; break;
+-    case MWKEY_LSHIFT: case MWKEY_RSHIFT:    doomkey = KEY_RSHIFT; break;
+-    case ' ':    doomkey = KEY_USE; break;
+-	case MWKEY_F1:  doomkey = KEY_F1; break;
+-	case MWKEY_F2:  doomkey = KEY_F2; break;
+-	case MWKEY_F3:  doomkey = KEY_F3; break;
+-	case MWKEY_F4:  doomkey = KEY_F4; break;
+-	case MWKEY_F5:  doomkey = KEY_F5; break;
+-	case MWKEY_F6:  doomkey = KEY_F6; break;
+-	case MWKEY_F7:  doomkey = KEY_F7; break;
+-	case MWKEY_F8:  doomkey = KEY_F8; break;
+-	case MWKEY_F9:  doomkey = KEY_F9; break;
+-	case MWKEY_F10: doomkey = KEY_F10; break;
+-	case MWKEY_F11: doomkey = KEY_F11; break;
+-	case MWKEY_F12: doomkey = KEY_F12; break;
+-	
+-	default:
+-		break;
+-	}
+-
+-    if ((wkey >= 'a' && wkey <= 'z') ||
+-        (wkey >= 'A' && wkey <= 'Z') ||
+-        (wkey >= '0' && wkey <= '9'))
+-    {
+-        doomkey = (uint8_t)wkey;
+-    }
+-
+-    return doomkey;
+-}
+-
+-void DG_DrawFrame()
+-{
+-    GR_EVENT event;
+-    GR_EVENT_KEYSTROKE *kp = NULL;
+-
+-    unsigned char key = 0;
+-
+-    while (GrPeekEvent(&event))
+-    {
+-        GrGetNextEvent(&event);
+-
+-        switch (event.type)
+-        {
+-        case GR_EVENT_TYPE_CLOSE_REQ:
+-            GrClose();
+-            exit (0);
+-            break;
+-        case GR_EVENT_TYPE_EXPOSURE:
+-            break;
+-        case GR_EVENT_TYPE_KEY_UP:
+-            kp = (GR_EVENT_KEYSTROKE*)&event;
+-            key = convert_to_doom_keyx(kp->ch);
+-            if (key > 0 && key < sizeof(g_key_states))
+-            {
+-                unsigned char state = g_key_states[key];
+-                if (state == 1)
+-                {
+-                    g_key_states[key] = 0;
+-                    add_key_to_queue(0, key);
+-                }
+-            }
+-            break;
+-        case GR_EVENT_TYPE_KEY_DOWN:
+-            //this event comes continuously while pressed, so checking for changes only!
+-            kp = (GR_EVENT_KEYSTROKE*)&event;
+-            key = convert_to_doom_keyx(kp->ch);
+-            if (key > 0 && key < sizeof(g_key_states))
+-            {
+-                unsigned char state = g_key_states[key];
+-                if (state == 0)
+-                {
+-                    g_key_states[key] = 1;
+-                    add_key_to_queue(1, key);
+-                }
+-            }
+-            break;
+-        case GR_EVENT_TYPE_TIMER:
+-            
+-            break;
+-        }
+-    }
+-
+-    memcpy(windowBuffer, DG_ScreenBuffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+-
+-    GrFlushWindow(wid);
+-}
+-
+-void DG_SleepMs(uint32_t ms)
+-{
+-    usleep(ms * 1000);
+-}
+-
+-uint32_t DG_GetTicksMs()
+-{
+-    struct timeval  tp;
+-    struct timezone tzp;
+-
+-    gettimeofday(&tp, &tzp);
+-
+-    return (tp.tv_sec * 1000) + (tp.tv_usec / 1000); /* return milliseconds */
+-}
+-
+-int DG_GetKey(int* pressed, unsigned char* doomKey)
+-{
+-    if (g_key_queue_read_index == g_key_queue_write_index)
+-    {
+-        //key queue is empty
+-
+-        return 0;
+-    }
+-    else
+-    {
+-        unsigned short keyData = g_key_queue[g_key_queue_read_index];
+-        g_key_queue_read_index++;
+-        g_key_queue_read_index %= KEYQUEUE_SIZE;
+-
+-        *pressed = keyData >> 8;
+-        *doomKey = keyData & 0xFF;
+-
+-        return 1;
+-    }
+-}
+-
+-void DG_SetWindowTitle(const char * title)
+-{
+-    GrSetWindowTitle(wid, title);
+-}
+-
+-int main(int argc, char **argv)
+-{
+-    memset(g_key_states, 0, sizeof(g_key_states));
+-
+-    doomgeneric_Create(argc, argv);
+-
+-    for (int i = 0; ; i++)
+-    {
+-        doomgeneric_Tick();
+-    }
+-    
+-    return 0;
+-}
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric_win.c b/doomgeneric/doomgeneric_win.c
+deleted file mode 100644
+index 4c156b4..0000000
+--- a/doomgeneric/doomgeneric_win.c
++++ /dev/null
+@@ -1,210 +0,0 @@
+-#include "doomkeys.h"
+-
+-#include "doomgeneric.h"
+-
+-#include <stdio.h>
+-
+-#include <Windows.h>
+-
+-static BITMAPINFO s_Bmi = { sizeof(BITMAPINFOHEADER), DOOMGENERIC_RESX, -DOOMGENERIC_RESY, 1, 32 };
+-static HWND s_Hwnd = 0;
+-static HDC s_Hdc = 0;
+-
+-
+-#define KEYQUEUE_SIZE 16
+-
+-static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
+-static unsigned int s_KeyQueueWriteIndex = 0;
+-static unsigned int s_KeyQueueReadIndex = 0;
+-
+-static unsigned char convertToDoomKey(unsigned char key)
+-{
+-	switch (key)
+-	{
+-	case VK_RETURN:
+-		key = KEY_ENTER;
+-		break;
+-	case VK_ESCAPE:
+-		key = KEY_ESCAPE;
+-		break;
+-	case VK_LEFT:
+-		key = KEY_LEFTARROW;
+-		break;
+-	case VK_RIGHT:
+-		key = KEY_RIGHTARROW;
+-		break;
+-	case VK_UP:
+-		key = KEY_UPARROW;
+-		break;
+-	case VK_DOWN:
+-		key = KEY_DOWNARROW;
+-		break;
+-	case VK_CONTROL:
+-		key = KEY_FIRE;
+-		break;
+-	case VK_SPACE:
+-		key = KEY_USE;
+-		break;
+-	case VK_SHIFT:
+-		key = KEY_RSHIFT;
+-		break;
+-	default:
+-		key = tolower(key);
+-		break;
+-	}
+-
+-	return key;
+-}
+-
+-static void addKeyToQueue(int pressed, unsigned char keyCode)
+-{
+-	unsigned char key = convertToDoomKey(keyCode);
+-
+-	unsigned short keyData = (pressed << 8) | key;
+-
+-	s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
+-	s_KeyQueueWriteIndex++;
+-	s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+-}
+-
+-static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+-{
+-	switch (msg)
+-	{
+-	case WM_CLOSE:
+-		DestroyWindow(hwnd);
+-		break;
+-	case WM_DESTROY:
+-		PostQuitMessage(0);
+-		ExitProcess(0);
+-		break;
+-	case WM_KEYDOWN:
+-		addKeyToQueue(1, wParam);
+-		break;
+-	case WM_KEYUP:
+-		addKeyToQueue(0, wParam);
+-		break;
+-	default:
+-		return DefWindowProcA(hwnd, msg, wParam, lParam);
+-	}
+-	return 0;
+-}
+-
+-void DG_Init()
+-{
+-	// window creation
+-	const char windowClassName[] = "DoomWindowClass";
+-	const char windowTitle[] = "Doom";
+-	WNDCLASSEXA wc;
+-
+-	wc.cbSize = sizeof(WNDCLASSEXA);
+-	wc.style = 0;
+-	wc.lpfnWndProc = wndProc;
+-	wc.cbClsExtra = 0;
+-	wc.cbWndExtra = 0;
+-	wc.hInstance = 0;
+-	wc.hIcon = 0;
+-	wc.hCursor = 0;
+-	wc.hbrBackground = 0;
+-	wc.lpszMenuName = 0;
+-	wc.lpszClassName = windowClassName;
+-	wc.hIconSm = 0;
+-
+-	if (!RegisterClassExA(&wc))
+-	{
+-		printf("Window Registration Failed!");
+-
+-		exit(-1);
+-	}
+-
+-	RECT rect;
+-	rect.left = rect.top = 0;
+-	rect.right = DOOMGENERIC_RESX;
+-	rect.bottom = DOOMGENERIC_RESY;
+-	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+-
+-	HWND hwnd = CreateWindowExA(0, windowClassName, windowTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, 0, 0, 0, 0);
+-	if (hwnd)
+-	{
+-		s_Hwnd = hwnd;
+-
+-		s_Hdc = GetDC(hwnd);
+-		ShowWindow(hwnd, SW_SHOW);
+-	}
+-	else
+-	{
+-		printf("Window Creation Failed!");
+-
+-		exit(-1);
+-	}
+-
+-	memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
+-}
+-
+-void DG_DrawFrame()
+-{
+-	MSG msg;
+-	memset(&msg, 0, sizeof(msg));
+-
+-	while (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE) > 0)
+-	{
+-		TranslateMessage(&msg);
+-		DispatchMessageA(&msg);
+-	}
+-
+-	StretchDIBits(s_Hdc, 0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY, 0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY, DG_ScreenBuffer, &s_Bmi, 0, SRCCOPY);
+-
+-	SwapBuffers(s_Hdc);
+-}
+-
+-void DG_SleepMs(uint32_t ms)
+-{
+-	Sleep(ms);
+-}
+-
+-uint32_t DG_GetTicksMs()
+-{
+-	return GetTickCount();
+-}
+-
+-int DG_GetKey(int* pressed, unsigned char* doomKey)
+-{
+-	if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
+-	{
+-		//key queue is empty
+-
+-		return 0;
+-	}
+-	else
+-	{
+-		unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
+-		s_KeyQueueReadIndex++;
+-		s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
+-
+-		*pressed = keyData >> 8;
+-		*doomKey = keyData & 0xFF;
+-
+-		return 1;
+-	}
+-}
+-
+-void DG_SetWindowTitle(const char * title)
+-{
+-	if (s_Hwnd)
+-	{
+-		SetWindowTextA(s_Hwnd, title);
+-	}
+-}
+-
+-int main(int argc, char **argv)
+-{
+-    doomgeneric_Create(argc, argv);
+-
+-    for (int i = 0; ; i++)
+-    {
+-        doomgeneric_Tick();
+-    }
+-    
+-
+-    return 0;
+-}
+\ No newline at end of file
+diff --git a/doomgeneric/doomgeneric_xlib.c b/doomgeneric/doomgeneric_xlib.c
+deleted file mode 100644
+index 6b442a4..0000000
+--- a/doomgeneric/doomgeneric_xlib.c
++++ /dev/null
+@@ -1,213 +0,0 @@
+-#include "doomkeys.h"
+-
+-#include "doomgeneric.h"
+-
+-#include <ctype.h>
+-#include <stdio.h>
+-#include <string.h>
+-#include <unistd.h>
+-#include <sys/time.h>
+-
+-#include <X11/Xlib.h>
+-#include <X11/Xutil.h>
+-#include <X11/Xatom.h>
+-#include <X11/XKBlib.h>
+-
+-static Display *s_Display = NULL;
+-static Window s_Window = 0;
+-static int s_Screen = 0;
+-static GC s_Gc = 0;
+-static XImage *s_Image = NULL;
+-
+-#define KEYQUEUE_SIZE 16
+-
+-static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
+-static unsigned int s_KeyQueueWriteIndex = 0;
+-static unsigned int s_KeyQueueReadIndex = 0;
+-
+-static unsigned char convertToDoomKey(unsigned int key)
+-{
+-	switch (key)
+-	{
+-    case XK_Return:
+-		key = KEY_ENTER;
+-		break;
+-    case XK_Escape:
+-		key = KEY_ESCAPE;
+-		break;
+-    case XK_Left:
+-		key = KEY_LEFTARROW;
+-		break;
+-    case XK_Right:
+-		key = KEY_RIGHTARROW;
+-		break;
+-    case XK_Up:
+-		key = KEY_UPARROW;
+-		break;
+-    case XK_Down:
+-		key = KEY_DOWNARROW;
+-		break;
+-    case XK_Control_L:
+-    case XK_Control_R:
+-		key = KEY_FIRE;
+-		break;
+-    case XK_space:
+-		key = KEY_USE;
+-		break;
+-    case XK_Shift_L:
+-    case XK_Shift_R:
+-		key = KEY_RSHIFT;
+-		break;
+-	default:
+-		key = tolower(key);
+-		break;
+-	}
+-
+-	return key;
+-}
+-
+-static void addKeyToQueue(int pressed, unsigned int keyCode)
+-{
+-	unsigned char key = convertToDoomKey(keyCode);
+-
+-	unsigned short keyData = (pressed << 8) | key;
+-
+-	s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
+-	s_KeyQueueWriteIndex++;
+-	s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+-}
+-
+-void DG_Init()
+-{
+-	memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
+-
+-    // window creation
+-
+-    s_Display = XOpenDisplay(NULL);
+-
+-    s_Screen = DefaultScreen(s_Display);
+-
+-    int blackColor = BlackPixel(s_Display, s_Screen);
+-    int whiteColor = WhitePixel(s_Display, s_Screen);
+-
+-    XSetWindowAttributes attr;
+-    memset(&attr, 0, sizeof(XSetWindowAttributes));
+-    attr.event_mask = ExposureMask | KeyPressMask;
+-    attr.background_pixel = BlackPixel(s_Display, s_Screen);
+-
+-    int depth = DefaultDepth(s_Display, s_Screen);
+-
+-    s_Window = XCreateSimpleWindow(s_Display, DefaultRootWindow(s_Display), 0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY, 0, blackColor, blackColor);
+-
+-    XSelectInput(s_Display, s_Window, StructureNotifyMask | KeyPressMask | KeyReleaseMask);
+-
+-    XMapWindow(s_Display, s_Window);
+-
+-    s_Gc = XCreateGC(s_Display, s_Window, 0, NULL);
+-
+-    XSetForeground(s_Display, s_Gc, whiteColor);
+-
+-    XkbSetDetectableAutoRepeat(s_Display, 1, 0);
+-
+-    // Wait for the MapNotify event
+-
+-    while(1)
+-    {
+-        XEvent e;
+-        XNextEvent(s_Display, &e);
+-        if (e.type == MapNotify)
+-        {
+-            break;
+-        }
+-    }
+-
+-    s_Image = XCreateImage(s_Display, DefaultVisual(s_Display, s_Screen), depth, ZPixmap, 0, (char *)DG_ScreenBuffer, DOOMGENERIC_RESX, DOOMGENERIC_RESX, 32, 0);
+-}
+-
+-
+-void DG_DrawFrame()
+-{
+-    if (s_Display)
+-    {
+-        while (XPending(s_Display) > 0)
+-        {
+-            XEvent e;
+-            XNextEvent(s_Display, &e);
+-            if (e.type == KeyPress)
+-            {
+-                KeySym sym = XkbKeycodeToKeysym(s_Display, e.xkey.keycode, 0, 0);
+-                //printf("KeyPress:%d sym:%d\n", e.xkey.keycode, sym);
+-
+-                addKeyToQueue(1, sym);
+-            }
+-            else if (e.type == KeyRelease)
+-            {
+-                KeySym sym = XkbKeycodeToKeysym(s_Display, e.xkey.keycode, 0, 0);
+-                //printf("KeyRelease:%d sym:%d\n", e.xkey.keycode, sym);
+-                addKeyToQueue(0, sym);
+-            }
+-        }
+-
+-        XPutImage(s_Display, s_Window, s_Gc, s_Image, 0, 0, 0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+-
+-        //XFlush(s_Display);
+-    }
+-
+-    //printf("frame\n");
+-}
+-
+-void DG_SleepMs(uint32_t ms)
+-{
+-    usleep (ms * 1000);
+-}
+-
+-uint32_t DG_GetTicksMs()
+-{
+-    struct timeval  tp;
+-    struct timezone tzp;
+-
+-    gettimeofday(&tp, &tzp);
+-
+-    return (tp.tv_sec * 1000) + (tp.tv_usec / 1000); /* return milliseconds */
+-}
+-
+-int DG_GetKey(int* pressed, unsigned char* doomKey)
+-{
+-	if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
+-	{
+-		//key queue is empty
+-
+-		return 0;
+-	}
+-	else
+-	{
+-		unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
+-		s_KeyQueueReadIndex++;
+-		s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
+-
+-		*pressed = keyData >> 8;
+-		*doomKey = keyData & 0xFF;
+-
+-		return 1;
+-	}
+-}
+-
+-void DG_SetWindowTitle(const char * title)
+-{
+-    if (s_Window)
+-    {
+-      XChangeProperty(s_Display, s_Window, XA_WM_NAME, XA_STRING, 8, PropModeReplace, (const unsigned char *)title, strlen(title));
+-    }
+-}
+-
+-int main(int argc, char **argv)
+-{
+-    doomgeneric_Create(argc, argv);
+-
+-    while(1)
+-    {
+-      doomgeneric_Tick(); 
+-    }
+-
+-    return 0;
+-}
+diff --git a/doomgeneric/doomtype.h b/doomgeneric/doomtype.h
+index dc14bc5..0d2a33e 100644
+--- a/doomgeneric/doomtype.h
++++ b/doomgeneric/doomtype.h
+@@ -60,7 +60,7 @@
+ // pre-standardisation version).  inttypes.h is also in the C99 
+ // standard and defined to include stdint.h, so include this. 
+ 
+-#include <inttypes.h>
++#include <stdint.h>
+ 
+ #if defined(__cplusplus) || defined(__bool_true_false_are_defined)
+ 
+diff --git a/doomgeneric/i_system.c b/doomgeneric/i_system.c
+index 53ab2c9..72bbe73 100644
+--- a/doomgeneric/i_system.c
++++ b/doomgeneric/i_system.c
+@@ -271,7 +271,7 @@ void I_Quit (void)
+ 
+ static int ZenityAvailable(void)
+ {
+-    return system(ZENITY_BINARY " --help >/dev/null 2>&1") == 0;
++    return 0;
+ }
+ 
+ // Escape special characters in the given string so that they can be
+@@ -339,7 +339,7 @@ static int ZenityErrorBox(char *message)
+     M_snprintf(errorboxpath, errorboxpath_size, "%s --error --text=%s",
+                ZENITY_BINARY, escaped_message);
+ 
+-    result = system(errorboxpath);
++    result = 0;
+ 
+     free(errorboxpath);
+     free(escaped_message);
+diff --git a/doomgeneric/i_video.c b/doomgeneric/i_video.c
+index 84bebde..2a6664f 100644
+--- a/doomgeneric/i_video.c
++++ b/doomgeneric/i_video.c
+@@ -427,8 +427,6 @@ int I_GetPaletteIndex (int r, int g, int b)
+     int i;
+     col_t color;
+ 
+-    printf("I_GetPaletteIndex\n");
+-
+     best = 0;
+     best_diff = INT_MAX;
+ 
+diff --git a/doomgeneric/m_argv.c b/doomgeneric/m_argv.c
+index 1582450..9ee30ff 100644
+--- a/doomgeneric/m_argv.c
++++ b/doomgeneric/m_argv.c
+@@ -46,7 +46,7 @@ int M_CheckParmWithArgs(char *check, int num_args)
+ 
+     for (i = 1; i < myargc - num_args; i++)
+     {
+-	if (!strcasecmp(check, myargv[i]))
++	if (!strcmp(check, myargv[i]))
+ 	    return i;
+     }
+ 
