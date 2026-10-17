@@ -133,6 +133,8 @@ public:
         return RefPtr<RegionAllocator>(new RegionAllocator(range, head, page_directory));
     }
 
+    static RefPtr<RegionAllocator> create_user_allocator(arch::PageDirectory*);
+
     RefPtr<RegionAllocator> clone(arch::PageDirectory*);
 
     Range const& range() const { return m_range; }

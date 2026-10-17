@@ -23,10 +23,7 @@ ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
     auto elf = ELF(file);
 
     m_page_directory = arch::PageDirectory::create_user_page_directory();
-    m_allocator = memory::RegionAllocator::create(
-        { VirtualAddress { PAGE_SIZE }, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) },
-        m_page_directory
-    );
+    m_allocator = memory::RegionAllocator::create_user_allocator(m_page_directory);
 
     m_arguments = move(arguments);
     m_name = path;
