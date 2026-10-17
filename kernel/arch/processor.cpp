@@ -92,6 +92,13 @@ void Processor::initialize_context_switching(Thread* initial_thread) {
     _switch_context_no_state(&initial_thread->registers());
 }
 
+void Processor::switch_to(Thread* thread) {
+    auto& kernel_stack = thread->kernel_stack();
+    m_tss.set_kernel_stack(kernel_stack.top());
+
+    _switch_context_no_state(&thread->registers());
+}
+
 void Processor::switch_context(Thread* old, Thread* next) {
     auto& kernel_stack = next->kernel_stack();
     m_tss.set_kernel_stack(kernel_stack.top());

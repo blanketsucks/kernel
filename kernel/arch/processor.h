@@ -28,6 +28,7 @@ public:
     arch::TSS& tss() { return m_tss; }
 
     [[noreturn]] void initialize_context_switching(Thread* initial_thread);
+    [[noreturn]] void switch_to(Thread*);
     void switch_context(Thread* old, Thread* next);
 
     u32 id() const { return m_id; }

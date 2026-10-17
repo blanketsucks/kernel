@@ -55,6 +55,9 @@ endstruc
 
 _switch_context_no_state:
     mov rsp, [rdi + ThreadRegisters.rsp]
+    mov rax, [rdi + ThreadRegisters.cr3]
+
+    mov cr3, rax
 
     popr
     ret
