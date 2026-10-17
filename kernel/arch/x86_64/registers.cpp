@@ -48,7 +48,7 @@ void ThreadRegisters::set_initial_stack_state(Thread* thread) {
     stack.push<FlatPtr>(0);
     stack.push(rbx);
 
-    rsp = stack.value();
+    rsp = stack.ptr();
     rsp0 = stack.top();
 }
 

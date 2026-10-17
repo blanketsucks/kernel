@@ -8,7 +8,7 @@
 
 namespace kernel {
 
-Thread* Thread::create(u32 id, String name, Process* process, Entry entry, void* entry_data, ProcessArguments& arguments) {
+Thread* Thread::create(pid_t id, String name, Process* process, Entry entry, void* entry_data, ProcessArguments& arguments) {
     return new Thread(move(name), process, id, entry, entry_data, arguments);
 }
 
@@ -22,8 +22,8 @@ Thread* Thread::current() {
 
 Thread::Thread(
     String name, Process* process, pid_t id, Entry entry, void* entry_data, ProcessArguments& arguments
-) : m_id(id), m_state(Running), m_entry(entry), m_entry_data(entry_data), m_name(move(name)), m_process(process), m_arguments(arguments) {
-    this->create_stack();
+) : m_id(id), m_state(Running), m_entry_data(entry_data), m_name(move(name)), m_process(process), m_arguments(arguments) {
+    this->init_exec_state(reinterpret_cast<FlatPtr>(entry));
 
     m_fpu_state = new arch::FPUState();
     memset(m_fpu_state, 0, sizeof(arch::FPUState));
@@ -39,7 +39,7 @@ Thread::Thread(
     m_registers.cr3 = page_directory()->cr3();
 
     m_registers.set_syscall_return(0);
-    this->set_initial_stack_state(m_registers.sp(), m_registers);
+    this->set_initial_stack_state(m_registers.sp());
 
     m_fpu_state = new arch::FPUState();
     memset(m_fpu_state, 0, sizeof(arch::FPUState));
@@ -47,6 +47,10 @@ Thread::Thread(
 
 pid_t Thread::pid() const {
     return m_process->id();
+}
+
+bool Thread::is_main_thread() const {
+    return m_process->id() == m_id;
 }
 
 bool Thread::is_kernel() const {
@@ -57,9 +61,11 @@ arch::PageDirectory* Thread::page_directory() const {
     return m_process->page_directory();
 }
 
-void Thread::create_stack() {
-    void* kernel_stack = MUST(MM->allocate_kernel_region(KERNEL_STACK_SIZE));
-    m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
+void Thread::init_exec_state(FlatPtr ip, bool new_kernel_stack) {
+    if (new_kernel_stack) {
+        void* kernel_stack = MUST(MM->allocate_kernel_region(KERNEL_STACK_SIZE));
+        m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
+    }
 
     bool is_kernel_process = this->is_kernel();
     if (!is_kernel_process) {
@@ -93,13 +99,13 @@ void Thread::create_stack() {
         m_registers.set_bp(user_stack_top);
     }
 
-    m_registers.set_ip(reinterpret_cast<FlatPtr>(m_entry));
-    this->set_initial_stack_state(m_user_stack.value(), m_registers);
+    m_registers.set_ip(ip);
+    this->set_initial_stack_state(m_user_stack.ptr());
 }
 
-void Thread::set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters& registers) {
+void Thread::set_initial_stack_state(FlatPtr sp) {
     m_registers.set_user_sp(sp);
-    registers.set_initial_stack_state(this);
+    m_registers.set_initial_stack_state(this);
 }
 
 void Thread::prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>& dst) {
@@ -138,6 +144,11 @@ void Thread::prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>&
     MM->unmap_kernel_region(address);
 }
 
+void Thread::reset_arguments_region() {
+    m_arguments_region = nullptr; // TODO: Actually de-allocate the memory
+    m_arguments_offset = 0;
+}
+
 void Thread::setup_thread_arguments() {
     if (is_kernel()) {
         return;
@@ -163,7 +174,7 @@ void Thread::setup_thread_arguments() {
 
     size_t size = entries * sizeof(FlatPtr);
 
-    VirtualAddress user_stack { m_user_stack.value() };
+    VirtualAddress user_stack { m_user_stack.ptr() };
     VirtualAddress top = user_stack - size;
 
     u8* address = reinterpret_cast<u8*>(MUST(MM->map_from_page_directory(

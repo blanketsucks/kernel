@@ -1,33 +1,48 @@
 #include <kernel/process/process.h>
 #include <kernel/process/scheduler.h>
+#include <kernel/memory/manager.h>
+#include <kernel/arch/interrupts.h>
 
 namespace kernel {
 
 ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
-    {
-        auto vfs = fs::vfs();
+    auto* current_thread = Thread::current();
+    ASSERT(current_thread->process() == this, "Current thread should belong to this process");
 
-        auto file = TRY(vfs->open(path, O_RDONLY, 0, m_cwd));
-        auto elf = ELF(file);
-
-        auto* process = new Process(m_id, path, false, nullptr, nullptr, m_cwd, move(arguments), m_tty);
-        MUST(process->create_user_entry(move(elf)));
-
-        process->m_file_descriptors.resize(m_file_descriptors.size());
-        for (size_t i = 0; i < m_file_descriptors.size(); i++) {
-            process->m_file_descriptors[i] = m_file_descriptors[i];
+   for (auto& [_, thread] : m_threads) {
+        if (thread == current_thread) {
+            continue;
         }
 
-        process->m_parent_id = m_parent_id;
-
-        m_parent_id = 0;
-        m_id = -1; // FIXME: Actually replace the current process rather than making a new one
-
-        Scheduler::add_process(process);
+        thread->kill();
     }
+
+    auto vfs = fs::vfs();
+
+    auto file = TRY(vfs->open(path, O_RDONLY, 0, m_cwd));
+    auto elf = ELF(file);
+
+    m_page_directory = arch::PageDirectory::create_user_page_directory();
+    m_allocator = memory::RegionAllocator::create(
+        { VirtualAddress { PAGE_SIZE }, static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE) },
+        m_page_directory
+    );
+
+    m_arguments = move(arguments);
+    m_name = path;
+
+    auto* entry = TRY(this->create_user_entry(move(elf)));
     
-    this->kill();
-    return -1;
+    current_thread->reset_arguments_region();
+    current_thread->init_exec_state(reinterpret_cast<FlatPtr>(entry), false);
+
+    auto& processor = Processor::instance();
+    processor.switch_to(current_thread);
+
+    ASSERT(false, "Unreachable");
+    __builtin_unreachable();
+
+    return 0;
 }
 
 ErrorOr<FlatPtr> Process::sys$execve(const char* pathname, char* const argv[], char* const envp[]) {

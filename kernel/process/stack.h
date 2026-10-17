@@ -7,15 +7,17 @@
 
 namespace kernel {
 
+class Process;
+
 class Stack {
 public:
     Stack() = default;
     Stack(
         void* stack, size_t size
-    ) : m_stack(reinterpret_cast<uintptr_t>(stack) + size), m_top(m_stack), m_size(size) {}
+    ) : m_stack(reinterpret_cast<FlatPtr>(stack) + size), m_top(m_stack), m_size(size) {}
 
-    uintptr_t value() const { return m_stack; }
-    uintptr_t top() const { return m_top; }
+    FlatPtr ptr() const { return m_stack; }
+    FlatPtr top() const { return m_top; }
 
     size_t size() const { return m_size; }
     size_t offset() const { return m_offset; }
@@ -35,16 +37,16 @@ public:
 
     template<typename T>
     void walk(T&& callback) {
-        uintptr_t stack = m_stack;
+        FlatPtr stack = m_stack;
         while (stack < m_top) {
             callback(reinterpret_cast<void*>(stack));
-            stack += sizeof(uintptr_t);
+            stack += sizeof(FlatPtr);
         }
     }
 
 private:
-    uintptr_t m_stack = 0;
-    uintptr_t m_top = 0;
+    FlatPtr m_stack = 0;
+    FlatPtr m_top = 0;
 
     size_t m_size = 0;
     size_t m_offset = 0;

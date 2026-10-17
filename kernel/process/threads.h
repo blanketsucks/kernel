@@ -33,7 +33,7 @@ public:
 
     using Entry = void (*)(void*);
 
-    static Thread* create(u32 id, String name, Process*, Entry, void* entry_data, ProcessArguments&);
+    static Thread* create(pid_t id, String name, Process*, Entry, void* entry_data, ProcessArguments&);
     static Thread* create(String name, Process*, Entry, void* entry_data, ProcessArguments&);
 
     static Thread* current();
@@ -41,13 +41,13 @@ public:
     pid_t id() const { return m_id; }
     pid_t pid() const;
 
+    bool is_main_thread() const;
+
     State state() const { return m_state; }
     String const& name() const { return m_name; }
 
     bool is_running() const { return m_state == Running; }
     bool is_blocked() const { return m_state == Blocked; }
-
-    Entry entry() const { return m_entry; }
 
     bool is_kernel() const;
     arch::PageDirectory* page_directory() const;
@@ -86,11 +86,13 @@ private:
     Thread(String name, Process*, pid_t id, Entry, void* entry_data, ProcessArguments&);
     Thread(Process*, arch::Registers*);
 
-    void create_stack();
-    void set_initial_stack_state(FlatPtr sp, arch::ThreadRegisters&);
+    void init_exec_state(FlatPtr ip, bool new_kernel_stack = true);
+    void set_initial_stack_state(FlatPtr sp);
     
     void setup_thread_arguments();
     void prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>& dst);
+
+    void reset_arguments_region();
 
     void enqueue(Thread*);
     Thread* take_next();
@@ -98,7 +100,6 @@ private:
     pid_t m_id;
     State m_state;
 
-    Entry m_entry;
     void* m_entry_data = nullptr;
 
     String m_name;

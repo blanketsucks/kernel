@@ -151,7 +151,8 @@ private:
     friend class Scheduler;
     friend class Thread;
 
-    ErrorOr<void> create_user_entry(ELF);
+    ErrorOr<void(*)(void*)> create_user_entry(ELF);
+    ErrorOr<void> create_user_thread(ELF);
 
     Process(
         pid_t id, 

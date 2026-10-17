@@ -29,14 +29,14 @@ ErrorOr<Process*> Process::create_user_process(String path, RefPtr<fs::ResolvedI
     arguments.argv = { path };
 
     auto* process = new Process(Scheduler::generate_pid(), move(path), false, nullptr, nullptr, cwd, move(arguments), tty);
-    TRY(process->create_user_entry(elf));
+    TRY(process->create_user_thread(elf));
 
     return process;
 }
 
 ErrorOr<Process*> Process::create_user_process(String name, ELF elf, RefPtr<fs::ResolvedInode> cwd, ProcessArguments arguments, TTY* tty) {
     auto* process = new Process(Scheduler::generate_pid(), move(name), false, nullptr, nullptr, cwd, move(arguments), tty);
-    TRY(process->create_user_entry(elf));
+    TRY(process->create_user_thread(elf));
 
     return process;
 }
@@ -95,7 +95,7 @@ Process::Process(
     }
 }
 
-ErrorOr<void> Process::create_user_entry(ELF elf) {
+ErrorOr<void(*)(void*)> Process::create_user_entry(ELF elf) {
     TRY(elf.load());
 
     if (elf.has_interpreter()) {
@@ -129,7 +129,11 @@ ErrorOr<void> Process::create_user_entry(ELF elf) {
         TRY(file.read(temp.ptr() + (ph.p_vaddr - address), ph.p_filesz));
     }
 
-    auto entry = reinterpret_cast<void(*)(void*)>(elf.entry());
+    return reinterpret_cast<void(*)(void*)>(elf.entry());
+}
+
+ErrorOr<void> Process::create_user_thread(ELF elf) {
+    auto entry = TRY(this->create_user_entry(move(elf)));
     
     auto* thread = Thread::create(m_id, "main", this, entry, nullptr, m_arguments);
     this->add_thread(thread);
