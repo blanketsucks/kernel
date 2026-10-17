@@ -259,4 +259,19 @@ Region* RegionAllocator::create_file_backed_region(fs::File* file, size_t size, 
     return region;
 }
 
+void RegionAllocator::print() const {
+    for_each_region([](memory::Region* region) {
+        if (!region->used()) {
+            return;
+        }
+
+        auto& name = region->name();
+        if (name.empty()) {
+            dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
+        } else {
+            dbgln("  {:#p} - {:#p} ({}{}{}): {}", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P', name);
+        }
+    });
+}
+
 }

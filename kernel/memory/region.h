@@ -157,11 +157,13 @@ public:
     Region* find_region(VirtualAddress address, bool contains = false) const;
 
     template<typename T>
-    void for_each_region(T&& callback) {
+    void for_each_region(T&& callback) const {
         for (auto* region = m_head; region; region = region->next) {
             callback(region);
         }
     }
+
+    void print() const;
 
     Region* insert_before(Region* region, Region* new_region);
     Region* insert_after(Region* region, Region* new_region);

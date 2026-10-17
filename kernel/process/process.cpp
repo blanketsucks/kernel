@@ -295,18 +295,7 @@ unrecoverable_fault:
         }
 
         dbgln("Process memory regions:");
-        m_allocator->for_each_region([](memory::Region* region) {
-            if (!region->used()) {
-                return;
-            }
-
-            auto& name = region->name();
-            if (name.empty()) {
-                dbgln("  {:#p} - {:#p} ({}{}{})", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P');
-            } else {
-                dbgln("  {:#p} - {:#p} ({}{}{}): {}", region->base(), region->end(), region->is_writable() ? 'W' : 'R', region->is_executable() ? 'X' : '-', region->is_shared() ? 'S' : 'P', name);
-            }
-        });
+        m_allocator->print();
 
         dbgln();
         this->kill();
