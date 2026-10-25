@@ -1,17 +1,19 @@
 #include <shell/terminal.h>
 #include <shell/commands.h>
 
+#include <sys/dev/mouse.h>
+#include <sys/dev/keyboard.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <string.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
-#include <sys/wait.h>
 #include <time.h>
 
 #include <std/format.h>
@@ -24,12 +26,7 @@
 #include <libgfx/render_context.h>
 #include <libgfx/framebuffer.h>
 #include <libgfx/fonts/psf.h>
-
-struct KeyEvent {
-    char ascii;
-    u8 scancode;
-    u8 modifiers;
-};
+#include <libgfx/point.h>
 
 struct BuiltinCommand {
     int(*function)(shell::Terminal&, int, char**);
@@ -77,6 +74,8 @@ static void spawn(shell::Terminal& terminal, shell::Command const& command, char
             dbgln("Failed to exec {}: {}", command.pathname(), strerror(errno));
             exit(EXIT_FAILURE);
         }
+
+        __builtin_unreachable();
     }
 
     char buffer[4096];
@@ -181,7 +180,7 @@ int main() {
     gfx::RenderContext context(framebuffer);
     
     int kb = open("/dev/input/keyboard0", O_RDONLY);
-    KeyEvent event;
+    sys_keyboard_event kevent;
 
     auto font = gfx::PSFFont::create("/res/fonts/zap-light16.psf");
 
@@ -207,22 +206,22 @@ int main() {
         run_command(terminal, text);
     };
 
-    while (true) {
-        if (read(kb, &event, sizeof(KeyEvent)) <= 0) {
+    while (true) {        
+        if (read(kb, &kevent, sizeof(sys_keyboard_event)) <= 0) {
             continue;
         }
 
-        if (event.scancode & 0x80) {
+        if (kevent.scancode & 0x80) {
             continue;
         }
 
-        if (!event.ascii) {
-            if (event.scancode == 0x48) { // Up arrow
+        if (!kevent.ascii) {
+            if (kevent.scancode == 0x48) { // Up arrow
                 if (iterator != history.begin()) {
                     iterator--;
                     terminal.replace_current_line(*iterator);
                 }
-            } else if (event.scancode == 0x50) { // Down arrow
+            } else if (kevent.scancode == 0x50) { // Down arrow
                 if (iterator != history.end() - 1) {
                     iterator++;
                     terminal.replace_current_line(*iterator);
@@ -232,7 +231,7 @@ int main() {
             continue;
         }
 
-        terminal.on_char(event.ascii);
+        terminal.on_char(kevent.ascii);
 
         struct gpu_connector_flush flush;
         flush.id = connector.id;

@@ -36,7 +36,7 @@ private:
 
     void handle_irq() override;
 
-    Vector<KeyEvent> m_key_buffer;
+    Vector<sys_keyboard_event> m_key_buffer;
     u8 m_key_buffer_offset = 0;
 };
 

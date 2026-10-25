@@ -52,10 +52,10 @@ public:
     void set_sample_rate(u8 rate);
     u8 get_device_id();
 
-    MouseState state();
-
     bool can_read(fs::FileDescriptor const&) const override;
     bool can_write(fs::FileDescriptor const&) const override { return false; }
+
+    bool is_full() const { return m_state_buffer.size() == MAX_BUFFER_SIZE; }
 
 private:
     friend class Device;
@@ -71,7 +71,7 @@ private:
 
     void initialize();
 
-    CircularQueue<MouseState, MAX_BUFFER_SIZE> m_state_buffer;
+    Vector<sys_mouse_event> m_state_buffer;
     u8 m_cycle;
     u8 m_bytes[4];
 

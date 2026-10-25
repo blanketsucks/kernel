@@ -1,3 +1,4 @@
+#include "sys/dev/keyboard.h"
 #include <kernel/devices/input/ps2/keyboard.h>
 #include <kernel/fs/devfs/filesystem.h>
 #include <kernel/arch/io.h>
@@ -69,7 +70,7 @@ void PS2KeyboardDevice::handle_irq() {
         ascii = SCANCODE_MAP[scancode & 0x7F];
     }
 
-    KeyEvent event = {
+    sys_keyboard_event event = {
         .ascii = ascii,
         .scancode = scancode,
         .modifiers = modifiers
@@ -90,9 +91,9 @@ ErrorOr<size_t> PS2KeyboardDevice::read(void* buffer, size_t size, size_t) {
         }
 
         auto key = m_key_buffer.take_first();
-        memcpy(reinterpret_cast<u8*>(buffer) + i, &key, sizeof(KeyEvent));
+        memcpy(reinterpret_cast<u8*>(buffer) + i, &key, sizeof(sys_keyboard_event));
 
-        i += sizeof(KeyEvent);   
+        i += sizeof(sys_keyboard_event);   
     }
 
     return i;

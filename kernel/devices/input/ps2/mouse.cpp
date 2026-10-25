@@ -20,25 +20,29 @@ void PS2MouseDevice::update_mouse_state() {
         return; // We discard the whole packet if we detect an overflow
     }
 
-    MouseState state = {};
+    u8 buttons = 0;
+    u8 x = 0, y = 0, z = 0;
+
     if (packet->lb) {
-        state.buttons |= MouseButton::Left;
+        buttons |= MOUSE_BUTTON_LEFT;
     } if (packet->rb) {
-        state.buttons |= MouseButton::Right;
+        buttons |= MOUSE_BUTTON_RIGHT;
     } if (packet->mb) {
-        state.buttons |= MouseButton::Middle;
+        buttons |= MOUSE_BUTTON_MIDDLE;
     }
 
-    state.x = packet->x - (packet->xs ? 0x100 : 0);
-    state.y = packet->y - (packet->ys ? 0x100 : 0);
+    x = packet->x - (packet->xs ? 0x100 : 0);
+    y = packet->y - (packet->ys ? 0x100 : 0);
 
     if (m_has_scroll_wheel && packet->z) {
-        state.z = (packet->z == 0xFF) ? -1 : packet->z; 
-    } else {
-        state.z = 0;
+        z = (packet->z == 0xFF) ? -1 : packet->z; 
     }
 
-    m_state_buffer.push(state);
+    if (this->is_full()) {
+        m_state_buffer.remove(0);
+    }
+    
+    m_state_buffer.append({ x, y, z, buttons });
 }
 
 void PS2MouseDevice::handle_irq() {
@@ -154,11 +158,15 @@ void PS2MouseDevice::set_sample_rate(u8 rate) {
 
 ErrorOr<size_t> PS2MouseDevice::read(void* buffer, size_t size, size_t) {
     size_t i = 0;
-    while (i < size && !m_state_buffer.empty()) {
-        auto state = m_state_buffer.pop();
-        memcpy(reinterpret_cast<u8*>(buffer) + i, &state, sizeof(MouseState));
+    while (i < size) {
+        if (m_state_buffer.empty()) {
+            break;
+        }
 
-        i += sizeof(MouseState);
+        auto state = m_state_buffer.take_first();
+        memcpy(reinterpret_cast<u8*>(buffer) + i, &state, sizeof(sys_mouse_event));
+
+        i += sizeof(sys_mouse_event);
     }
 
     return i;
