@@ -5,6 +5,7 @@ import argparse
 import pathlib
 import subprocess
 import sys
+import types
 
 CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
@@ -40,7 +41,6 @@ class QemuArgs(NamedTuple):
     debug: bool
     serial: bool
     monitor: bool
-    x86_64: bool
     uefi: bool
     usb: bool
     usb_controller: USBController
@@ -49,6 +49,8 @@ class QemuArgs(NamedTuple):
     kvm: bool
 
     ovmf: str
+
+    cpus: int
 
     cmdline: List[str] = []
 
@@ -100,10 +102,7 @@ class QemuArgs(NamedTuple):
 
         for device in self.devices:
             args.extend(['-device', device])
-
-        if not self.x86_64:
-            args.extend(['-kernel', self.kernel])
-        elif self.use_loader and not self.uefi:
+        if self.use_loader and not self.uefi:
             args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
             self.cmdline.append(f'root=/dev/hda2')
 
@@ -117,13 +116,13 @@ class QemuArgs(NamedTuple):
         if not self.uefi:
             args.extend(['-append', ' '.join(self.cmdline)])
 
+        args.extend(['-smp', str(self.cpus)])
         return args
 
 def main():
     parser = argparse.ArgumentParser(description='Run kernel in QEMU.')
 
     parser.add_argument('--kernel', type=str, default=DEFAULT_KERNEL_LOCATION, help='Path to kernel image.')
-    parser.add_argument('--x86', action='store_true', help='Run kernel in x86 mode.')
 
     parser.add_argument('--qemu', type=str, default=None, help='Path to QEMU executable.')
     parser.add_argument('--disk-image', type=str, default=DEFAULT_DISK_IMAGE, help='Path to disk image.')
@@ -134,9 +133,10 @@ def main():
     parser.add_argument('--usb', action='store_true', help='Enable USB support.')
     parser.add_argument('--usb-controller', type=USBController, default='uhci', help='USB controller type (default: uhci).')
     parser.add_argument('--enable-virtio-gpu', action='store_true', help='Enable VirtIO GPU support.')
-    parser.add_argument('--init', type=str, default='/bin/shell', help='Initial process to run.')
+    parser.add_argument('--init', type=str, default='/bin/shell', help='Path to the initial process to run.')
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
     parser.add_argument('--kvm', action='store_true', help='Enable KVM.')
+    parser.add_argument('--cpus', type=int, default=1, help='Number of CPUs.')
 
     action = parser.add_argument('--ovmf', type=str, default=None, help='Path to OVMF firmware')
 
@@ -148,9 +148,6 @@ def main():
         action.default = 'C:/Program Files/qemu/OVMF.fd'
     
     args = parser.parse_args()
-    if not args.disable_loader and args.x86:
-        print('Loader is only supported in x86_64 mode.')
-        return
 
     qemu_args = QemuArgs(
         disk_image=DiskImage(args.disk_image),
@@ -158,7 +155,6 @@ def main():
         memory=args.memory,
         debug=args.debug,
         monitor=args.with_monitor,
-        x86_64=not args.x86,
         uefi=args.uefi,
         ovmf=args.ovmf,
         kvm=args.kvm,
@@ -167,12 +163,13 @@ def main():
         usb_controller=args.usb_controller,
         use_loader=not args.disable_loader,
         virtio_gpu=args.enable_virtio_gpu,
+        cpus=args.cpus
     )
 
     qemu_args.cmdline.append(f'init={args.init}')
 
     if not args.qemu:
-        args.qemu = 'qemu-system-i386' if args.x86 else 'qemu-system-x86_64'
+        args.qemu = 'qemu-system-x86_64'
 
     command = [args.qemu, *qemu_args.build()]
     print(' '.join(command), end='\n\n')
@@ -184,6 +181,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
-
-    

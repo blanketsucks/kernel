@@ -1,6 +1,6 @@
 BITS 64
 
-%include "kernel/arch/x86_64/common.inc"
+%include "kernel/arch/common.inc"
 
 global _flush_gdt
 

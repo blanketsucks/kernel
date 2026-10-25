@@ -1,12 +1,22 @@
 #include <kernel/arch/processor.h>
 #include <kernel/arch/registers.h>
 #include <kernel/process/threads.h>
+#include <kernel/process/process.h>
 #include <kernel/arch/cpu.h>
+#include <kernel/arch/idt.h>
+#include <kernel/arch/gdt.h>
 
 namespace kernel {
 
 extern "C" void _switch_context(arch::ThreadRegisters*, arch::ThreadRegisters*);
 extern "C" [[noreturn]] void _switch_context_no_state(arch::ThreadRegisters*);
+
+extern "C" void _syscall_handler(arch::Registers* regs) {
+    auto* process = Process::current();
+    regs->rax = process->handle_syscall(regs);
+}
+    
+extern "C" void _syscall_interrupt_handler();
 
 static bool s_interrupts_initialized = false;
 
@@ -85,6 +95,32 @@ void Processor::preinit() {
     dbgln(" - Features: {}", features_string());
 
     dbgln();
+}
+
+void Processor::init() {
+    auto& processor = instance();
+    processor.preinit();
+    
+    arch::init_gdt();
+    arch::init_idt();
+
+    if (processor.has_feature(arch::CPUFeatures::SSE)) {
+        arch::write_cr0((arch::read_cr0() & 0xfffffffb) | 2); // Clear CR0.EM and set CR0.MP
+        arch::write_cr4(arch::read_cr4() | 0x600);            // Set CR4.OSFXSR and CR4.OSXMMEXCPT
+    }
+
+    u64 efer = arch::rmsr(arch::MSR_EFER);
+    if (processor.has_nx()) {
+        efer |= (1 << 11);
+    }
+
+    // Enable and setup the `syscall` instruction
+    wmsr(arch::MSR_EFER, efer | 1);
+    wmsr(arch::MSR_STAR, (0x28ul << 32) | (0x33ul << 48));
+    wmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&_syscall_interrupt_handler));
+
+    // TODO: Setup swapgs
+    wmsr(arch::MSR_GS_BASE, reinterpret_cast<u64>(&processor));
 }
 
 void Processor::initialize_context_switching(Thread* initial_thread) {

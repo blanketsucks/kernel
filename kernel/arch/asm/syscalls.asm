@@ -1,6 +1,6 @@
 BITS 64
 
-%include "kernel/arch/x86_64/common.inc"
+%include "kernel/arch/common.inc"
 
 ; TODO: Automatically generate this, maybe move this syscall handler to inline assembly.
 USER_STACK_OFFSET   equ 0x00

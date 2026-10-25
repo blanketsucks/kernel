@@ -1,6 +1,5 @@
 #pragma once
 
-#include "std/enums.h"
 #include <kernel/common.h>
 
 namespace kernel::arch {

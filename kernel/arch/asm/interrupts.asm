@@ -1,4 +1,6 @@
-%include "kernel/arch/x86/common.inc"
+BITS 64
+
+%include "kernel/arch/common.inc"
 
 global _isr_stub_table
 global _irq_stub_table
@@ -7,29 +9,25 @@ global _default_interrupt_handler
 extern _interrupt_exception_handler
 extern _irq_handler
 
+%macro switch_gs 0
+    cmp qword [rsp + 0x08], KERNEL_CODE_SELECTOR
+    je %%.in_kernel
+
+    swapgs
+%%.in_kernel:
+%endmacro
+
 %macro define_common_stub 2
     _%1_common_stub:
-        pusha
-        pushsg
+        pushaq
 
-        mov ax, KERNEL_DATA_SELECTOR
-        mov ds, ax
-        mov es, ax
-        mov fs, ax
-        mov gs, ax
-
-        mov eax, esp
-        push eax
-
+        mov rdi, rsp
         call %2
 
-        add esp, 4
-
-        popsg
-        popa
-
-        add esp, 8
-        iret
+        popaq
+        add rsp, 16
+        
+        iretq
 %endmacro
 
 define_common_stub isr, _interrupt_exception_handler
@@ -41,23 +39,23 @@ _default_interrupt_handler:
 %macro define_isr 1
     global _isr_stub_%1
     _isr_stub_%1:
-        push byte 0
-        push byte %1
+        push qword 0 ; Push error code
+        push qword %1 ; Push ISR number
         jmp _isr_common_stub
 %endmacro
 
 %macro define_isr_err 1
     global _isr_stub_%1
     _isr_stub_%1:
-        push byte %1
+        push qword %1 ; Push ISR number
         jmp _isr_common_stub
 %endmacro
 
 %macro define_irq 1
     global _irq_stub_%1
     _irq_stub_%1:
-        push byte 0
-        push byte %1 + 32
+        push qword 0 ; Push error code
+        push qword %1 + 32 ; Push IRQ number
         jmp _irq_common_stub
 %endmacro
 
@@ -102,14 +100,14 @@ define_isr 31
 
 _isr_stub_table:
 %assign i 0 
-%rep 32 
-    dd _isr_stub_%+i
+%rep 32
+    dq _isr_stub_%+i
     %assign i i+1 
 %endrep
 
 _irq_stub_table:
 %assign i 0
 %rep 16
-    dd _irq_stub_%+i
+    dq _irq_stub_%+i
     %assign i i+1
 %endrep

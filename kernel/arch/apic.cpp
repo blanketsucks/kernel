@@ -1,8 +1,10 @@
+#include <kernel/acpi/tables.h>
 #include <kernel/arch/apic.h>
 #include <kernel/acpi/acpi.h>
 #include <kernel/arch/pic.h>
 #include <kernel/memory/manager.h>
 #include <kernel/serial.h>
+#include <kernel/arch/cpu.h>
 
 namespace kernel::apic {
 
@@ -67,20 +69,22 @@ void init() {
     }
 
     size_t length = madt->header.length - sizeof(acpi::SDTHeader);
-    u8* entries = reinterpret_cast<u8*>(madt) + sizeof(acpi::MADT);
-
-    dbgln("length: {}", length);
+    u8* entries = reinterpret_cast<u8*>(madt->entries);
 
     size_t offset = 0;
     while (offset < length) {
         auto* header = reinterpret_cast<acpi::MADTHeader*>(entries + offset);
 
         switch (header->type) {
+            case acpi::MADTEntryType::ProcessorLocalAPIC: {
+                auto* p_ioapic = reinterpret_cast<acpi::ProcessorLocalAPIC*>(header);
+                dbgln("Processor Local APIC: APIC ID={}, ACPI Processor ID={}, Flags={}", p_ioapic->apic_id, p_ioapic->acpi_processor_id, p_ioapic->flags);
+            } break;
             case acpi::MADTEntryType::IOAPIC: {
                 auto* ioapic = reinterpret_cast<acpi::IOAPIC*>(header);
 
                 dbgln("IOAPIC found: ID={}, Address={:#x}, Global IRQ Base={}", ioapic->io_apic_id, ioapic->io_apic_address, ioapic->global_system_interrupt_base);
-            }
+            } break;
             case acpi::MADTEntryType::InterruptSourceOverride: {
                 auto* iso = reinterpret_cast<acpi::InterruptSourceOverride*>(header);
 

@@ -1,7 +1,6 @@
 file(GLOB_RECURSE CPP_SOURCES *.cpp)
 
-list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86/.*")
-file(GLOB_RECURSE ASM_SOURCES arch/x86_64/asm/*.asm)
+file(GLOB_RECURSE ASM_SOURCES arch/asm/*.asm)
 
 add_subdirectory(efi)
 
@@ -27,7 +26,7 @@ add_link_options(
     -static
 )
 
-set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/x86_64/linker.ld)
+set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/boot/linker.ld)
 
 add_subdirectory(loader)
 

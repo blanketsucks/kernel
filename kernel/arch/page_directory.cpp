@@ -1,4 +1,4 @@
-#include <kernel/arch/x86_64/page_directory.h>
+#include <kernel/arch/page_directory.h>
 #include <kernel/memory/manager.h>
 #include <kernel/arch/processor.h>
 #include <kernel/arch/cpu.h>

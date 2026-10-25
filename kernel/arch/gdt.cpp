@@ -1,5 +1,5 @@
-#include <kernel/arch/x86_64/gdt.h>
-#include <kernel/arch/x86_64/tss.h>
+#include <kernel/arch/gdt.h>
+#include <kernel/arch/tss.h>
 #include <kernel/arch/processor.h>
 
 #include <kernel/process/scheduler.h>

@@ -2,6 +2,9 @@
 
 #include <kernel/common.h>
 
+#include <std/vector.h>
+#include <std/memory.h>
+
 namespace kernel::apic {
 
 enum class APICRegisters : u32 {

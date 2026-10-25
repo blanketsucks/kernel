@@ -1,4 +1,4 @@
-#include <kernel/arch/x86_64/registers.h>
+#include <kernel/arch/registers.h>
 #include <kernel/process/stack.h>
 #include <kernel/process/threads.h>
 
