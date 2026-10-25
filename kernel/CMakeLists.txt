@@ -1,52 +1,38 @@
 file(GLOB_RECURSE CPP_SOURCES *.cpp)
 
-if (x86_64)
-    list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86/.*")
-    file(GLOB_RECURSE ASM_SOURCES arch/x86_64/asm/*.asm)
+list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86/.*")
+file(GLOB_RECURSE ASM_SOURCES arch/x86_64/asm/*.asm)
 
-    add_subdirectory(efi)
-    
-    add_compile_definitions(__x86_64__)
-    add_compile_options(
-        -fno-stack-protector -fno-stack-check
-        -fno-lto -fno-pic
-        -mno-red-zone
-        -mcmodel=kernel
-        -m64
-        -march=x86-64
-        -mno-80387
-        -mno-mmx
-        -mno-sse
-        -mno-sse2
-    )
+add_subdirectory(efi)
 
-    add_link_options(
-        -zmax-page-size=0x1000
-        -z noexecstack
-        -Wl,-m,elf_x86_64
-        -Wl,--build-id=none
-        -static
-    )
+add_compile_definitions(__x86_64__)
+add_compile_options(
+    -fno-stack-protector -fno-stack-check
+    -fno-lto -fno-pic
+    -mno-red-zone
+    -mcmodel=kernel
+    -m64
+    -march=x86-64
+    -mno-80387
+    -mno-mmx
+    -mno-sse
+    -mno-sse2
+)
 
-    set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/x86_64/linker.ld)
+add_link_options(
+    -zmax-page-size=0x1000
+    -z noexecstack
+    -Wl,-m,elf_x86_64
+    -Wl,--build-id=none
+    -static
+)
 
-    set(TARGET_TRIPLE x86_64-pc-none-elf)
-    set(BITS 64)
+set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/x86_64/linker.ld)
 
-    add_subdirectory(loader)
+add_subdirectory(loader)
 
-    list(FILTER CPP_SOURCES EXCLUDE REGEX ".*loader/.*")
-    list(FILTER CPP_SOURCES EXCLUDE REGEX ".*efi/.*")
-else()
-    list(FILTER CPP_SOURCES EXCLUDE REGEX ".*arch/x86_64/.*")
-    file(GLOB_RECURSE ASM_SOURCES arch/x86/asm/*.asm)
-
-    add_compile_definitions(__x86__)
-    set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/kernel/arch/x86/linker.ld)
-
-    set(TARGET_TRIPLE i686-pc-none-elf)
-    set(BITS 32)
-endif()
+list(FILTER CPP_SOURCES EXCLUDE REGEX ".*loader/.*")
+list(FILTER CPP_SOURCES EXCLUDE REGEX ".*efi/.*")
 
 set_source_files_properties(${ASM_SOURCES} PROPERTIES LANGUAGE ASM_NASM)
 
@@ -68,14 +54,7 @@ target_link_options(
 )
 
 set_target_properties(kernel.bin PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(kernel.bin PRIVATE --target=${TARGET_TRIPLE} -m${BITS} -Wno-interrupt-service-routine)
-    target_link_options(kernel.bin PRIVATE --target=${TARGET_TRIPLE} -m${BITS})
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # target_compile_options(kernel.bin PRIVATE -mgeneral-regs-only)
-    target_link_libraries(kernel.bin PRIVATE gcc)
-endif()
+target_link_libraries(kernel.bin PRIVATE gcc)
 
 # Install kernel headers
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/kernel DESTINATION usr/include FILES_MATCHING PATTERN "*.h")
