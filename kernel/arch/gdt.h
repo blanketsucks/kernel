@@ -69,7 +69,7 @@ enum GDTEntrySize {
     GDT_ENTRY_SIZE_64 = 2
 };
 
-void init_gdt();
+void init_gdt(TSS&);
 
 enum class GDTEntryFlags {
     None = 0,

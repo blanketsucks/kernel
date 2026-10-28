@@ -129,6 +129,14 @@ FlatPtr cpu_flags();
 
 CPUFeatures cpu_features();
 
+static inline FlatPtr read_gs() {
+    return rmsr(MSR_GS_BASE);
+}
+
+static inline void write_gs(FlatPtr value) {
+    wmsr(MSR_GS_BASE, value);
+}
+
 static inline FlatPtr read_cr0() {
     FlatPtr cr0;
     asm volatile("mov %%cr0, %0" : "=r"(cr0));

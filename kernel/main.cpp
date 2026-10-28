@@ -72,13 +72,15 @@ using namespace kernel;
 
 void stage2();
 
+static Processor s_bsp_processor {};
+
 BootInfo const* g_boot_info = nullptr;
 extern "C" void main(BootInfo const& boot_info) {
     g_boot_info = &boot_info;
     kernel::run_global_constructors();
 
     serial::init();
-    Processor::init();
+    s_bsp_processor.initialize(0);
 
     pic::init();
     

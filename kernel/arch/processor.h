@@ -14,10 +14,9 @@ enum class InterruptState {
 
 class Processor {
 public:
-    static void init();
+    void initialize(int cpu);
 
-    // For now there is only one instance but where we have SMP we will have multiple instances
-    static Processor& instance();
+    static Processor& current();
 
     static bool are_interrupts_initialized();
     static void set_interrupts_initialized();
@@ -25,13 +24,15 @@ public:
     static void enable_interrupts();
     static void disable_interrupts();
 
+    [[gnu::naked]] static void syscall_interrupt_handler();
+
     arch::TSS& tss() { return m_tss; }
 
     [[noreturn]] void initialize_context_switching(Thread* initial_thread);
     [[noreturn]] void switch_to(Thread*);
     void switch_context(Thread* old, Thread* next);
 
-    u32 id() const { return m_id; }
+    int cpu() const { return m_cpu; }
 
     arch::CPUFeatures features() const { return m_features; }
     bool has_feature(arch::CPUFeatures feature) const { return std::has_flag(m_features, feature); }
@@ -51,15 +52,16 @@ public:
     InterruptState interrupt_state() const;
 
 private:
-    void preinit();
+    void preinit(int cpu);
+
+    int m_cpu;
 
     void* m_user_stack;
     arch::TSS m_tss;
 
-    u32 m_id = 0;
-
     u8 m_max_physical_address_width;
     u8 m_max_virtual_address_width;
+
     bool m_has_nx = false;
 
     arch::CPUFeatures m_features;

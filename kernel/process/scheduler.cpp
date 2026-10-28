@@ -63,7 +63,7 @@ void Scheduler::init() {
     auto thread = s_kernel_process->get_main_thread();
     s_current_thread = thread;
     
-    auto& processor = Processor::instance();
+    auto& processor = Processor::current();
     processor.initialize_context_switching(thread);
 }
 
@@ -100,7 +100,7 @@ void Scheduler::yield(bool if_idle) {
 
     arch::fxsave(old->fpu_state());
 
-    auto& processor = Processor::instance();
+    auto& processor = Processor::current();
     processor.switch_context(old, next);
 
     arch::fxrstor(next->fpu_state());

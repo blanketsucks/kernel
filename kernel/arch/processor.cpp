@@ -11,19 +11,10 @@ namespace kernel {
 extern "C" void _switch_context(arch::ThreadRegisters*, arch::ThreadRegisters*);
 extern "C" [[noreturn]] void _switch_context_no_state(arch::ThreadRegisters*);
 
-extern "C" void _syscall_handler(arch::Registers* regs) {
-    auto* process = Process::current();
-    regs->rax = process->handle_syscall(regs);
-}
-    
-extern "C" void _syscall_interrupt_handler();
-
 static bool s_interrupts_initialized = false;
 
-static Processor s_instance;
-
-Processor& Processor::instance() {
-    return s_instance;
+Processor& Processor::current() {
+    return *reinterpret_cast<Processor*>(arch::read_gs());
 }
 
 bool Processor::are_interrupts_initialized() {
@@ -50,8 +41,10 @@ void Processor::disable_interrupts() {
     asm volatile("cli");
 }
 
-void Processor::preinit() {
+void Processor::preinit(int cpu) {
+    m_cpu = cpu;
     m_features = arch::cpu_features();
+
     u32 eax, ebx, ecx, edx;
     arch::cpuid(0x80000000, eax, ebx, ecx, edx);
 
@@ -88,7 +81,7 @@ void Processor::preinit() {
         m_max_virtual_address_width = 32;
     }
 
-    dbgln("Processor:");
+    dbgln("Processor #{}:", m_cpu);
     dbgln(" - Brand: {}", m_brand);
     dbgln(" - Max Physical Address Width: {} bits", m_max_physical_address_width);
     dbgln(" - Max Virtual Address Width: {} bits", m_max_virtual_address_width);
@@ -97,30 +90,29 @@ void Processor::preinit() {
     dbgln();
 }
 
-void Processor::init() {
-    auto& processor = instance();
-    processor.preinit();
-    
-    arch::init_gdt();
+void Processor::initialize(int cpu) {
+    this->preinit(cpu);
+
+    arch::init_gdt(m_tss);
     arch::init_idt();
 
-    if (processor.has_feature(arch::CPUFeatures::SSE)) {
+    if (has_feature(arch::CPUFeatures::SSE)) {
         arch::write_cr0((arch::read_cr0() & 0xfffffffb) | 2); // Clear CR0.EM and set CR0.MP
         arch::write_cr4(arch::read_cr4() | 0x600);            // Set CR4.OSFXSR and CR4.OSXMMEXCPT
     }
 
     u64 efer = arch::rmsr(arch::MSR_EFER);
-    if (processor.has_nx()) {
+    if (has_nx()) {
         efer |= (1 << 11);
     }
 
     // Enable and setup the `syscall` instruction
-    wmsr(arch::MSR_EFER, efer | 1);
-    wmsr(arch::MSR_STAR, (0x28ul << 32) | (0x33ul << 48));
-    wmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&_syscall_interrupt_handler));
+    arch::wmsr(arch::MSR_EFER, efer | 1);
+    arch::wmsr(arch::MSR_STAR, (0x28ul << 32) | (0x33ul << 48));
+    arch::wmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&Processor::syscall_interrupt_handler));
 
     // TODO: Setup swapgs
-    wmsr(arch::MSR_GS_BASE, reinterpret_cast<u64>(&processor));
+    arch::write_gs(reinterpret_cast<FlatPtr>(this));
 }
 
 void Processor::initialize_context_switching(Thread* initial_thread) {

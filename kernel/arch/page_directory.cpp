@@ -106,7 +106,7 @@ void PageDirectory::map(VirtualAddress va, PhysicalAddress pa, PageFlags flags) 
     entry->set_user(user);
     entry->set_cache_disable(cache_disable);
 
-    if (Processor::instance().has_nx()) {
+    if (Processor::current().has_nx()) {
         entry->set_no_execute(no_execute);
     }
 

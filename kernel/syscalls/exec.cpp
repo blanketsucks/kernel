@@ -33,7 +33,7 @@ ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
     current_thread->reset_arguments_region();
     current_thread->init_exec_state(reinterpret_cast<FlatPtr>(entry), false);
 
-    auto& processor = Processor::instance();
+    auto& processor = Processor::current();
     processor.switch_to(current_thread);
 
     ASSERT(false, "Unreachable");

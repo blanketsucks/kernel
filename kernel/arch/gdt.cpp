@@ -79,7 +79,7 @@ u16 write_tss(TSS& tss) {
     return index;
 }
 
-void init_gdt() {
+void init_gdt(TSS& tss) {
     memset(s_entries, 0, sizeof(s_entries));
 
     // TODO: Limine forces us to have entries for 16 and 32 bit segments and currently every descriptor index is hardcoded,
@@ -98,7 +98,6 @@ void init_gdt() {
     create_gdt_entry(0, GDT_ENTRY_SIZE_64, GDTEntryFlags::DataSegment | GDTEntryFlags::Readable, 3);
     create_gdt_entry(0, GDT_ENTRY_SIZE_64, GDTEntryFlags::Readable | GDTEntryFlags::Executable, 3);
 
-    auto& tss = Processor::instance().tss();
     u16 index = write_tss(tss);
 
     GDTDescriptor gdtr {
