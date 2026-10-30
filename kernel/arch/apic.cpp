@@ -1,7 +1,6 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/arch/apic.h>
 #include <kernel/acpi/acpi.h>
-#include <kernel/arch/pic.h>
 #include <kernel/memory/manager.h>
 #include <kernel/serial.h>
 #include <kernel/arch/cpu.h>
@@ -49,8 +48,6 @@ u32 read_reg(u32 reg) {
 }
 
 void init() {
-    pic::disable();
-
     PhysicalAddress base = get_apic_base();
     set_apic_base(base);
 

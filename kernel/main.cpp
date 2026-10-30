@@ -49,10 +49,10 @@
 
 #include <kernel/arch/cpu.h>
 #include <kernel/arch/processor.h>
-#include <kernel/arch/pic.h>
 #include <kernel/boot/command_line.h>
 #include <kernel/boot/boot_info.h>
 #include <kernel/arch/apic.h>
+#include <kernel/arch/interrupts/manager.h>
 
 #include <kernel/tty/virtual.h>
 #include <kernel/tty/multiplexer.h>
@@ -81,11 +81,11 @@ extern "C" void main(BootInfo const& boot_info) {
 
     serial::init();
     s_bsp_processor.initialize(0);
-
-    pic::init();
     
     MemoryManager::init();
     ACPIParser::init();
+
+    InterruptManager::initialize();
 
     TimeManager::init();
 

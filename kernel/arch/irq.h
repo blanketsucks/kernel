@@ -1,9 +1,13 @@
 #pragma once
 
 #include <kernel/common.h>
+
+#include <std/memory.h>
 #include <std/vector.h>
 
 namespace kernel {
+
+class InterruptController;
 
 enum class IRQHandlerType : u8 {
     Exclusive = 1,
@@ -22,11 +26,15 @@ public:
     void register_interrupt_handler();
     void unregister_interrupt_handler();
 
+    InterruptController const& controller() const { return *m_controller; }
+
     u8 irq() const { return m_irq; }
     bool is_registered() const { return m_registered; }
 
 protected:
-    IRQHandlerBase(u8 irq) : m_irq(irq) {}
+    IRQHandlerBase(u8 irq);
+
+    RefPtr<InterruptController> m_controller;
 
 private:
     u8 m_irq;

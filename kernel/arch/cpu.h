@@ -62,6 +62,8 @@
     Op(TM, "tm", (1ull << 60))                 \
     Op(PBE, "pbe", (1ull << 62))
 
+#define IRQ_VECTOR_BASE   0x20
+#define IRQ_HANDLER_COUNT (256 - IRQ_VECTOR_BASE) 
 
 namespace kernel::arch {
 

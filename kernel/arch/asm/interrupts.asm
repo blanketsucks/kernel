@@ -93,7 +93,7 @@ define_isr_err 30
 define_isr 31
 
 %assign i 0
-%rep 16
+%rep (256 - 32)
     define_irq i
     %assign i i+1
 %endrep
@@ -107,7 +107,7 @@ _isr_stub_table:
 
 _irq_stub_table:
 %assign i 0
-%rep 16
+%rep (256 - 32)
     dq _irq_stub_%+i
     %assign i i+1
 %endrep

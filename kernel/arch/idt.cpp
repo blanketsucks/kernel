@@ -18,6 +18,8 @@ void set_interrupt_handler(u32 interrupt, uintptr_t handler, u8 flags) {
 static IDTEntry s_idt_entries[256];
 
 extern "C" void* _isr_stub_table[];
+extern "C" void* _irq_stub_table[];
+
 extern "C" void _default_interrupt_handler();
 
 extern "C" void _interrupt_exception_handler(InterruptRegisters* regs) {
@@ -70,6 +72,10 @@ void init_idt() {
 
     for (size_t i = 0; i < 32; i++) {
         set_idt_entry(i, reinterpret_cast<u64>(_isr_stub_table[i]), arch::INTERRUPT_GATE);
+    }
+
+    for (size_t i = IRQ_VECTOR_BASE; i < 256; i++) {
+        set_idt_entry(i, reinterpret_cast<u64>(_irq_stub_table[i - IRQ_VECTOR_BASE]), arch::INTERRUPT_GATE);
     }
 
     asm volatile("lidt %0" :: "m"(idtr));

@@ -1,20 +1,19 @@
 #include <kernel/arch/irq.h>
 #include <kernel/arch/pic.h>
 #include <kernel/process/scheduler.h>
+#include <kernel/arch/interrupts/manager.h>
 
 #include <std/format.h>
 
 namespace kernel {
 
-static IRQHandlerBase* s_irq_handlers[16] = {};
+static IRQHandlerBase* s_irq_handlers[IRQ_HANDLER_COUNT] = {};
 
 extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
-    u8 irq = regs->intno - 32;
+    u8 irq = regs->intno - IRQ_VECTOR_BASE;
     IRQHandlerBase* handler = s_irq_handlers[irq];
 
-    if (!handler) {
-        return pic::eoi(irq);
-    }
+    ASSERT(handler, "No IRQ handler found for #{}", irq);
 
     handler->handle_irq();
     handler->eoi();
@@ -26,7 +25,7 @@ extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
 
 static void register_irq_handler(IRQHandlerBase* handler) {
     u8 irq = handler->irq();
-    if (irq >= 16) {
+    if (irq >= IRQ_HANDLER_COUNT) {
         return;
     }
 
@@ -54,7 +53,7 @@ static void register_irq_handler(IRQHandlerBase* handler) {
 
 static void unregister_irq_handler(IRQHandlerBase* handler) {
     u8 irq = handler->irq();
-    if (irq >= 16) {
+    if (irq >= IRQ_HANDLER_COUNT) {
         return;
     }
 
@@ -77,6 +76,8 @@ static void unregister_irq_handler(IRQHandlerBase* handler) {
         slot = nullptr;
     }
 }
+
+IRQHandlerBase::IRQHandlerBase(u8 irq) : m_controller(InterruptManager::controller_for(irq)), m_irq(irq) {} 
 
 void IRQHandlerBase::register_interrupt_handler() {
     if (m_registered) {
@@ -101,7 +102,7 @@ void IRQHandler::eoi() {
         return;
     }
 
-    pic::eoi(irq());
+    m_controller->eoi(irq());
 }
 
 void IRQHandler::enable_irq() {
@@ -111,14 +112,14 @@ void IRQHandler::enable_irq() {
 
     m_enabled = true;
     if (!m_is_shared) {
-        pic::enable(irq());
+        m_controller->enable(irq());
     }
 }
 
 void IRQHandler::disable_irq() {
     m_enabled = false;
     if (!m_is_shared) {
-        pic::disable(irq());
+        m_controller->disable(irq());
     }
 }
 
@@ -129,7 +130,7 @@ void SharedIRQHandler::handle_irq() {
 }
 
 void SharedIRQHandler::eoi() {
-    pic::eoi(irq());
+    m_controller->eoi(irq());
 }
 
 void SharedIRQHandler::enable_irq() {
@@ -138,7 +139,7 @@ void SharedIRQHandler::enable_irq() {
     }
 
     m_enabled = true;
-    pic::enable(irq());
+    m_controller->enable(irq());
 }
 
 void SharedIRQHandler::disable_irq() {
@@ -147,7 +148,7 @@ void SharedIRQHandler::disable_irq() {
     }
 
     m_enabled = false;
-    pic::disable(irq());
+    m_controller->disable(irq());
 }
 
 void SharedIRQHandler::add_irq_handler(IRQHandlerBase* handler) {

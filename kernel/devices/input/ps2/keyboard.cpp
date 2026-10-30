@@ -79,7 +79,7 @@ void PS2KeyboardDevice::handle_irq() {
     if (this->is_full()) {
         m_key_buffer.remove(0);
     }
-    
+
     m_key_buffer.append(event);
 }
 

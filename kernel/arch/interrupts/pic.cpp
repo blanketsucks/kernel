@@ -1,32 +1,19 @@
-#include <kernel/arch/pic.h>
+#include <kernel/arch/interrupts/pic.h>
 #include <kernel/arch/interrupts.h>
 #include <kernel/arch/io.h>
-#include <kernel/arch/processor.h>
 
-namespace kernel::pic {
+namespace kernel {
 
-extern "C" void* _irq_stub_table[];
-
-void eoi(u8 irq) {
-    if (irq >= 8) {
-        // Send EOI to both master and slave PIC in this case
-        io::write(SLAVE_COMMAND, EOF);
-    }
-
-    io::write(MASTER_COMMAND, EOF);
+PIC::PIC() {
+    initialize();
 }
 
-void set_irq_handler(u8 irq, uintptr_t handler) {
-    enable(irq);
-    arch::set_interrupt_handler(32 + irq, handler, 0x8E);
-}
-
-void disable() {
+void PIC::disable() {
     io::write<u8>(MASTER_DATA, 0xFF);
     io::write<u8>(SLAVE_DATA, 0xFF);
 }
 
-void remap() {
+void PIC::initialize() {
     // Start initialization sequence
     io::write<u8>(MASTER_COMMAND, 0x11);
     io::wait();
@@ -35,10 +22,10 @@ void remap() {
     io::wait();
 
     // Set offsets
-    io::write<u8>(MASTER_DATA, 0x20);
+    io::write<u8>(MASTER_DATA, IRQ_VECTOR_BASE);
     io::wait();
 
-    io::write<u8>(SLAVE_DATA, 0x28);
+    io::write<u8>(SLAVE_DATA, IRQ_VECTOR_BASE + 8);
     io::wait();
 
     // Set cascade identity
@@ -59,18 +46,10 @@ void remap() {
     io::write<u8>(MASTER_DATA, 0xFF);
     io::write<u8>(SLAVE_DATA, 0xFF);
 
-    pic::enable(2); // Enable IRQ 2 which is the slave PIC
+    enable(2); // Enable IRQ 2 which is the slave PIC
 }
 
-void init() {
-    remap();
-
-    for (u8 i = 0; i < 16; i++) {
-        arch::set_interrupt_handler(32 + i, reinterpret_cast<uintptr_t>(_irq_stub_table[i]), 0x8E);
-    }
-}
-
-void disable(u8 irq) {
+void PIC::disable(u16 irq) {
     arch::InterruptDisabler disabler;
 
     u16 port = 0;
@@ -85,7 +64,7 @@ void disable(u8 irq) {
     io::write(port, value);
 }
 
-void enable(u8 irq) {
+void PIC::enable(u16 irq) {
     arch::InterruptDisabler disabler;
 
     u16 port = 0;
@@ -100,6 +79,15 @@ void enable(u8 irq) {
     value &= ~(1 << irq);
 
     io::write(port, value);
+}
+
+void PIC::eoi(u16 irq) {
+    if (irq >= 8) {
+        // Send EOI to both master and slave PIC in this case
+        io::write(SLAVE_COMMAND, EOF);
+    }
+
+    io::write(MASTER_COMMAND, EOF);
 }
 
 }
