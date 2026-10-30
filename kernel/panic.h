@@ -3,12 +3,13 @@
 #include <kernel/common.h>
 
 #include <std/string_view.h>
+#include <std/format.h>
 
 #define PANIC(message) kernel::panic(message, __FILE__, __LINE__)
 
-#define ASSERT(condition, message)                  \
-    do {                                            \
-        if (!(condition)) { PANIC(message); }       \
+#define ASSERT(condition, ...)                                       \
+    do {                                                             \
+        if (!(condition)) { PANIC(std::format(__VA_ARGS__)); }       \
     } while (0)                                     
 
 namespace kernel {
