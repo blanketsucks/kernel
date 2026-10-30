@@ -100,6 +100,20 @@ struct MADT {
     u32 flags;
 
     MADTHeader entries[];
+
+    template<typename F>
+    void for_each_entry(F&& callback) {
+        size_t length = this->header.length - sizeof(acpi::SDTHeader);
+        u8* entries = reinterpret_cast<u8*>(this->entries);
+
+        size_t offset = 0;
+        while (offset < length) {
+            auto* header = reinterpret_cast<acpi::MADTHeader*>(entries + offset);
+            callback(header);
+
+            offset += header->length;
+        }
+    }
 } PACKED;
 
 enum class AddressSpace : u8 {
