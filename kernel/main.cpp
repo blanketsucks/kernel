@@ -82,12 +82,12 @@ extern "C" void main(BootInfo const& boot_info) {
     serial::init();
     s_bsp_processor.initialize(0);
     
-    MemoryManager::init();
-    ACPIParser::init();
+    MemoryManager::initialize();
+    ACPIParser::initialize();
 
     InterruptManager::initialize();
 
-    TimeManager::init();
+    TimeManager::initialize();
 
     devfs::init();
 
@@ -97,7 +97,7 @@ extern "C" void main(BootInfo const& boot_info) {
     auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
     Scheduler::add_process(process);
 
-    Scheduler::init();
+    Scheduler::run();
     __builtin_unreachable();
 }
 
@@ -129,10 +129,8 @@ void stage2() {
     StorageManager::initialize();
 
     auto* disk = StorageManager::determine_boot_device();
-    auto* cmdline = CommandLine::instance();
-
     if (!disk) {
-        dbgln("Could not find boot device: '{}'\n", cmdline->root());
+        dbgln("Could not find boot device: '{}'\n", CommandLine::root());
         process->sys$exit(1);
     }
 
@@ -161,7 +159,7 @@ void stage2() {
     while (devfs::has_events()) {}
 
     auto* tty0 = VirtualTTY::create(0);
-    auto result = Process::create_user_process(cmdline->init(), nullptr, tty0);
+    auto result = Process::create_user_process(CommandLine::init(), nullptr, tty0);
 
     if (result.is_err()) {
         dbgln("Failed to create user process: errno={}", result.error().code());

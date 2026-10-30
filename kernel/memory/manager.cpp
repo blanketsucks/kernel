@@ -43,12 +43,12 @@ MemoryManager::MemoryManager() {
     );
 }
 
-void MemoryManager::init() {
+void MemoryManager::initialize() {
     s_mm = new MemoryManager();
-    s_mm->initialize();
+    s_mm->init();
 }
 
-void MemoryManager::initialize() {
+void MemoryManager::init() {
     m_pmm = PhysicalMemoryManager::create(*g_boot_info);
     arch::PageDirectory::create_kernel_page_directory(*g_boot_info);
 

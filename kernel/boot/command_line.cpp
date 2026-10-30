@@ -50,12 +50,12 @@ bool CommandLine::has(StringView key) const {
     return m_args.contains(key);
 }
 
-StringView CommandLine::root() const {
-    return this->get("root").value_or("/dev/hda1");
+StringView CommandLine::root() {
+    return s_instance.get("root").value_or("/dev/hda1");
 }
 
-StringView CommandLine::init() const {
-    return this->get("init").value_or("/bin/shell");
+StringView CommandLine::init() {
+    return s_instance.get("init").value_or("/bin/shell");
 }
 
 }

@@ -14,7 +14,7 @@ namespace kernel {
 
 class TimeManager {
 public:
-    static void init();
+    static void initialize();
     static TimeManager* instance();
 
     static timespec ns_to_timespec(u64 ns) {
@@ -32,7 +32,7 @@ public:
 private:
     TimeManager() = default;
 
-    void initialize();
+    void init();
 
     void initialize_with_pit();
     void initialize_with_hpet();

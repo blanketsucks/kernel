@@ -13,8 +13,8 @@ public:
     static void initialize();
     static CommandLine* instance();
 
-    [[nodiscard]] StringView root() const;
-    [[nodiscard]] StringView init() const;
+    [[nodiscard]] static StringView root();
+    [[nodiscard]] static StringView init();
 
 private:
     void parse(StringView cmdline);

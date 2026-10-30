@@ -11,7 +11,7 @@ concept HasACPISignature = requires { T::SIGNATURE; };
 class ACPIParser {
 public:
     static ACPIParser* instance();
-    static void init();
+    static void initialize();
 
     template<typename T> requires HasACPISignature<T>
     static T* find() {
@@ -22,7 +22,7 @@ public:
     acpi::SDTHeader* find_table(const char* signature);
 
 private:
-    void initialize();
+    void init();
 
     bool find_root_table();
     void parse_acpi_tables();

@@ -56,7 +56,7 @@ Vector<Process*>& Scheduler::processes() {
     return s_processes;
 }
 
-void Scheduler::init() {
+void Scheduler::run() {
     s_initialized = true;
     s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);
     

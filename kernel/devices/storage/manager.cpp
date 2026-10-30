@@ -140,9 +140,7 @@ StorageManager::BootDevice StorageManager::parse_boot_device(StringView device) 
 }
 
 BlockDevice* StorageManager::determine_boot_device() {
-    auto* cmdline = CommandLine::instance();
-    StringView root = cmdline->root();
-
+    StringView root = CommandLine::root();
     if (root.empty()) {
         return nullptr;
     }

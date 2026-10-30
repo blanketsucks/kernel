@@ -12,7 +12,7 @@ class Thread;
 
 class Scheduler {
 public:
-    static void init();
+    static void run();
 
     static pid_t generate_pid();
 

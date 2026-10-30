@@ -17,16 +17,16 @@ ACPIParser* ACPIParser::instance() {
     return &s_instance;
 }
 
-void ACPIParser::init() {
+void ACPIParser::initialize() {
     if (s_initialized) {
         return;
     }
 
-    s_instance.initialize();
+    s_instance.init();
     s_initialized = true;
 }
 
-void ACPIParser::initialize() {
+void ACPIParser::init() {
     this->find_root_table();
     this->parse_acpi_tables();
 }

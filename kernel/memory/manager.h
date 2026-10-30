@@ -82,7 +82,7 @@ class MemoryManager {
 public:
     MemoryManager();
 
-    static void init();
+    static void initialize();
     static MemoryManager* instance();
 
     static void page_fault_handler(arch::InterruptRegisters*);
@@ -136,7 +136,7 @@ public:
     Mutex& lock() { return m_lock; }
 
 private:
-    void initialize();
+    void init();
     void create_physical_pages();
 
     bool try_allocate_contiguous(arch::PageDirectory*, memory::Region*, PageFlags flags);

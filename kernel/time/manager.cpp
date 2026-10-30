@@ -9,20 +9,20 @@ namespace kernel {
 
 static TimeManager* s_instance = nullptr;
 
-void TimeManager::init() {
+void TimeManager::initialize() {
     if (s_instance) {
         return;
     }
 
     s_instance = new TimeManager();
-    s_instance->initialize();
+    s_instance->init();
 }
 
 TimeManager* TimeManager::instance() {
     return s_instance;
 }
 
-void TimeManager::initialize() {
+void TimeManager::init() {
     rtc::init();
 
     m_epoch_time = Duration::from_seconds(rtc::boot_time());
