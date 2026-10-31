@@ -4,8 +4,6 @@
 
 namespace kernel::arch {
 
-class TSS;
-
 struct GDTDescriptor {
     u16 limit;
     u64 base;
@@ -62,39 +60,5 @@ union GDTEntry {
         flags.limit_high = (limit >> 16) & 0x0F;
     }
 } PACKED;
-
-enum GDTEntrySize {
-    GDT_ENTRY_SIZE_16 = 0,
-    GDT_ENTRY_SIZE_32 = 1,
-    GDT_ENTRY_SIZE_64 = 2
-};
-
-void init_gdt(TSS&);
-
-enum class GDTEntryFlags {
-    None = 0,
-    DataSegment = 1 << 0,
-    Executable = 1 << 1,
-    Readable = 1 << 2
-};
-
-enum class GDTEntryType {
-    System = 0,
-    CodeOrData = 1
-};
-
-MAKE_ENUM_BITWISE_OPS(GDTEntryFlags)
-
-u16 create_gdt_entry(
-    u32 limit,
-    GDTEntrySize size,
-    GDTEntryFlags flags,
-    u8 privilege = 0,
-    GDTEntryType type = GDTEntryType::CodeOrData
-);
-
-u16 create_gdt_entry(const GDTEntry&);
-
-u16 write_tss(TSS&);
 
 }

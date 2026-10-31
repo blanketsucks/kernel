@@ -16,6 +16,7 @@ void set_interrupt_handler(u32 interrupt, uintptr_t handler, u8 flags) {
 }
 
 static IDTEntry s_idt_entries[256];
+static IDTDescriptor s_idtr;
 
 extern "C" void* _isr_stub_table[];
 extern "C" void* _irq_stub_table[];
@@ -64,11 +65,17 @@ void set_idt_entry(u16 index, u64 base, u8 flags) {
     entry.flags = flags;
 }
 
-void init_idt() {
-    IDTDescriptor idtr;
+IDTDescriptor const& idtr() {
+    return s_idtr;
+}
 
-    idtr.limit = sizeof(s_idt_entries) - 1;
-    idtr.base = reinterpret_cast<u64>(&s_idt_entries);
+void flush_idt() {
+    asm volatile("lidt %0" :: "m"(s_idtr));
+}
+
+void initialize_interrupts() {
+    s_idtr.limit = sizeof(s_idt_entries) - 1;
+    s_idtr.base = reinterpret_cast<u64>(&s_idt_entries);
 
     for (size_t i = 0; i < 32; i++) {
         set_idt_entry(i, reinterpret_cast<u64>(_isr_stub_table[i]), arch::INTERRUPT_GATE);
@@ -77,8 +84,6 @@ void init_idt() {
     for (size_t i = IRQ_VECTOR_BASE; i < 256; i++) {
         set_idt_entry(i, reinterpret_cast<u64>(_irq_stub_table[i - IRQ_VECTOR_BASE]), arch::INTERRUPT_GATE);
     }
-
-    asm volatile("lidt %0" :: "m"(idtr));
 }
 
 }

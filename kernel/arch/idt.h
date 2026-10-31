@@ -20,6 +20,10 @@ struct IDTEntry {
 } PACKED;
 
 void set_idt_entry(u16 index, u64 base, u8 flags);
-void init_idt();
+
+void flush_idt();
+void initialize_interrupts();
+
+IDTDescriptor const& idtr();
     
 }

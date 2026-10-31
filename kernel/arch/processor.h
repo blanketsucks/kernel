@@ -2,6 +2,7 @@
 
 #include <kernel/arch/tss.h>
 #include <kernel/arch/cpu.h>
+#include <kernel/arch/gdt.h>
 
 #include <std/string.h>
 
@@ -54,10 +55,21 @@ public:
 private:
     void preinit(int cpu);
 
+    void write_gdt_entry(u16 selector, u32 low, u32 high);
+    void write_gdt_entry(u16 selector, arch::GDTEntry const&);
+
+    void write_tss();
+    void init_gdt();
+
     int m_cpu;
 
     void* m_user_stack;
     arch::TSS m_tss;
+
+    arch::GDTEntry m_gdt[256];
+    u32 m_gdt_count;
+
+    arch::GDTDescriptor m_gdtr;
 
     u8 m_max_physical_address_width;
     u8 m_max_virtual_address_width;
