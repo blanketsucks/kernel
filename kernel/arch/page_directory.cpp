@@ -7,7 +7,7 @@
 
 namespace kernel::arch {
 
-static constexpr size_t HHDM_MAPPING_SIZE = 4 * GB;
+static constexpr size_t HHDM_MAPPING_SIZE = 4 * GiB;
 
 static PageDirectory s_kernel_page_directory;
 
@@ -183,7 +183,7 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info) {
     page_directory.set_type(Kernel);
     page_directory.create_pml4_table();
 
-    for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += 2 * MB) {
+    for (size_t i = 0; i < HHDM_MAPPING_SIZE; i += 2 * MiB) {
         VirtualAddress va { boot_info.hhdm + i };
         PhysicalAddress pa { i };
 
@@ -191,7 +191,7 @@ void PageDirectory::create_kernel_page_directory(BootInfo const& boot_info) {
     }
 
     // FIXME: This currently maps both the kernel text and data sections as writable
-    for (size_t i = 0; i < boot_info.kernel_size; i += 2 * MB) {
+    for (size_t i = 0; i < boot_info.kernel_size; i += 2 * MiB) {
         PhysicalAddress pa { boot_info.kernel_physical_base + i };
         VirtualAddress va { boot_info.kernel_virtual_base + i };
 

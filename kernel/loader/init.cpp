@@ -121,18 +121,18 @@ extern "C" void init(multiboot_info* info) {
         }
     }
     
-    kernel_virtual_end = kernel_virtual_end.align_up(2 * MB);
+    kernel_virtual_end = kernel_virtual_end.align_up(2 * MiB);
     PhysicalAddress kernel_physical_end = kernel_physical_base.offset(kernel_virtual_end - kernel_virtual_base);
 
     u32 pml4 = ((kernel_virtual_base >> 39) & 0x1ff);
     boot_pml4t[pml4] = reinterpret_cast<u64>(kernel_pdpt) | 0x3;
 
     for (size_t i = 0; i < 2; i++) {
-        u32 pdpt = ((kernel_virtual_base + i * GB) >> 30) & 0x1ff;
+        u32 pdpt = ((kernel_virtual_base + i * GiB) >> 30) & 0x1ff;
         kernel_pdpt[pdpt] = reinterpret_cast<u64>(kernel_pd[i]) | 0x3;
     }
 
-    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MB)) {
+    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MiB)) {
         PhysicalAddress physical = kernel_physical_base.offset(address - kernel_virtual_base);
 
         u32 pdpt = (address >> 30) & 0x1ff;
@@ -161,7 +161,7 @@ extern "C" void init(multiboot_info* info) {
     boot_info.kernel_virtual_base = kernel_virtual_base;
     boot_info.kernel_physical_base = kernel_physical_base;
     boot_info.kernel_size = kernel_virtual_end - kernel_virtual_base;
-    boot_info.kernel_heap_base = kernel_virtual_base + 1 * GB;
+    boot_info.kernel_heap_base = kernel_virtual_base + 1 * GiB;
     boot_info.pml4t = boot_pml4t;
     boot_info.hhdm = 0xffff800000000000;
     boot_info.cmdline = reinterpret_cast<char*>(info->cmdline + boot_info.hhdm);

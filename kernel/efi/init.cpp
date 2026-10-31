@@ -224,7 +224,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
 
     for (size_t i = 0; i < 4; i++) {
         for (size_t j = 0; j < 512; j++) {
-            pd[i][j] = (i * GB + j * (2 * MB)) | 0x83;
+            pd[i][j] = (i * GiB + j * (2 * MiB)) | 0x83;
         }
     }
 
@@ -252,7 +252,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
         }
     }
 
-    kernel_virtual_end = kernel_virtual_end.align_up(2 * MB);
+    kernel_virtual_end = kernel_virtual_end.align_up(2 * MiB);
 
     size_t kernel_size = kernel_virtual_end - kernel_virtual_base;
     size_t kernel_pages = kernel_size / PAGE_SIZE;
@@ -261,7 +261,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     pml4t[pml4e] = reinterpret_cast<u64>(kernel_pdpt) | 0x3;
 
     for (size_t i = 0; i < 2; i++) {
-        u32 pdpte = ((kernel_virtual_base + i * GB) >> 30) & 0x1ff;
+        u32 pdpte = ((kernel_virtual_base + i * GiB) >> 30) & 0x1ff;
         kernel_pdpt[pdpte] = reinterpret_cast<u64>(kernel_pd[i]) | 0x3;
     }
 
@@ -286,8 +286,8 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
             continue;
         }
 
-        if (descriptor->physical_start % (2 * MB)) {
-            size_t aligned = std::align_up(descriptor->physical_start, 2 * MB);
+        if (descriptor->physical_start % (2 * MiB)) {
+            size_t aligned = std::align_up(descriptor->physical_start, 2 * MiB);
             size_t offset = aligned - descriptor->physical_start;
 
             if (descriptor->number_of_pages < (kernel_pages + offset / PAGE_SIZE)) {
@@ -333,7 +333,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     }
     
     parse_memory_map();
-    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MB)) {
+    for (VirtualAddress address = kernel_virtual_base; address < kernel_virtual_end; address = address.offset(2 * MiB)) {
         PhysicalAddress pa = kernel_physical_base.offset(address - kernel_virtual_base);
 
         u32 pdpt = (address >> 30) & 0x1ff;
@@ -365,7 +365,7 @@ extern EFIStatus efi_main(EFIHandle image_handle, EFISystemTable* sys_table) {
     boot_info.kernel_virtual_base = kernel_virtual_base;
     boot_info.kernel_physical_base = kernel_physical_base;
     boot_info.kernel_size = kernel_size;
-    boot_info.kernel_heap_base = kernel_virtual_base + 1 * GB;
+    boot_info.kernel_heap_base = kernel_virtual_base + 1 * GiB;
     boot_info.hhdm = hhdm;
 
     std::memset(&s_mmap, 0, sizeof(::MemoryMap));

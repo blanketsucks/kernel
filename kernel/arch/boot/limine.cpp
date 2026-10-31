@@ -53,7 +53,7 @@ extern "C" void _early_main() {
     
     boot_info.kernel_physical_base = kernel_address->physical_base;
     boot_info.kernel_virtual_base = kernel_address->virtual_base;
-    boot_info.kernel_heap_base = kernel_address->virtual_base + GB;
+    boot_info.kernel_heap_base = kernel_address->virtual_base + GiB;
 
     u64 kernel_start = reinterpret_cast<u64>(&_kernel_start);
     u64 kernel_end = reinterpret_cast<u64>(&_kernel_end);

@@ -9,7 +9,7 @@ namespace kernel::fs {
 
 class Pipe : public File {
 public:
-    static constexpr size_t SIZE = 8 * KB;
+    static constexpr size_t SIZE = 8 * KiB;
 
     static RefPtr<Pipe> create() {
         return RefPtr<Pipe>(new Pipe());

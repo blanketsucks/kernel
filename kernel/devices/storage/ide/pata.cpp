@@ -110,7 +110,7 @@ ErrorOr<void> PATADevice::initialize() {
     dbgln(" - DMA Supported: {}", m_has_dma);
     dbgln(" - Has 48 bit PIO: {}", m_has_48bit_pio);
     dbgln(" - Max Addressable Sector: {}", m_max_addressable_block);
-    dbgln(" - Capacity: {} MB\n", capacity / MB);
+    dbgln(" - Capacity: {} MB\n", capacity / MiB);
 
     return {};
 }

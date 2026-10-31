@@ -103,7 +103,7 @@ void PhysicalMemoryManager::init(BootInfo const& boot_info) {
     MUST(this->fill_preframe_buffer());
 
     dbgln("Total usable pages: {}", m_total_pages);
-    dbgln("Total usable memory: {} MB\n", m_total_usable_memory / MB);
+    dbgln("Total usable memory: {} MB\n", m_total_usable_memory / MiB);
 }
 
 ErrorOr<void> PhysicalMemoryManager::fill_preframe_buffer() {

@@ -20,8 +20,8 @@ class Process;
 
 class Thread {
 public:
-    static constexpr u32 KERNEL_STACK_SIZE = 512 * KB;
-    static constexpr u32 USER_STACK_SIZE = 1 * MB;
+    static constexpr u32 KERNEL_STACK_SIZE = 512 * KiB;
+    static constexpr u32 USER_STACK_SIZE   = 1 * MiB;
 
     enum State : u8 {
         Running,
