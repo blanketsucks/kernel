@@ -137,12 +137,16 @@ void Processor::initialize(int cpu) {
         efer |= (1 << 11);
     }
 
-    // Enable and setup the `syscall` instruction
+    // Enable the `syscall` instruction
     wrmsr(arch::MSR_EFER, efer | 1);
-    wrmsr(arch::MSR_STAR, (0x28ul << 32) | (0x33ul << 48));
+
+    u64 star = 0;
+    star |= (KERNEL_CODE_SELECTOR       << 32); // "SYSCALL loads CS from STAR 47:32 ... and SS from STAR 47:32 + 8"
+    star |= ((KERNEL_DATA_SELECTOR | 3) << 48); // "userland CS will be loaded from STAR 63:48 + 16 and userland SS from STAR 63:48 + 8 on SYSRET"
+
+    wrmsr(arch::MSR_STAR, star);
     wrmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&Processor::syscall_interrupt_handler));
 
-    // TODO: Setup swapgs
     write_gs(reinterpret_cast<FlatPtr>(this));
 }
 
