@@ -27,14 +27,14 @@ FlatPtr cpu_flags() {
     return flags;
 }
 
-void wmsr(u32 msr, u64 value) {
+void wrmsr(u32 msr, u64 value) {
     u32 low = value & 0xFFFFFFFF;
     u32 high = value >> 32;
 
     asm volatile("wrmsr" :: "a"(low), "d"(high), "c"(msr));
 }
 
-u64 rmsr(u32 msr) {
+u64 rdmsr(u32 msr) {
     u32 low, high;
     asm volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(msr));
 

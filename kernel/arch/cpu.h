@@ -124,19 +124,19 @@ union Flags {
 
 void cpuid(u32 leaf, u32& eax, u32& ebx, u32& ecx, u32& edx);
 
-void wmsr(u32 msr, u64 value);
-u64 rmsr(u32 msr);
+void wrmsr(u32 msr, u64 value);
+u64  rdmsr(u32 msr);
 
 FlatPtr cpu_flags();
 
 CPUFeatures cpu_features();
 
 static inline FlatPtr read_gs() {
-    return rmsr(MSR_GS_BASE);
+    return rdmsr(MSR_GS_BASE);
 }
 
 static inline void write_gs(FlatPtr value) {
-    wmsr(MSR_GS_BASE, value);
+    wrmsr(MSR_GS_BASE, value);
 }
 
 static inline FlatPtr read_cr0() {

@@ -132,15 +132,15 @@ void Processor::initialize(int cpu) {
         write_cr4(read_cr4() | 0x600);            // Set CR4.OSFXSR and CR4.OSXMMEXCPT
     }
 
-    u64 efer = rmsr(arch::MSR_EFER);
+    u64 efer = rdmsr(arch::MSR_EFER);
     if (has_nx()) {
         efer |= (1 << 11);
     }
 
     // Enable and setup the `syscall` instruction
-    wmsr(arch::MSR_EFER, efer | 1);
-    wmsr(arch::MSR_STAR, (0x28ul << 32) | (0x33ul << 48));
-    wmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&Processor::syscall_interrupt_handler));
+    wrmsr(arch::MSR_EFER, efer | 1);
+    wrmsr(arch::MSR_STAR, (0x28ul << 32) | (0x33ul << 48));
+    wrmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&Processor::syscall_interrupt_handler));
 
     // TODO: Setup swapgs
     write_gs(reinterpret_cast<FlatPtr>(this));
