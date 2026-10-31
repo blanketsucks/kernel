@@ -9,14 +9,6 @@ global _default_interrupt_handler
 extern _interrupt_exception_handler
 extern _irq_handler
 
-%macro switch_gs 0
-    cmp qword [rsp + 0x08], KERNEL_CODE_SELECTOR
-    je %%.in_kernel
-
-    swapgs
-%%.in_kernel:
-%endmacro
-
 %macro define_common_stub 2
     _%1_common_stub:
         pushaq
