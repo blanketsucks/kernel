@@ -1,5 +1,4 @@
 #include <kernel/arch/irq.h>
-#include <kernel/arch/pic.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/arch/interrupts/manager.h>
 
