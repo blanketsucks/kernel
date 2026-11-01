@@ -140,10 +140,10 @@ _start:
 
     mov edi, boot_pdpt
 
-    mov dword [edi +  0], boot_pd + PAGE_SIZE * 0 + 0x83
-    mov dword [edi +  8], boot_pd + PAGE_SIZE * 1 + 0x83
-    mov dword [edi + 16], boot_pd + PAGE_SIZE * 2 + 0x83
-    mov dword [edi + 24], boot_pd + PAGE_SIZE * 3 + 0x83
+    mov dword [edi +  0], 0x00000000 | 0x83
+    mov dword [edi +  8], 0x40000000 | 0x83
+    mov dword [edi + 16], 0x80000000 | 0x83
+    mov dword [edi + 24], 0xC0000000 | 0x83
 
     jmp .loop.end
     
