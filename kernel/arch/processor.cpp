@@ -70,23 +70,13 @@ void Processor::disable_interrupts() {
 
 void Processor::preinit(int cpu) {
     m_cpu = cpu;
-    m_features = arch::cpu_features();
+    m_features = CPUFeatures::detect();
 
-    u32 eax, ebx, ecx, edx;
-    cpuid(0x80000000, eax, ebx, ecx, edx);
-
-    u32 max_extended_leaf = eax;
-    if (max_extended_leaf >= 0x80000001) {
-        cpuid(0x80000001, eax, ebx, ecx, edx);
-        m_has_nx = (edx & (1 << 20));
-    } else {
-        m_has_nx = false;
-    }
-
+    u32 max_extended_leaf = cpuid(0x80000000).eax;
     if (max_extended_leaf >= 0x80000004) {
         char brand[48];
         for (int i = 0; i < 3; i++) {
-            cpuid(0x80000002 + i, eax, ebx, ecx, edx);
+            auto [eax, ebx, ecx, edx] = cpuid(0x80000002 + i);
 
             memcpy(brand + i * 16, &eax, 4);
             memcpy(brand + i * 16 + 4, &ebx, 4);
@@ -99,12 +89,12 @@ void Processor::preinit(int cpu) {
     }
 
     if (max_extended_leaf >= 0x80000008) {
-        cpuid(0x80000008, eax, ebx, ecx, edx);
+        u32 eax = cpuid(0x80000008).eax;
 
         m_max_physical_address_width = eax & 0xFF;
         m_max_virtual_address_width = (eax >> 8) & 0xFF;
     } else {
-        m_max_physical_address_width = has_feature(CPUFeatures::PAE) ? 36 : 32;
+        m_max_physical_address_width = has_feature(Feature::PAE) ? 36 : 32;
         m_max_virtual_address_width = 32;
     }
 
@@ -127,13 +117,13 @@ void Processor::initialize(int cpu) {
 
     arch::flush_idt();
 
-    if (has_feature(CPUFeatures::SSE)) {
+    if (has_feature(Feature::SSE)) {
         write_cr0((read_cr0() & 0xfffffffb) | 2); // Clear CR0.EM and set CR0.MP
         write_cr4(read_cr4() | 0x600);            // Set CR4.OSFXSR and CR4.OSXMMEXCPT
     }
 
     u64 efer = rdmsr(arch::MSR_EFER);
-    if (has_nx()) {
+    if (has_feature(Feature::NX)) {
         efer |= (1 << 11);
     }
 
@@ -228,13 +218,15 @@ void Processor::switch_context(Thread* old, Thread* next) {
 
 String Processor::features_string() const {
     String features;
-#define Op(name, str, _)                              \
-    if (has_feature(arch::CPUFeatures::name)) {      \
-        features.append(str);                        \
-        features.append(',');                        \
-    }
-    ENUMERATE_CPU_FEATURES(Op)
-#undef Op
+    m_features.for_each([&features](Feature f) {
+        StringView name = feature_to_name(f);
+        if (name == "unknown") {
+            return;
+        }
+
+        features.append(name);
+        features.append(',');
+    });
 
     if (features.size() > 0) {
         features.pop();

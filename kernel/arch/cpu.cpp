@@ -3,10 +3,6 @@
 
 namespace kernel::arch {
 
-void cpuid(u32 leaf, u32& eax, u32& ebx, u32& ecx, u32& edx) {
-    __get_cpuid(leaf, &eax, &ebx, &ecx, &edx);
-}
-
 FlatPtr cpu_flags() {
     FlatPtr flags = 0;
 
@@ -39,13 +35,6 @@ u64 rdmsr(u32 msr) {
     asm volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(msr));
 
     return (static_cast<u64>(high) << 32) | low;
-}
-
-CPUFeatures cpu_features() {
-    u32 eax, ebx, ecx, edx;
-    __get_cpuid(1, &eax, &ebx, &ecx, &edx);
-
-    return static_cast<CPUFeatures>((static_cast<u64>(edx) << 32) | eax);
 }
 
 }

@@ -3,6 +3,7 @@
 #include <kernel/arch/tss.h>
 #include <kernel/arch/cpu.h>
 #include <kernel/arch/gdt.h>
+#include <kernel/arch/cpuid.h>
 
 #include <std/string.h>
 
@@ -35,16 +36,14 @@ public:
 
     int cpu() const { return m_cpu; }
 
-    arch::CPUFeatures features() const { return m_features; }
-    bool has_feature(arch::CPUFeatures feature) const { return std::has_flag(m_features, feature); }
+    arch::CPUFeatures const& features() const { return m_features; }
+    bool has_feature(arch::Feature feature) const { return m_features.has(feature); }
 
     u8 max_physical_address_width() const { return m_max_physical_address_width; }
     PhysicalAddress max_physical_address() const { return PhysicalAddress { (1ull << m_max_physical_address_width) - 1 }; }
 
     u8 max_virtual_address_width() const { return m_max_virtual_address_width; }
     VirtualAddress max_virtual_address() const { return VirtualAddress { (1ull << m_max_virtual_address_width) - 1 }; }
-
-    bool has_nx() const { return m_has_nx; }
 
     String const& brand() const { return m_brand; }
 
@@ -73,8 +72,6 @@ private:
 
     u8 m_max_physical_address_width;
     u8 m_max_virtual_address_width;
-
-    bool m_has_nx = false;
 
     arch::CPUFeatures m_features;
 
