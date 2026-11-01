@@ -245,9 +245,15 @@ public:
     void for_each(F&& func) const {
         for (size_t word = 0; word < WORD_COUNT; word++) {
             u32 bits = m_words[word];
-            while (bits) {
-                func(static_cast<Feature>(word * 32 + __builtin_ctz(bits)));
-                bits &= (bits - 1);
+
+            // This will call `func` with features that don't exist so the caller has to 
+            // make sure that the feature is an actual feature.
+            for (size_t bit = 0; bit < 32; bit++) {
+                if (!(bits & (1 << bit))) {
+                    continue;
+                }
+
+                func(static_cast<Feature>(word * 32 + bit));
             }
         }
     }
