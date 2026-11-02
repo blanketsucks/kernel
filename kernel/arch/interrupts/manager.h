@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/arch/interrupts/controller.h>
+#include <kernel/acpi/acpi.h>
 
 #include <std/vector.h>
 #include <std/memory.h>
@@ -15,6 +16,7 @@ struct InterruptSourceOverride {
         struct {
             u8 polarity     : 2;
             u8 trigger_mode : 2;
+            u8 : 4;
         };
 
         u16 flags;
@@ -35,10 +37,9 @@ private:
 
     void init();
 
-    void enumerate_ioapics();
+    void enumerate_ioapics(acpi::MADT*);
 
     Vector<RefPtr<InterruptController>> m_controllers;
-
     Vector<InterruptSourceOverride> m_iso;
 };
 

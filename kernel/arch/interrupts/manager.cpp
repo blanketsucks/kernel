@@ -1,6 +1,7 @@
 #include <kernel/arch/interrupts/manager.h>
 #include <kernel/arch/interrupts/ioapic.h>
 #include <kernel/arch/interrupts/pic.h>
+#include <kernel/arch/interrupts/apic.h>
 #include <kernel/acpi/acpi.h>
 #include <kernel/panic.h>
 
@@ -20,8 +21,21 @@ void InterruptManager::initialize() {
 }
 
 void InterruptManager::init() {
-    m_controllers.append(PIC::create());
-    enumerate_ioapics();
+    auto* madt = ACPIParser::find<acpi::MADT>();
+    if (!madt) {
+        dbgln("No MADT found. Falling back to the 8259 PIC");
+
+        m_controllers.append(PIC::create());
+        return;
+    }
+
+    this->enumerate_ioapics(madt);
+    if (m_controllers.empty()) {
+        dbgln("No IOAPICs found. Falling back to the 9259 PIC");
+        m_controllers.append(PIC::create());
+    } else {
+        dbgln("Enumerated {} IOAPICs", m_controllers.size());
+    }
 }
 
 RefPtr<InterruptController> InterruptManager::controller_for(u16 irq) {
@@ -38,15 +52,12 @@ RefPtr<InterruptController> InterruptManager::find_responsible_controller(u16 ir
         }
     }
 
-    ASSERT(false, "No interrupt controller found for IRQ.");
+    ASSERT(false, "No interrupt controller found for IRQ #{}.", irq);
 }
 
-void InterruptManager::enumerate_ioapics() {
-    auto* madt = ACPIParser::find<acpi::MADT>();
-    if (!madt) {
-        dbgln("No MADT found!");
-        return;
-    }
+void InterruptManager::enumerate_ioapics(acpi::MADT* madt) {
+    PIC::disable();
+    APIC::initialize();
 
     madt->for_each_entry([this](acpi::MADTHeader* header) {
         switch (header->type) {
@@ -59,8 +70,6 @@ void InterruptManager::enumerate_ioapics() {
                         ioapic->global_system_interrupt_base
                     )
                 );
-
-                dbgln("IOAPIC found: ID={}, Address={:#x}, Global IRQ Base={}", ioapic->io_apic_id, ioapic->io_apic_address, ioapic->global_system_interrupt_base);
             } break;
             case acpi::MADTEntryType::InterruptSourceOverride: {
                 auto* iso = reinterpret_cast<acpi::InterruptSourceOverride*>(header);
@@ -71,8 +80,6 @@ void InterruptManager::enumerate_ioapics() {
                     .gsi   = iso->global_system_interrupt,
                     .flags = iso->flags
                 });
-
-                dbgln("Overriding INT #{} with GSI {} for bus {}", iso->irq_source, iso->global_system_interrupt, iso->bus_source);
             } break;
             default: break;
         }
