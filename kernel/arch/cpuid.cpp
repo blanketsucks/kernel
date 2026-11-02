@@ -16,7 +16,7 @@ CPUFeatures CPUFeatures::detect() {
     u32 max_extended_leaf = cpuid(EXTENDED_LEAF).eax;
     for (size_t i = 0; i < WORD_COUNT; i++) {
         const auto& w = CPUID_WORDS[i];
-        if ((w.leaf & EXTENDED_LEAF) && w.leaf > max_extended_leaf) {
+        if (w.leaf > max_extended_leaf) {
             continue;
         }
 
