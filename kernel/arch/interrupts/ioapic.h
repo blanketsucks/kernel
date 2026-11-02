@@ -59,10 +59,12 @@ private:
     RedirectionEntry read_redirection_entry(u8 index);
     void write_redirection_entry(u8 index, RedirectionEntry);
 
+    void update_redirection_entry(u8 index, u8 vector, bool pin_polarity, bool trigger_mode, bool mask);
+
     void set_redirection_entry_mask(u8 index, bool value);
     u8 get_redirection_entry_vector(u8 index);
 
-    u8 configure_interrupt_redirection_entry(u16 irq);
+    u8 configure_interrupt_redirection_entry(u16 irq, bool default_mask = true);
 
     Optional<u8> find_redirection_entry(u16 irq); 
 
