@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/cdefs.h>
+#include <sys/time.h>
 #include <stddef.h>
 
 #define EXIT_SUCCESS 0
