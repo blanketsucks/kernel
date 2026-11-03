@@ -31,7 +31,7 @@ void InterruptManager::init() {
 
     this->enumerate_ioapics(madt);
     if (m_controllers.empty()) {
-        dbgln("No IOAPICs found. Falling back to the 9259 PIC");
+        dbgln("No IOAPICs found. Falling back to the 8259 PIC");
         m_controllers.append(PIC::create());
     } else {
         dbgln("Enumerated {} IOAPICs", m_controllers.size());
