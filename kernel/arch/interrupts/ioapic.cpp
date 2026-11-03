@@ -57,15 +57,15 @@ Optional<u8> IOAPIC::find_redirection_entry(u16 irq) {
 }
 
 u8 IOAPIC::configure_interrupt_redirection_entry(u16 irq, bool default_mask) {
-    for (auto& override : InterruptManager::instance()->interrupt_source_overrides()) {
-        if (override.irq != irq) {
+    for (auto& iso : InterruptManager::instance()->interrupt_source_overrides()) {
+        if (iso.irq != irq) {
             continue;
         }
 
-        bool pin_polarity = override.polarity == 3;
-        bool trigger_mode = override.trigger_mode == 3;
+        bool pin_polarity = iso.polarity == 3;
+        bool trigger_mode = iso.trigger_mode == 3;
 
-        u8 index = override.gsi - m_gsi_base;
+        u8 index = iso.gsi - m_gsi_base;
         update_redirection_entry(index, irq + IRQ_VECTOR_BASE, pin_polarity, trigger_mode, default_mask);
 
         return index;
