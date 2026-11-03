@@ -1,8 +1,8 @@
-set(PROGRAMS ls true false test audio_test execve time cat)
+set(PROGRAMS stat ls true false test audio_test execve time cat mkdir)
 
 # FIXME: Remove `-static` when we have proper dynamic linking support
 add_link_options(-nostdlib++ -g -static)
-add_compile_options(-fno-exceptions -fno-rtti -g)
+add_compile_options(-fno-exceptions -fno-rtti -g -static)
 
 foreach(PROG ${PROGRAMS})
     add_executable(${PROG} ${PROG}.cpp ${STD_CPP_SOURCES})
