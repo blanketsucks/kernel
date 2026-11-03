@@ -6,7 +6,6 @@
 #include <errno.h>
 
 #include <std/format.h>
-// #include <std/stb_sprintf.h>
 
 extern "C" {
 
