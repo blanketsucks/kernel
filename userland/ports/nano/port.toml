@@ -1,0 +1,15 @@
+name = 'nano'
+version = '9.2'
+patches = []
+dependencies = ['ncurses']
+
+[port.source]
+type = 'tar'
+url  = 'https://nano-editor.org/dist/v9/nano-9.2.tar.gz'
+
+[port.build]
+type = 'configure'
+directory = '.'
+binary = 'nano'
+include_prefix = true
+extra_configure_flags = ['--disable-threads', '--disable-utf8']
