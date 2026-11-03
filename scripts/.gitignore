@@ -7,5 +7,3 @@ disk.img
 
 kernel.map
 qemu.log
-
-resolve_address.py
