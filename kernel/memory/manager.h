@@ -124,6 +124,9 @@ public:
     // Map an already existing physical region into the kernel's address space
     ErrorOr<void*> map_physical_region(PhysicalAddress address, size_t size);
 
+    ErrorOr<void*> identity_map_region(PhysicalAddress address, size_t size);
+    ErrorOr<void> unmap_identity(PhysicalAddress address, size_t size);
+
     void unmap_kernel_region(void* ptr);
 
     ErrorOr<void*> map_from_page_directory(arch::PageDirectory*, void* ptr, size_t size);

@@ -331,6 +331,30 @@ ErrorOr<void*> MemoryManager::map_physical_region(PhysicalAddress address, size_
     return region->base().to_ptr();
 }
 
+ErrorOr<void*> MemoryManager::identity_map_region(PhysicalAddress address, size_t size) {
+    size = std::align_up(size, PAGE_SIZE);
+    auto* page_directory = arch::PageDirectory::kernel_page_directory();
+
+    for (size_t i = 0; i < size; i += size) {
+        VirtualAddress va { address.offset(i) };
+        page_directory->map(va, address.offset(i), PageFlags::Write);
+    }
+
+    return address.to_ptr();
+}
+
+ErrorOr<void> MemoryManager::unmap_identity(PhysicalAddress address, size_t size) {
+    size = std::align_up(size, PAGE_SIZE);
+    auto* page_directory = arch::PageDirectory::kernel_page_directory();
+
+    for (size_t i = 0; i < size; i += size) {
+        VirtualAddress va { address.offset(i) };
+        page_directory->unmap(va);
+    }
+
+    return {};
+}
+
 void MemoryManager::unmap_kernel_region(void* ptr) {
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
     auto* region = m_kernel_region_allocator->find_region(VirtualAddress { ptr });
