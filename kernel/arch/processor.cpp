@@ -98,13 +98,15 @@ void Processor::preinit(int cpu) {
         m_max_virtual_address_width = 32;
     }
 
-    dbgln("Processor #{}:", m_cpu);
+    if (cpu != 0) {
+        return;
+    }
+
+    dbgln("Processor:");
     dbgln(" - Brand: {}", m_brand);
     dbgln(" - Max Physical Address Width: {} bits", m_max_physical_address_width);
     dbgln(" - Max Virtual Address Width: {} bits", m_max_virtual_address_width);
     dbgln(" - Features: {}", features_string());
-
-    dbgln();
 }
 
 void Processor::initialize(int cpu) {
