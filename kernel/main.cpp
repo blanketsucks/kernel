@@ -53,6 +53,7 @@
 #include <kernel/boot/boot_info.h>
 #include <kernel/arch/apic.h>
 #include <kernel/arch/interrupts/manager.h>
+#include <kernel/arch/interrupts/apic.h>
 
 #include <kernel/tty/virtual.h>
 #include <kernel/tty/multiplexer.h>
@@ -94,10 +95,14 @@ extern "C" void main(BootInfo const& boot_info) {
     Processor::set_interrupts_initialized();
     Processor::enable_interrupts();
 
+    APIC::boot_all();
+
     auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
     Scheduler::add_process(process);
 
+    Scheduler::initialize();
     Scheduler::run();
+
     __builtin_unreachable();
 }
 

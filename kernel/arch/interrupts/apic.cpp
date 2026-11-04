@@ -1,8 +1,27 @@
 #include <kernel/arch/interrupts/apic.h>
-#include <kernel/acpi/acpi.h>
+#include <kernel/arch/processor.h>
 #include <kernel/memory/manager.h>
+#include <kernel/acpi/acpi.h>
+#include <kernel/arch/idt.h>
+#include <kernel/arch/io.h>
 
 namespace kernel {
+
+extern "C" void ap_boot_start();
+extern "C" void ap_boot_end();
+
+extern "C" FlatPtr ap_init_idtr;
+extern "C" FlatPtr ap_init_gdtr;
+extern "C" FlatPtr ap_init_cr3;
+extern "C" FlatPtr ap_entry_function;
+extern "C" FlatPtr ap_init_stacks;
+
+extern "C" void init_ap(FlatPtr cpu) {
+    auto* processor = APIC::get_processor_for(cpu - 1);
+    processor->initialize(cpu);
+
+    dbgln("Initialized CPU #{}!", cpu);
+}
 
 static PhysicalAddress get_apic_base() {
     u32 low, high;
@@ -71,6 +90,84 @@ void APIC::enable(int cpu) {
     write_reg(DestinationFormat, 0xff000000);
 }
 
+Processor* APIC::get_processor_for(int ap) {
+    return s_apic.m_ap_processors[ap];
+}
+
+void APIC::setup_ap_trampoline() {
+    u32 to_boot = m_processors - 1;
+    if (!to_boot) {
+        return;
+    }
+
+    // TODO: Move this to somewhere else as it doesn't really have to do anything with setting up the
+    //       trampoline itself.
+    m_ap_processors.reserve(to_boot);
+    for (size_t i = 0; i < to_boot; i++) {
+        m_ap_processors[i] = new Processor;
+    }
+
+    FlatPtr ap_start_address = reinterpret_cast<FlatPtr>(&ap_boot_start);
+    size_t size = (reinterpret_cast<FlatPtr>(&ap_boot_end) - ap_start_address) + (sizeof(FlatPtr) * to_boot);
+
+    m_trampoline = PhysicalAddress { 0x8000 };
+    MUST(MM->identity_map_region(m_trampoline, size));
+
+    memcpy(m_trampoline.to_ptr(), reinterpret_cast<void*>(&ap_boot_start), size);
+
+    auto compute_ap_variable_address = [&](FlatPtr& var) {
+        return m_trampoline.to_ptr() + (reinterpret_cast<FlatPtr>(&var) - ap_start_address);
+    };
+
+    auto write_ap_variable = [&](FlatPtr& var, FlatPtr value) {
+        u8* address = compute_ap_variable_address(var);
+        *reinterpret_cast<FlatPtr*>(address) = value;
+    };
+
+    m_ap_stacks.reserve(to_boot);
+    for (size_t i = 0; i < to_boot; i++) {
+        auto* stack = MUST(MM->allocate_kernel_region(32 * KiB));
+        m_ap_stacks.append(VirtualAddress { stack });
+    }
+
+    auto* ap_init_stack_array = reinterpret_cast<FlatPtr*>(compute_ap_variable_address(ap_init_stacks));
+    for (size_t i = 0; i < to_boot; i++) {
+        ap_init_stack_array[i] = m_ap_stacks[i].offset(32 * KiB);
+    }
+
+    auto* page_directory = arch::PageDirectory::kernel_page_directory();
+    write_ap_variable(ap_init_cr3, page_directory->cr3());
+
+    auto& gdtr = Processor::current().gdtr();
+    write_ap_variable(ap_init_gdtr, FlatPtr(&gdtr));
+
+    auto& idtr = arch::idtr();
+    write_ap_variable(ap_init_idtr, FlatPtr(&idtr));
+
+    write_ap_variable(ap_entry_function, FlatPtr(&init_ap));
+}
+
+void APIC::do_boot_all() {
+    u32 to_boot = m_processors - 1;
+    if (!to_boot) {
+        return;
+    }
+
+    this->setup_ap_trampoline();
+
+    write_icr(0, 0, ICR::INIT, ICR::Physical, ICR::Assert, ICR::Edge, ICR::AllButSelf);
+    io::wait(10 * 1000);
+
+    for (int i = 0; i < 2; i++) {
+        write_icr(0x08, 0, ICR::SIPI, ICR::Physical, ICR::Assert, ICR::Edge, ICR::AllButSelf);
+        io::wait(200);
+    }
+}
+
+void APIC::boot_all() {
+    s_apic.do_boot_all();
+}
+
 void APIC::eoi() {
     write_reg(EOI, 0);
 }
@@ -81,6 +178,30 @@ void APIC::write_reg(u32 reg, u32 value) {
 
 u32 APIC::read_reg(u32 reg) {
     return *reinterpret_cast<volatile u32*>(m_apic_base.to_ptr() + reg);
+}
+
+void APIC::write_icr(
+    u8 vector,
+    u8 destination,
+    u8 delivery_mode,
+    u8 destination_mode,
+    u8 level,
+    u8 trigger_mode,
+    u8 destination_type
+) {
+    ICR cmd = {{ 
+        vector,
+        delivery_mode,
+        destination_mode,
+        0,
+        level,
+        trigger_mode,
+        destination_type,
+        destination
+    }};
+
+    write_reg(InterruptCommandRegister, cmd.low);
+    write_reg(InterruptCommandRegister + 0x10, cmd.high);
 }
 
 }
