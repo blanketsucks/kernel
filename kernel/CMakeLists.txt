@@ -1,6 +1,6 @@
 file(GLOB_RECURSE CPP_SOURCES *.cpp)
 
-file(GLOB_RECURSE ASM_SOURCES arch/asm/*.asm)
+file(GLOB_RECURSE ASM_SOURCES arch/*.asm)
 
 add_subdirectory(efi)
 
