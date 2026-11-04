@@ -42,6 +42,7 @@ Process* Scheduler::get_process(pid_t id) {
 
 void _idle() {
     Scheduler::yield();
+
     while (true) {
         asm volatile("hlt");
         Scheduler::yield();
@@ -56,10 +57,12 @@ Vector<Process*>& Scheduler::processes() {
     return s_processes;
 }
 
-void Scheduler::run() {
+void Scheduler::initialize() {
     s_initialized = true;
     s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);
-    
+}
+
+void Scheduler::run() {
     auto thread = s_kernel_process->get_main_thread();
     s_current_thread = thread;
     
