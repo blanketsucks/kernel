@@ -29,6 +29,7 @@ public:
     [[gnu::naked]] static void syscall_interrupt_handler();
 
     arch::TSS& tss() { return m_tss; }
+    arch::GDTDescriptor const& gdtr() const { return m_gdtr; }
 
     [[noreturn]] void initialize_context_switching(Thread* initial_thread);
     [[noreturn]] void switch_to(Thread*);
