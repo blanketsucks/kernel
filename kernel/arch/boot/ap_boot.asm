@@ -77,12 +77,6 @@ ap_boot_pm:
 ap_boot_lm:
     mov rsp, [AP_BASE + (ap_init_stacks - ap_boot_start) + rsi * 8]
 
-    mov rax, [AP_BASE + (ap_init_gdtr - ap_boot_start)]
-    lgdt [rax]
-
-    mov rax, [AP_BASE + (ap_init_idtr - ap_boot_start)]
-    lidt [rax]
-
     mov rdi, rsi
     inc rdi
 
@@ -95,10 +89,6 @@ ap_boot_lm:
 
 align 8
 
-ap_init_idtr:
-    dq 0
-ap_init_gdtr:
-    dq 0
 ap_init_cr3:
     dq 0
 ap_entry_function:

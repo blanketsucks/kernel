@@ -10,18 +10,11 @@ namespace kernel {
 extern "C" void ap_boot_start();
 extern "C" void ap_boot_end();
 
-extern "C" FlatPtr ap_init_idtr;
-extern "C" FlatPtr ap_init_gdtr;
+extern "C" void init_ap(FlatPtr);
+
 extern "C" FlatPtr ap_init_cr3;
-extern "C" FlatPtr ap_entry_function;
 extern "C" FlatPtr ap_init_stacks;
-
-extern "C" void init_ap(FlatPtr cpu) {
-    auto* processor = APIC::get_processor_for(cpu - 1);
-    processor->initialize(cpu);
-
-    dbgln("Initialized CPU #{}!", cpu);
-}
+extern "C" FlatPtr ap_entry_function;
 
 static PhysicalAddress get_apic_base() {
     u32 low, high;
@@ -90,7 +83,7 @@ void APIC::enable(int cpu) {
     write_reg(DestinationFormat, 0xff000000);
 }
 
-Processor* APIC::get_processor_for(int ap) {
+Processor* APIC::get_ap_processor(int ap) {
     return s_apic.m_ap_processors[ap];
 }
 
@@ -136,14 +129,8 @@ void APIC::setup_ap_trampoline() {
     }
 
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
+
     write_ap_variable(ap_init_cr3, page_directory->cr3());
-
-    auto& gdtr = Processor::current().gdtr();
-    write_ap_variable(ap_init_gdtr, FlatPtr(&gdtr));
-
-    auto& idtr = arch::idtr();
-    write_ap_variable(ap_init_idtr, FlatPtr(&idtr));
-
     write_ap_variable(ap_entry_function, FlatPtr(&init_ap));
 }
 

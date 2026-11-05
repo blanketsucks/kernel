@@ -97,7 +97,7 @@ public:
     static void initialize();
 
     static void boot_all();
-    static Processor* get_processor_for(int ap);
+    static Processor* get_ap_processor(int ap);
 
     void enable(int cpu);
     void eoi();

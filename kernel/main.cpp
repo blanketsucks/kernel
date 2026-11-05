@@ -106,6 +106,13 @@ extern "C" void main(BootInfo const& boot_info) {
     __builtin_unreachable();
 }
 
+extern "C" void init_ap(FlatPtr cpu) {
+    auto* processor = APIC::get_ap_processor(cpu - 1);
+    processor->initialize(cpu);
+
+    dbgln("Initialized CPU #{}!", cpu);
+}
+
 void stage2() {
     auto* process = Process::current();
 
