@@ -44,6 +44,7 @@ target_compile_options(
     PRIVATE
     -nostdlib -nostdinc++ -ffreestanding -fno-exceptions -fno-rtti -g
     -Wno-unknown-warning-option -Wnull-dereference -Wunused-result
+    -Wno-invalid-offsetof
 )
 
 target_link_options(
