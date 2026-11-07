@@ -1,7 +1,7 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
-
+#include <kernel/sync/resource.h>
 #include <kernel/arch/cpu.h>
 #include <kernel/arch/processor.h>
 #include <kernel/arch/interrupts.h>
@@ -10,15 +10,20 @@
 
 namespace kernel {
 
+struct ReadyQueue {
+    std::IntrusiveList<Thread, __builtin_offsetof(Thread, m_ready_node)> list;
+};
+
 static u32 s_next_id = 0;
 static bool s_initialized = false;
 
-static Vector<Process*> s_processes;
+static SpinLock s_scheduler_lock;
 
-static Thread* s_next_thread = nullptr;
-static Thread* s_current_thread = nullptr;
+static SpinLockResource<Vector<Process*>> s_processes;
 
 static Process* s_kernel_process = nullptr;
+
+static SpinLockResource<ReadyQueue> s_ready_queue {};
 
 static bool s_invoked_async = false;
 
@@ -31,16 +36,18 @@ bool Scheduler::is_invoked_async() {
 }
 
 Process* Scheduler::get_process(pid_t id) {
-    for (auto& process : s_processes) {
-        if (process->id() == id) {
-            return process;
+    return s_processes.with([id](auto& list) -> Process* {
+        for (auto& process : list) {
+            if (process->id() == id) {
+                return process;
+            }
         }
-    }
-    
-    return nullptr;
+
+        return nullptr;
+    });
 }
 
-void _idle() {
+void idle(void*) {
     Scheduler::yield();
 
     while (true) {
@@ -53,118 +60,112 @@ pid_t Scheduler::generate_pid() {
     return s_next_id++;
 }
 
-Vector<Process*>& Scheduler::processes() {
-    return s_processes;
-}
-
 void Scheduler::initialize() {
     s_initialized = true;
-    s_kernel_process = Process::create_kernel_process("Kernel Idle", _idle);
+    s_kernel_process = Process::create_kernel_process("Kernel Idle", idle);
+
+    auto* idle_thread = s_kernel_process->get_main_thread();
+
+    idle_thread->set_affinity(1);
+    idle_thread->set_name("Idle Thread #0");
+
+    auto& processor = Processor::current();
+    processor.set_idle_thread(idle_thread);
+}
+
+Thread* Scheduler::create_idle_thread(int cpu) {
+    auto* thread = s_kernel_process->spawn(std::format("Idle Thread #{}", cpu), idle);
+    thread->set_affinity(1 << cpu);
+
+    return thread;
 }
 
 void Scheduler::run() {
-    auto thread = s_kernel_process->get_main_thread();
-    s_current_thread = thread;
-    
     auto& processor = Processor::current();
-    processor.initialize_context_switching(thread);
+
+    auto* idle_thread = processor.idle_thread();
+    idle_thread->set_state(Thread::Running);
+
+    processor.initialize_context_switching(idle_thread);
 }
 
-void Scheduler::yield(bool if_idle) {
-    if (!s_initialized || !s_current_thread) {
-        return;
-    }
-
+void Scheduler::yield() {
     arch::InterruptDisabler disabler;
+
     s_invoked_async = false;
 
-    for (auto& process : s_processes) {
-        for (auto& [_, thread] : process->threads()) {
-            if (thread->is_blocked() && thread->should_unblock()) {
-                thread->unblock();
+    s_processes.with([](Vector<Process*>& list) {
+        for (auto& process : list) {
+            for (auto& [_, thread] : process->threads()) {
+                if (thread->is_blocked() && thread->should_unblock()) {
+                    thread->unblock();
+                }
             }
         }
+    });
+
+    auto& processor = Processor::current();
+    if (!processor.current_thread()) {
+        return;
     }
 
     Thread* next = Scheduler::get_next_thread();
-    if (!next || next == s_current_thread) {
-        return;
-    }
-    
-    Thread* old = s_current_thread;
-    if (if_idle && old->process() != s_kernel_process) {
+    if (next == processor.current_thread()) {
         return;
     }
 
-    s_current_thread = next;
-    if (old->is_running() && old->pid() != s_kernel_process->id()) {
+    Thread* old = processor.current_thread();
+    if (old->is_running()) {
+        old->set_state(Thread::Runnable);
         Scheduler::queue(old);
     }
 
     arch::fxsave(old->fpu_state());
 
-    auto& processor = Processor::current();
     processor.switch_context(old, next);
 
     arch::fxrstor(next->fpu_state());
 }
 
 void Scheduler::add_process(Process* process) {
-    s_processes.append(process);
+    s_processes.with([process](auto& list) { list.append(process); });
     for (auto& [_, thread] : process->threads()) {
         Scheduler::queue(thread);
     }
 }
 
 void Scheduler::queue(Thread* thread) {
-    if (!s_next_thread) {
-        s_next_thread = thread;
-    } else {
-        s_next_thread->enqueue(thread);
-    }
+    s_ready_queue.with([&](ReadyQueue& queue) {
+        queue.list.append(*thread);
+    });
+}
+
+void Scheduler::dequeue(Thread* thread) {
+    s_ready_queue.with([&](ReadyQueue& queue) {
+        queue.list.remove(*thread);
+    });
 }
 
 Thread* Scheduler::get_next_thread() {
-    while (s_next_thread && !s_next_thread->is_running()) {
-        s_next_thread = s_next_thread->take_next();
-    }
+    return s_ready_queue.with([](ReadyQueue& queue) {
+        auto& processor = Processor::current();
+        for (auto& thread : queue.list) {
+            if (thread.is_running() || thread.is_blocked()) {
+                continue;
+            }
 
-    if (!s_next_thread) {
-        if (s_current_thread->is_running()) {
-            return s_current_thread;
+            if (!(thread.affinity() & (1 << processor.cpu()))) {
+                continue;
+            }
+
+            queue.list.remove(thread);
+            thread.set_state(Thread::Running);
+
+            return &thread;
         }
-        
-        return s_kernel_process->get_main_thread();
-    }
 
-    Thread* thread = s_next_thread;
-    s_next_thread = s_next_thread->take_next();
-
-    return thread;
-}
-
-Thread* Scheduler::next_thread() {
-    return s_next_thread;
-}
-
-Thread* Scheduler::set_next_thread(Thread* thread) {
-    return s_next_thread = thread;
-}
-
-Thread* Scheduler::current_thread() {
-    return s_current_thread;
-}
-
-Process* Scheduler::current_process() {
-    if (!s_current_thread) {
-        return nullptr;
-    }
-
-    return s_current_thread->process();
-}
-
-void Scheduler::set_current_thread(Thread* thread) {
-    s_current_thread = thread;
+        return processor.idle_thread();
+    });
 }
 
 }

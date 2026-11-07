@@ -3,6 +3,7 @@
 #include <kernel/process/process.h>
 #include <kernel/process/blocker.h>
 #include <kernel/memory/manager.h>
+#include <kernel/arch/processor.h>
 
 #include <std/format.h>
 
@@ -17,12 +18,12 @@ Thread* Thread::create(String name, Process* process, Entry entry, void* entry_d
 }
 
 Thread* Thread::current() {
-    return Scheduler::current_thread();
+    return Processor::current().current_thread();
 }
 
 Thread::Thread(
     String name, Process* process, pid_t id, Entry entry, void* entry_data, ProcessArguments& arguments
-) : m_id(id), m_state(Running), m_entry_data(entry_data), m_name(move(name)), m_process(process), m_arguments(arguments) {
+) : m_id(id), m_state(Runnable), m_entry_data(entry_data), m_name(move(name)), m_process(process), m_arguments(arguments) {
     this->init_exec_state(reinterpret_cast<FlatPtr>(entry));
 
     m_fpu_state = new arch::FPUState();
@@ -31,7 +32,7 @@ Thread::Thread(
 
 Thread::Thread(
     Process* process, arch::Registers* registers
-) : m_id(process->id()), m_state(Running), m_name("main"), m_process(process), m_arguments(process->m_arguments) {
+) : m_id(process->id()), m_state(Runnable), m_name("main"), m_process(process), m_arguments(process->m_arguments) {
     void* kernel_stack = MUST(MM->allocate_kernel_region(KERNEL_STACK_SIZE));
     m_kernel_stack = Stack(kernel_stack, KERNEL_STACK_SIZE);
 
@@ -197,7 +198,7 @@ void Thread::setup_thread_arguments() {
 
     VirtualAddress envp_address = user_stack - stack.offset();
     size_t argc = m_arguments.argv.size();
-    
+
     stack.push<FlatPtr>(0xdeadbeef); // _start return address
 
 #ifdef __x86_64__
@@ -228,15 +229,7 @@ void Thread::exit(void* value) {
 
 void Thread::kill() {
     m_state = Dead;
-    if (Scheduler::next_thread() == this) {
-        Scheduler::set_next_thread(next);
-    }
-
-    if (prev && prev->next == this) {
-        prev->next = next;
-    } if (next) {
-        next->prev = prev;
-    }
+    Scheduler::dequeue(this);
 }
 
 bool Thread::should_unblock() const {
@@ -256,10 +249,10 @@ void Thread::block(RefPtr<Blocker> blocker) {
 
 void Thread::unblock() {
     m_blocker = nullptr;
-    m_state = Running;
-    
+    m_state = Runnable;
+
     Scheduler::queue(this);
-}   
+}
 
 void Thread::sleep(clockid_t clock_id, const Duration& duration) {
     auto blocker = SleepBlocker::create(duration, clock_id);

@@ -82,7 +82,7 @@ extern "C" void main(BootInfo const& boot_info) {
 
     serial::init();
     s_bsp_processor.initialize(0);
-    
+
     MemoryManager::initialize();
     ACPIParser::initialize();
 
@@ -90,12 +90,8 @@ extern "C" void main(BootInfo const& boot_info) {
 
     TimeManager::initialize();
 
-    devfs::init();
-
     Processor::set_interrupts_initialized();
     Processor::enable_interrupts();
-
-    APIC::boot_all();
 
     auto* process = Process::create_kernel_process("Kernel Stage 2", stage2);
     Scheduler::add_process(process);
@@ -111,9 +107,20 @@ extern "C" void init_ap(FlatPtr cpu) {
     processor->initialize(cpu);
 
     dbgln("Initialized CPU #{}!", cpu);
+
+    auto* idle_thread = Scheduler::create_idle_thread(cpu);
+    processor->set_idle_thread(idle_thread);
+
+    // TODO: This does nothing for now as the AP doesn't have its own timer and the HPET only gets
+    //       triggered on the BSP.
+    Scheduler::run();
 }
 
 void stage2() {
+    APIC::boot_all();
+
+    devfs::init();
+
     auto* process = Process::current();
 
     dbgln("PCI Bus:");
@@ -122,7 +129,7 @@ void stage2() {
     PCI::enumerate([](pci::Device device) {
         dbgln(" - {}: {}", device.class_name(), device.subclass_name());
     });
-    
+
     dbgln();
 
     CommandLine::initialize();
@@ -130,7 +137,7 @@ void stage2() {
     NullDevice::create();
     ZeroDevice::create();
     DeviceControl::create();
-    
+
     usb::UHCIController::create();
     usb::OHCIController::create();
 

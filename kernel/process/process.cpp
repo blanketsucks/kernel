@@ -42,7 +42,7 @@ ErrorOr<Process*> Process::create_user_process(String name, ELF elf, RefPtr<fs::
 }
 
 Process* Process::current() {
-    return Scheduler::current_process();
+    return Thread::current()->m_process;
 }
 
 Process::Process(
@@ -161,7 +161,7 @@ Thread* Process::get_main_thread() const {
 }
 
 Thread* Process::spawn(String name, void (*entry)(void*), void* data) {
-    auto thread = Thread::create(Scheduler::generate_pid(), move(name), this, entry, data, m_arguments);
+    auto* thread = Thread::create(Scheduler::generate_pid(), move(name), this, entry, data, m_arguments);
     this->add_thread(thread);
 
     Scheduler::queue(thread);

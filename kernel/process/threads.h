@@ -12,6 +12,7 @@
 #include <std/time.h>
 #include <std/vector.h>
 #include <std/memory.h>
+#include <std/intrusive_list.h>
 
 namespace kernel {
 
@@ -23,7 +24,10 @@ public:
     static constexpr u32 KERNEL_STACK_SIZE = 512 * KiB;
     static constexpr u32 USER_STACK_SIZE   = 1 * MiB;
 
+    static constexpr u32 DEFAULT_AFFINITY = 0xffffffff;
+
     enum State : u8 {
+        Runnable,
         Running,
         Blocked,
         Sleeping,
@@ -41,12 +45,19 @@ public:
     pid_t id() const { return m_id; }
     pid_t pid() const;
 
+    u32 affinity() const { return m_affinity; }
+    void set_affinity(u32 affinity) { m_affinity = affinity; }
+
     bool is_main_thread() const;
 
     State state() const { return m_state; }
+    void set_state(State state) { m_state = state; }
+
     String const& name() const { return m_name; }
+    void set_name(String name) { m_name = move(name); }
 
     bool is_running() const { return m_state == Running; }
+    bool is_runnable() const { return m_state == Runnable; }
     bool is_blocked() const { return m_state == Blocked; }
 
     bool is_kernel() const;
@@ -65,7 +76,6 @@ public:
     RefPtr<Blocker> const& blocker() const { return m_blocker; }
 
     bool should_unblock() const;
-    
     void set_blocker(RefPtr<Blocker> blocker) { m_blocker = blocker; }
 
     void sleep(clockid_t, const Duration& duration);
@@ -83,12 +93,14 @@ private:
     friend class Process;
     friend class Scheduler;
 
+    friend struct ReadyQueue;
+
     Thread(String name, Process*, pid_t id, Entry, void* entry_data, ProcessArguments&);
     Thread(Process*, arch::Registers*);
 
     void init_exec_state(FlatPtr ip, bool new_kernel_stack = true);
     void set_initial_stack_state(FlatPtr sp);
-    
+
     void setup_thread_arguments();
     void prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>& dst);
 
@@ -99,6 +111,8 @@ private:
 
     pid_t m_id;
     State m_state;
+
+    u32 m_affinity = DEFAULT_AFFINITY;
 
     void* m_entry_data = nullptr;
 
@@ -114,12 +128,14 @@ private:
 
     u8* m_arguments_region = nullptr;
     size_t m_arguments_offset = 0;
-    
+
     void* m_exit_value = nullptr;
 
     mutable RefPtr<Blocker> m_blocker = nullptr;
 
     arch::FPUState* m_fpu_state = nullptr;
+
+    std::ListNode m_ready_node;
 
     Thread* next = nullptr;
     Thread* prev = nullptr;
