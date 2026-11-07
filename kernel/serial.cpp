@@ -49,7 +49,7 @@ void COMPort::write(const char* str, size_t len) {
 
         return;
     }
-        
+
     while (len--)
         this->write(*str++);
 }

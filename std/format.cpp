@@ -16,7 +16,7 @@ namespace std {
 struct StyleResult {
     FormatStyle style;
     const char* fmt;
-};  
+};
 
 StyleResult parse_format_style(const char* fmt) {
     FormatStyle style = {};

@@ -105,7 +105,7 @@ ErrorOr<void> PATADevice::initialize() {
     }
 
     size_t capacity = m_max_addressable_block * SECTOR_SIZE;
-    
+
     dbgln("PATA Device Information ({}:{}):", to_underlying(m_channel), to_underlying(m_drive));
     dbgln(" - DMA Supported: {}", m_has_dma);
     dbgln(" - Has 48 bit PIO: {}", m_has_48bit_pio);
@@ -120,7 +120,7 @@ void PATADevice::handle_irq() {
     if (!(status & 0x04)) {
         return;
     }
-    
+
     m_bus_master.write<u8>(ata::BMStatus, status | 0x04);
     m_irq_blocker->set_value(true);
 }
@@ -166,7 +166,7 @@ void PATADevice::prepare_for(ata::Command command, size_t lba, u16 sectors) {
 
         // We first write the high byte of the sector count, then the 3 high bytes of the LBA
         m_data.write<u8>(ata::SectorCount, (sectors >> 8) & 0xFF);
-        
+
         if constexpr (sizeof(size_t) > 4) {
             m_data.write<u8>(ata::LBA0, (lba >> 40) & 0xFF);
             m_data.write<u8>(ata::LBA1, (lba >> 32) & 0xFF);
@@ -255,7 +255,7 @@ void PATADevice::read_sectors_with_dma(size_t lba, u8 count, u8* buffer) {
     m_bus_master.write<u8>(0x09);
     this->wait_for_irq();
 
-    memcpy(buffer, m_dma_buffer, count * SECTOR_SIZE); 
+    memcpy(buffer, m_dma_buffer, count * SECTOR_SIZE);
 
     status = m_bus_master.read<u8>(ata::BMStatus);
     m_bus_master.write<u8>(ata::BMStatus, status | 0x06);
