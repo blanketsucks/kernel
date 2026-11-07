@@ -112,7 +112,7 @@ char* getenv(const char* name) {
     }
 
     return nullptr;
-} 
+}
 
 int setenv(const char* name, const char* value, int overwrite) {
     return -1;
@@ -228,12 +228,12 @@ long long int strtoll(const char* nptr, char** endptr, int base) {
 
 long strtol(const char* nptr, char** endptr, int base) {
 	long long int val = strtoll(nptr, endptr, base);
-	if (val > INT64_MAX) {
+	if (val > INT32_MAX) {
 		errno = ERANGE;
-		return INT64_MAX;
-	} else if (val < INT64_MIN) {
+		return INT32_MAX;
+	} else if (val < INT32_MIN) {
 		errno = ERANGE;
-		return INT64_MIN;
+		return INT32_MIN;
 	}
 
 	return (long)val;
