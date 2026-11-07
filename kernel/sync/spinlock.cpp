@@ -13,7 +13,9 @@ void SpinLock::lock() {
         return;
     }
 
-    asm volatile("cli");
+    m_interrupt_state = Processor::interrupt_state();
+    Processor::disable_interrupts();
+
     while (m_lock.exchange(1, std::MemoryOrder::Acquire) != 0) {
         asm volatile("pause");
     }
@@ -25,7 +27,7 @@ void SpinLock::unlock() {
     }
 
     m_lock.store(0, std::MemoryOrder::Relaxed);
-    asm volatile("sti");
+    Processor::set_interrupt_state(m_interrupt_state);
 }
 
 

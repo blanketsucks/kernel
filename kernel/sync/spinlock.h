@@ -2,6 +2,7 @@
 
 #include <kernel/common.h>
 #include <kernel/posix/sys/types.h>
+#include <kernel/arch/processor.h>
 
 #include <std/atomic.h>
 
@@ -21,6 +22,7 @@ public:
 
 private:
     std::Atomic<u8> m_lock { 0 };
+    InterruptState m_interrupt_state = InterruptState::Disabled;
 };
 
 }

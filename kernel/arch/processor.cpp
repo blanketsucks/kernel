@@ -175,7 +175,7 @@ void Processor::write_tss() {
 
     tss.high = 0;
     tss.low  = base >> 32;
-    
+
     write_gdt_entry(TSS_SELECTOR + sizeof(GDTEntry), tss);
 }
 
@@ -191,7 +191,7 @@ void Processor::init_gdt() {
     write_gdt_entry(USER_DATA_SELECTOR, 0x00000000, 0x00c0f200);
 
     write_tss();
-    
+
     m_gdtr.limit = sizeof(GDTEntry) * m_gdt_count - 1;
     m_gdtr.base  = reinterpret_cast<u64>(&m_gdt);
 
@@ -201,6 +201,8 @@ void Processor::init_gdt() {
 
 void Processor::initialize_context_switching(Thread* initial_thread) {
     m_tss.init(initial_thread);
+
+    m_current_thread = initial_thread;
     _switch_context_no_state(&initial_thread->registers());
 }
 
@@ -208,6 +210,7 @@ void Processor::switch_to(Thread* thread) {
     auto& kernel_stack = thread->kernel_stack();
     m_tss.set_kernel_stack(kernel_stack.top());
 
+    m_current_thread = thread;
     _switch_context_no_state(&thread->registers());
 }
 
@@ -215,6 +218,7 @@ void Processor::switch_context(Thread* old, Thread* next) {
     auto& kernel_stack = next->kernel_stack();
     m_tss.set_kernel_stack(kernel_stack.top());
 
+    m_current_thread = next;
     _switch_context(&old->registers(), &next->registers());
 }
 
@@ -237,9 +241,17 @@ String Processor::features_string() const {
     return features;
 }
 
-InterruptState Processor::interrupt_state() const {
+InterruptState Processor::interrupt_state() {
     arch::Flags flags(arch::cpu_flags());
     return (flags.if_) ? InterruptState::Enabled : InterruptState::Disabled;
+}
+
+void Processor::set_interrupt_state(InterruptState state) {
+    if (state == InterruptState::Enabled) {
+        enable_interrupts();
+    } else {
+        disable_interrupts();
+    }
 }
 
 }

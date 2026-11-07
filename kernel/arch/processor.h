@@ -26,6 +26,9 @@ public:
     static void enable_interrupts();
     static void disable_interrupts();
 
+    static InterruptState interrupt_state();
+    static void set_interrupt_state(InterruptState);
+
     [[gnu::naked]] static void syscall_interrupt_handler();
 
     arch::TSS& tss() { return m_tss; }
@@ -50,7 +53,10 @@ public:
 
     String features_string() const;
 
-    InterruptState interrupt_state() const;
+    Thread* current_thread() const { return m_current_thread; }
+    Thread* idle_thread() const { return m_idle_thread; }
+
+    void set_idle_thread(Thread* thread) { m_idle_thread = thread; }
 
 private:
     void preinit(int cpu);
@@ -77,6 +83,9 @@ private:
     arch::CPUFeatures m_features;
 
     String m_brand;
+
+    Thread* m_current_thread = nullptr;
+    Thread* m_idle_thread = nullptr;
 };
 
 }
