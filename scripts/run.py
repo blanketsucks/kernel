@@ -1,11 +1,10 @@
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 from enum import Enum
 import argparse
 import pathlib
 import subprocess
 import sys
-import types
 
 CWD = pathlib.Path(__file__).parent
 ROOT = CWD.parent
@@ -15,7 +14,7 @@ DEFAULT_DISK_IMAGE = CWD / 'disk.img'
 DEFAULT_KERNEL_LOCATION = ROOT  / 'build' / 'kernel' / 'kernel.bin'
 DEFAULT_LOADER_LOCATION = ROOT / 'build' / 'kernel' / 'loader' / 'loader.bin'
 
-DEFAULT_QEMU_ARGS: List[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int,guest_errors,unimp', '-no-reboot', '-no-shutdown']
+DEFAULT_QEMU_ARGS: list[str] = ['-D', 'qemu.log', '-d', 'cpu_reset,int,guest_errors,unimp', '-no-reboot', '-no-shutdown']
 
 class USBController(str, Enum):
     OHCI = 'ohci'
@@ -35,7 +34,7 @@ class DiskImage(NamedTuple):
 class QemuArgs(NamedTuple):
     kernel: str
     disk_image: DiskImage
-    
+
     memory: int
 
     debug: bool
@@ -52,30 +51,30 @@ class QemuArgs(NamedTuple):
 
     cpus: int
 
-    cmdline: List[str] = []
+    cmdline: list[str] = []
 
     netdev: str = 'user,id=net0,hostfwd=tcp:127.0.0.1:8888-10.0.2.15:8888'
-    devices: List[str] = ['ac97,audiodev=snd0', 'e1000,netdev=net0']
+    devices: list[str] = ['ac97,audiodev=snd0', 'e1000,netdev=net0']
 
-    def build_disk_image_argument(self) -> List[str]:
+    def build_disk_image_argument(self) -> list[str]:
         return ['-drive', self.disk_image.build()]
-    
-    def build_memory_argument(self) -> List[str]:
+
+    def build_memory_argument(self) -> list[str]:
         return ['-m', str(self.memory)]
-    
-    def build_serial_argument(self) -> List[str]:
+
+    def build_serial_argument(self) -> list[str]:
         if self.monitor:
             return ['-monitor', 'stdio']
 
         return ['-serial', 'stdio'] if self.serial else []
-    
-    def build_debug_argument(self) -> List[str]:
+
+    def build_debug_argument(self) -> list[str]:
         return ['-s', '-S'] if self.debug else []
-    
-    def build_network_argument(self) -> List[str]:
+
+    def build_network_argument(self) -> list[str]:
         return ['-netdev', self.netdev]
-    
-    def build(self) -> List[str]:
+
+    def build(self) -> list[str]:
         args = [
             *DEFAULT_QEMU_ARGS,
             *self.build_disk_image_argument(),
@@ -104,7 +103,7 @@ class QemuArgs(NamedTuple):
             args.extend(['-device', device])
         if self.use_loader and not self.uefi:
             args.extend(['-kernel', str(DEFAULT_LOADER_LOCATION), '-initrd', self.kernel])
-            self.cmdline.append(f'root=/dev/hda2')
+            self.cmdline.append('root=/dev/hda2')
 
         if self.uefi:
             args.extend(['-bios', self.ovmf])
@@ -137,6 +136,7 @@ def main():
     parser.add_argument('--uefi', action='store_true', help='Run kernel in UEFI mode.')
     parser.add_argument('--kvm', action='store_true', help='Enable KVM.')
     parser.add_argument('--cpus', type=int, default=1, help='Number of CPUs.')
+    parser.add_argument('--cmdline', type=str, default=None, help='Command line to pass the kernel')
 
     action = parser.add_argument('--ovmf', type=str, default=None, help='Path to OVMF firmware')
 
@@ -146,9 +146,10 @@ def main():
         action.default = '/usr/local/share/qemu/OVMF.fd'
     elif sys.platform == 'win32':
         action.default = 'C:/Program Files/qemu/OVMF.fd'
-    
+
     args = parser.parse_args()
 
+    cmdline = args.cmdline.split(',') if args.cmdline else []
     qemu_args = QemuArgs(
         disk_image=DiskImage(args.disk_image),
         kernel=str(args.kernel),
@@ -163,7 +164,8 @@ def main():
         usb_controller=args.usb_controller,
         use_loader=not args.disable_loader,
         virtio_gpu=args.enable_virtio_gpu,
-        cpus=args.cpus
+        cpus=args.cpus,
+        cmdline=cmdline
     )
 
     qemu_args.cmdline.append(f'init={args.init}')
