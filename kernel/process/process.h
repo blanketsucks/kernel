@@ -51,7 +51,7 @@ public:
     static Process* create_kernel_process(String name, void (*entry)()) {
         return create_kernel_process(move(name), kernel_process_entry, reinterpret_cast<void*>(entry));
     }
-    
+
     static Process* create_kernel_process(String name, void (*entry)(void*), void* data = nullptr);
 
     static ErrorOr<Process*> create_user_process(String path, RefPtr<fs::ResolvedInode> cwd, TTY* tty = nullptr);
@@ -75,8 +75,17 @@ public:
 
     int exit_status() const { return m_exit_status; }
 
-    HashMap<pid_t, Thread*>& threads() { return m_threads; }
-    HashMap<pid_t, Thread*> const& threads() const { return m_threads; }
+    auto& threads() { return m_threads; }
+    auto const& threads() const { return m_threads; }
+
+    template<typename F>
+    void for_each_thread(F&& callback) {
+        m_threads.with([&](auto& threads) {
+            for (auto& [_, thread] : threads) {
+                callback(thread);
+            }
+        });
+    }
 
     void add_thread(Thread*);
     void remove_thread(Thread*);
@@ -84,7 +93,7 @@ public:
     Thread* get_thread(pid_t id) const;
     Thread* get_main_thread() const;
 
-    Thread* spawn(String name, void (*entry)(void*), void* data = nullptr);
+    Thread* spawn(String name, void (*entry)(void*), void* data = nullptr, bool queue = true);
 
     Process* fork(arch::Registers*);
 
@@ -138,15 +147,15 @@ public:
 
     ErrorOr<FlatPtr> sys$getcwd(char* buffer, size_t size);
     ErrorOr<FlatPtr> sys$chdir(const char* path);
-    
+
     ErrorOr<FlatPtr> sys$fork(arch::Registers*);
     ErrorOr<FlatPtr> sys$execve(const char* pathname, char* const argv[], char* const envp[]);
-    
+
     ErrorOr<FlatPtr> sys$waitpid(pid_t pid, int* status, int options);
 
     ErrorOr<FlatPtr> sys$clock_gettime(clockid_t clock_id, timespec* ts);
     ErrorOr<FlatPtr> sys$clock_nanosleep(clockid_t clock_id, int flags, const timespec* req, timespec* rem);
-    
+
 private:
     friend class Scheduler;
     friend class Thread;
@@ -155,9 +164,9 @@ private:
     ErrorOr<void> create_user_thread(ELF);
 
     Process(
-        pid_t id, 
-        String name, 
-        bool kernel, 
+        pid_t id,
+        String name,
+        bool kernel,
         void (*entry)(void*),
         void* entry_data = nullptr,
         RefPtr<fs::ResolvedInode> cwd = nullptr,
@@ -190,8 +199,8 @@ private:
     RefPtr<memory::RegionAllocator> m_allocator;
 
     TTY* m_tty = nullptr;
-    
-    HashMap<pid_t, Thread*> m_threads;
+
+    SpinLockResource<HashMap<pid_t, Thread*>> m_threads;
     HashMap<pid_t, void*> m_exit_values;
 
     int m_exit_status = 0;

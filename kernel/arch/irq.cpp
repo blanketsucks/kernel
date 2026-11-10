@@ -1,6 +1,7 @@
 #include <kernel/arch/irq.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/arch/interrupts/manager.h>
+#include <kernel/arch/processor.h>
 
 #include <std/format.h>
 
@@ -17,9 +18,7 @@ extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
     handler->handle_irq();
     handler->eoi();
 
-    if (Scheduler::is_invoked_async()) {
-        Scheduler::yield();
-    }
+    Processor::current().check_scheduler_invoked_async();
 }
 
 static void register_irq_handler(IRQHandlerBase* handler) {
@@ -76,7 +75,7 @@ static void unregister_irq_handler(IRQHandlerBase* handler) {
     }
 }
 
-IRQHandlerBase::IRQHandlerBase(u8 irq) : m_controller(InterruptManager::controller_for(irq)), m_irq(irq) {} 
+IRQHandlerBase::IRQHandlerBase(u8 irq) : m_controller(InterruptManager::controller_for(irq)), m_irq(irq) {}
 
 void IRQHandlerBase::register_interrupt_handler() {
     if (m_registered) {
@@ -96,12 +95,18 @@ void IRQHandlerBase::unregister_interrupt_handler() {
     m_registered = false;
 }
 
+// TODO: Make another class for interrupts that don't have a corresponding controller (such as the APIC Timer)
+InterruptController& IRQHandlerBase::ensure_controller() {
+    ASSERT(m_controller, "No interrupt controller was set for IRQ #{}.", irq());
+    return *m_controller;
+}
+
 void IRQHandler::eoi() {
     if (m_is_shared) {
         return;
     }
 
-    m_controller->eoi(irq());
+    ensure_controller().eoi(irq());
 }
 
 void IRQHandler::enable_irq() {
@@ -111,14 +116,14 @@ void IRQHandler::enable_irq() {
 
     m_enabled = true;
     if (!m_is_shared) {
-        m_controller->enable(irq());
+        ensure_controller().enable(irq());
     }
 }
 
 void IRQHandler::disable_irq() {
     m_enabled = false;
     if (!m_is_shared) {
-        m_controller->disable(irq());
+        ensure_controller().disable(irq());
     }
 }
 
@@ -129,7 +134,7 @@ void SharedIRQHandler::handle_irq() {
 }
 
 void SharedIRQHandler::eoi() {
-    m_controller->eoi(irq());
+    ensure_controller().eoi(irq());
 }
 
 void SharedIRQHandler::enable_irq() {
@@ -138,7 +143,7 @@ void SharedIRQHandler::enable_irq() {
     }
 
     m_enabled = true;
-    m_controller->enable(irq());
+    ensure_controller().enable(irq());
 }
 
 void SharedIRQHandler::disable_irq() {
@@ -147,7 +152,7 @@ void SharedIRQHandler::disable_irq() {
     }
 
     m_enabled = false;
-    m_controller->disable(irq());
+    ensure_controller().disable(irq());
 }
 
 void SharedIRQHandler::add_irq_handler(IRQHandlerBase* handler) {

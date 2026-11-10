@@ -1,6 +1,8 @@
 #pragma once
 
 #include <kernel/common.h>
+#include <kernel/arch/processor.h>
+
 #include <std/type_traits.h>
 
 namespace kernel {

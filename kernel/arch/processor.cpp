@@ -2,6 +2,7 @@
 #include <kernel/arch/registers.h>
 #include <kernel/process/threads.h>
 #include <kernel/process/process.h>
+#include <kernel/process/scheduler.h>
 #include <kernel/arch/cpu.h>
 #include <kernel/arch/idt.h>
 #include <kernel/arch/gdt.h>
@@ -10,7 +11,7 @@ namespace kernel {
 
 using namespace arch;
 
-extern "C" void _switch_context(ThreadRegisters*, ThreadRegisters*);
+extern "C" void _switch_context(ThreadRegisters*, ThreadRegisters*, std::Atomic<u32>* old_running_cpu);
 extern "C" [[noreturn]] void _switch_context_no_state(ThreadRegisters*);
 
 [[gnu::naked]] static void flush_gdt(GDTDescriptor*) {
@@ -137,6 +138,7 @@ void Processor::initialize(int cpu) {
     star |= ((KERNEL_DATA_SELECTOR | 3) << 48); // "userland CS will be loaded from STAR 63:48 + 16 and userland SS from STAR 63:48 + 8 on SYSRET"
 
     wrmsr(arch::MSR_STAR, star);
+    wrmsr(arch::MSR_SFMASK, 0x200);
     wrmsr(arch::MSR_LSTAR, reinterpret_cast<u64>(&Processor::syscall_interrupt_handler));
 
     write_gs(reinterpret_cast<FlatPtr>(this));
@@ -201,6 +203,7 @@ void Processor::init_gdt() {
 
 void Processor::initialize_context_switching(Thread* initial_thread) {
     m_tss.init(initial_thread);
+    initial_thread->set_state(Thread::Running);
 
     m_current_thread = initial_thread;
     _switch_context_no_state(&initial_thread->registers());
@@ -219,7 +222,7 @@ void Processor::switch_context(Thread* old, Thread* next) {
     m_tss.set_kernel_stack(kernel_stack.top());
 
     m_current_thread = next;
-    _switch_context(&old->registers(), &next->registers());
+    _switch_context(&old->registers(), &next->registers(), &old->m_running_cpu);
 }
 
 String Processor::features_string() const {
@@ -251,6 +254,13 @@ void Processor::set_interrupt_state(InterruptState state) {
         enable_interrupts();
     } else {
         disable_interrupts();
+    }
+}
+
+void Processor::check_scheduler_invoked_async() {
+    if (m_scheduler_invoked_async) {
+        m_scheduler_invoked_async = false;
+        Scheduler::yield();
     }
 }
 

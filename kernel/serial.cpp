@@ -42,16 +42,11 @@ void COMPort::write(char c) {
 }
 
 void COMPort::write(const char* str, size_t len) {
-    if (Processor::are_interrupts_initialized()) {
-        ScopedLock lock(s_lock);
-        while (len--)
-            this->write(*str++);
-
-        return;
-    }
-
+    SpinLockGuard guard(s_lock);
     while (len--)
         this->write(*str++);
+
+    return;
 }
 
 char COMPort::read() {

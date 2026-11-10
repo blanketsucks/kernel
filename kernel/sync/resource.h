@@ -7,7 +7,7 @@
 
 namespace kernel {
 
-template<typename T, Lock Lock>
+template<typename T, class Lock, class Guard = ScopedLock<Lock>>
 class LockedResource {
 public:
     template<typename... Args>
@@ -18,13 +18,13 @@ public:
 
     template<typename F>
     auto with(F&& func) {
-        ScopedLock lock(m_lock);
+        Guard lock(m_lock);
         return func(m_value);
     }
 
     template<typename F>
     auto with(F&& func) const {
-        ScopedLock lock(m_lock);
+        Guard lock(m_lock);
         return func(m_value);
     }
 
@@ -34,6 +34,6 @@ private:
 };
 
 template<typename T>
-using SpinLockResource = LockedResource<T, SpinLock>;
+using SpinLockResource = LockedResource<T, SpinLock, SpinLockGuard>;
 
 }

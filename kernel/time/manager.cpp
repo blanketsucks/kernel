@@ -4,17 +4,17 @@
 #include <kernel/time/pit.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/acpi/acpi.h>
+#include <kernel/arch/interrupts/apic.h>
 
 namespace kernel {
 
 static TimeManager* s_instance = nullptr;
 
 void TimeManager::initialize() {
-    if (s_instance) {
-        return;
+    if (!s_instance) {
+        s_instance = new TimeManager();
     }
 
-    s_instance = new TimeManager();
     s_instance->init();
 }
 
@@ -27,6 +27,18 @@ void TimeManager::init() {
 
     m_epoch_time = Duration::from_seconds(rtc::boot_time());
 
+    // No need to use the APIC timer when running 1 core.
+    if (APIC::is_initialized() && APIC::processors() > 1) {
+        auto& apic = APIC::instance();
+        auto timer = apic.create_timer();
+
+        m_ticks_per_second = timer->frequency();
+        this->set_system_timer(timer);
+
+        HPET::init();
+        return;
+    }
+
     // Fall back to the PIT if the HPET is not available
     if (!HPET::init()) {
         this->initialize_with_pit();
@@ -35,23 +47,22 @@ void TimeManager::init() {
     }
 }
 
+void TimeManager::set_system_timer(RefPtr<Timer> timer) {
+    m_system_timer = move(timer);
+    m_system_timer->set_callback([this]() { this->timer_tick(); });
+}
+
 void TimeManager::initialize_with_hpet() {
     auto* hpet = HPET::instance();
     m_ticks_per_second = hpet->frequency();
 
-    m_system_timer = hpet->timer(0);
-    m_system_timer->set_callback([this]() {
-        this->timer_tick();
-    });
+    this->set_system_timer(hpet->timer(0));
 }
 
 void TimeManager::initialize_with_pit() {
     m_ticks_per_second = PIT::DEFAULT_FREQUENCY;
 
-    m_system_timer = PIT::create();
-    m_system_timer->set_callback([this]() {
-        this->timer_tick();
-    });
+    this->set_system_timer(PIT::create());
 }
 
 Duration TimeManager::query_time(clockid_t clock_id) {
@@ -69,8 +80,12 @@ time_t TimeManager::boot_time() {
 }
 
 void TimeManager::timer_tick() {
-    this->update_time();
-    Scheduler::invoke_async();
+    auto& processor = Processor::current();
+    if (processor.cpu() == 0) {
+        this->update_time();
+    }
+
+    processor.invoke_scheduler_async();
 }
 
 void TimeManager::update_time() {

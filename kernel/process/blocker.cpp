@@ -7,7 +7,7 @@
 
 namespace kernel {
 
-static Vector<WaitBlocker*> s_wait_blockers;
+static SpinLockResource<Vector<WaitBlocker*>> s_wait_blockers;
 
 void Blocker::wait() {
     auto* thread = Thread::current();
@@ -31,30 +31,39 @@ bool SleepBlocker::should_unblock() {
 
 RefPtr<WaitBlocker> WaitBlocker::create(Thread* thread, pid_t pid) {
     auto blocker = RefPtr(new WaitBlocker(thread, pid));
-    s_wait_blockers.append(blocker.ptr());
+    s_wait_blockers.with([&](Vector<WaitBlocker*> blockers) { blockers.append(blocker.ptr()); });
 
     return blocker;
 }
 
 void WaitBlocker::try_wake_all(Process* process, int status) {
-    for (auto& blocker : s_wait_blockers) {
-        if (!blocker) {
-            continue;
+    s_wait_blockers.with([&](Vector<WaitBlocker*> blockers) {
+        Vector<WaitBlocker*> to_remove;
+        for (auto& blocker : blockers) {
+            if (!blocker) {
+                continue;
+            }
+
+            if (blocker->try_wake(process, status)) {
+                to_remove.append(blocker);
+            }
         }
 
-        blocker->try_wake(process, status);
-    }
+        for (auto& blocker : to_remove) {
+            blockers.remove(blocker);
+        }
+    });
 }
 
-void WaitBlocker::try_wake(Process* process, int status) {
+bool WaitBlocker::try_wake(Process* process, int status) {
     if (m_pid != process->id()) {
-        return;
+        return false;
     }
 
     m_status = __WIFEXITED | status;
     m_ready = true;
 
-    s_wait_blockers.remove(this);
+    return true;
 }
 
 bool FileBlocker::should_unblock() {

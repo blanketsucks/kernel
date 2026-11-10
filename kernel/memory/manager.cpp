@@ -93,7 +93,7 @@ StringView MemoryManager::get_fault_message(PageFault fault, Region* region) {
     if (!region) {
         return {};
     }
-        
+
     if (fault.rsvd) {
         return "Reserved bit set in page table entry.";
     } else if (!fault.present) {
@@ -117,9 +117,10 @@ void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
     // No user process can ever allocate in the first page of memory so this is a safe assumption
     bool is_null_pointer_dereference = address < PAGE_SIZE;
 
+    PageFault fault = regs->errno;
+
     auto* thread = Thread::current();
-    if (!thread || thread->is_kernel()) {
-        PageFault fault = regs->errno;
+    if (!thread || thread->is_kernel() || !fault.user) {
 
         Region* region = MM->kernel_region_allocator().find_region(address, true);
         if (is_null_pointer_dereference) {
@@ -135,8 +136,8 @@ void MemoryManager::page_fault_handler(arch::InterruptRegisters* regs) {
             dbgln("  \033[1;31mUnrecoverable page fault.\033[0m");
         }
 
-        kernel::print_stack_trace();
-        
+        kernel::print_stack_trace(reinterpret_cast<StackFrame*>(regs->rbp));
+
         asm volatile("cli");
         asm volatile("hlt");
     }
@@ -167,7 +168,7 @@ ErrorOr<void> MemoryManager::free_page_frame(void* frame) {
 }
 
 ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Region* region, PageFlags flags) {
-    ScopedLock lock(m_lock);
+    SpinLockGuard lock(m_lock);
     if (this->try_allocate_contiguous(page_directory, region, flags)) {
         return {};
     }
@@ -176,8 +177,8 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
         PhysicalAddress frame { TRY(this->allocate_page_frame()) };
 
         PhysicalPage* page = this->get_physical_page(frame);
-        page->ref_count++;
-        
+        page->ref();
+
         page_directory->map(region->offset_by(i), frame, flags);
     }
 
@@ -186,7 +187,7 @@ ErrorOr<void> MemoryManager::map_region(arch::PageDirectory* page_directory, Reg
 
 ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, PageFlags flags, String name) {
     // FIXME: Acquiring the lock *sometimes* hangs when trying to allocate the DMA region for the control USB pipe.
-    ScopedLock lock(m_lock);
+    SpinLockGuard guard(m_lock);
 
     size = std::align_up(size, PAGE_SIZE);
     auto* region = allocator.allocate(size, PROT_READ | PROT_WRITE);
@@ -205,7 +206,7 @@ ErrorOr<void*> MemoryManager::allocate(RegionAllocator& allocator, size_t size, 
         PhysicalAddress frame { TRY(this->allocate_page_frame()) };
         PhysicalPage* page = this->get_physical_page(frame);
 
-        page->ref_count++;
+        page->ref();
         page_directory->map(region->offset_by(i), frame, flags);
     }
 
@@ -221,7 +222,7 @@ bool MemoryManager::try_allocate_contiguous(arch::PageDirectory* page_directory,
     PhysicalAddress pa { result.value() };
     for (size_t i = 0; i < region->size(); i += PAGE_SIZE) {
         PhysicalPage* page = this->get_physical_page(pa.offset(i));
-        page->ref_count++;
+        page->ref();
 
         page_directory->map(region->offset_by(i), pa.offset(i), flags);
     }
@@ -243,7 +244,7 @@ ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAdd
         PhysicalAddress frame { TRY(this->allocate_page_frame()) };
 
         PhysicalPage* page = this->get_physical_page(frame);
-        page->ref_count++;
+        page->ref();
 
         page_directory->map(region->offset_by(i), frame, flags);
     }
@@ -252,7 +253,7 @@ ErrorOr<void*> MemoryManager::allocate_at(RegionAllocator& allocator, VirtualAdd
 }
 
 ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t size) {
-    ScopedLock lock(m_lock);
+    SpinLockGuard guard(m_lock);
 
     VirtualAddress address { ptr };
     auto* region = allocator.find_region(address);
@@ -260,15 +261,20 @@ ErrorOr<void> MemoryManager::free(RegionAllocator& allocator, void* ptr, size_t 
         return Error(EINVAL);
     }
 
-    TRY(this->free(allocator.page_directory(), address, size));
+    TRY(this->free_unlocked(allocator.page_directory(), address, size));
     allocator.free(region);
 
     return {};
 }
 
 ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAddress address, size_t size) {
-    ScopedLock lock(m_lock);
+    SpinLockGuard guard(m_lock);
+    TRY(this->free_unlocked(page_directory, address, size));
 
+    return {};
+}
+
+ErrorOr<void> MemoryManager::free_unlocked(arch::PageDirectory* page_directory, VirtualAddress address, size_t size) {
     for (size_t i = 0; i < size; i += PAGE_SIZE) {
         auto* entry = page_directory->get_page_table_entry(address.offset(i));
         if (!entry) {
@@ -278,9 +284,7 @@ ErrorOr<void> MemoryManager::free(arch::PageDirectory* page_directory, VirtualAd
         PhysicalAddress pa = entry->physical_address();
 
         PhysicalPage* page = this->get_physical_page(pa);
-        page->ref_count--;
-
-        if (page->ref_count == 0) {
+        if (page->deref() == 1) {
             TRY(this->free_page_frame(pa.to_ptr()));
         }
 
@@ -316,6 +320,8 @@ ErrorOr<void> MemoryManager::free_dma_region(void* ptr, size_t size) {
 }
 
 ErrorOr<void*> MemoryManager::map_physical_region(PhysicalAddress address, size_t size) {
+    SpinLockGuard guard(m_lock);
+
     size = std::align_up(size, PAGE_SIZE);
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
@@ -332,10 +338,12 @@ ErrorOr<void*> MemoryManager::map_physical_region(PhysicalAddress address, size_
 }
 
 ErrorOr<void*> MemoryManager::identity_map_region(PhysicalAddress address, size_t size) {
+    SpinLockGuard guard(m_lock);
+
     size = std::align_up(size, PAGE_SIZE);
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
-    for (size_t i = 0; i < size; i += size) {
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
         VirtualAddress va { address.offset(i) };
         page_directory->map(va, address.offset(i), PageFlags::Write);
     }
@@ -344,10 +352,12 @@ ErrorOr<void*> MemoryManager::identity_map_region(PhysicalAddress address, size_
 }
 
 ErrorOr<void> MemoryManager::unmap_identity(PhysicalAddress address, size_t size) {
+    SpinLockGuard guard(m_lock);
+
     size = std::align_up(size, PAGE_SIZE);
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
 
-    for (size_t i = 0; i < size; i += size) {
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
         VirtualAddress va { address.offset(i) };
         page_directory->unmap(va);
     }
@@ -356,6 +366,8 @@ ErrorOr<void> MemoryManager::unmap_identity(PhysicalAddress address, size_t size
 }
 
 void MemoryManager::unmap_kernel_region(void* ptr) {
+    SpinLockGuard guard(m_lock);
+
     auto* page_directory = arch::PageDirectory::kernel_page_directory();
     auto* region = m_kernel_region_allocator->find_region(VirtualAddress { ptr });
 
@@ -371,6 +383,8 @@ void MemoryManager::unmap_kernel_region(void* ptr) {
 }
 
 ErrorOr<void*> MemoryManager::map_from_page_directory(arch::PageDirectory* page_directory, void* ptr, size_t size) {
+    SpinLockGuard guard(m_lock);
+
     size = std::align_up(size, PAGE_SIZE);
     auto* region = m_kernel_region_allocator->allocate(size, PROT_READ | PROT_WRITE);
     if (!region) {
@@ -421,19 +435,19 @@ TemporaryMapping::~TemporaryMapping() {
 }
 
 // FIXME: Implement
-int liballoc_lock() {
+int liballoc_lock(kernel::InterruptState& interrupt_state) {
     using namespace kernel;
     if (s_mm) {
-        s_mm->liballoc_lock().lock();
+        interrupt_state = s_mm->liballoc_lock().lock();
     }
 
     return 0;
 }
 
-int liballoc_unlock() {
+int liballoc_unlock(kernel::InterruptState interrupt_state) {
     using namespace kernel;
     if (s_mm) {
-        s_mm->liballoc_lock().unlock();
+        s_mm->liballoc_lock().unlock(interrupt_state);
     }
 
     return 0;

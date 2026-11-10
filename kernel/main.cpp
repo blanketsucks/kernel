@@ -106,13 +106,17 @@ extern "C" void init_ap(FlatPtr cpu) {
     auto* processor = APIC::get_ap_processor(cpu - 1);
     processor->initialize(cpu);
 
-    dbgln("Initialized CPU #{}!", cpu);
-
-    auto* idle_thread = Scheduler::create_idle_thread(cpu);
+    auto* idle_thread = APIC::get_ap_idle_thread(cpu - 1);
     processor->set_idle_thread(idle_thread);
 
-    // TODO: This does nothing for now as the AP doesn't have its own timer and the HPET only gets
-    //       triggered on the BSP.
+    auto& apic = APIC::instance();
+    apic.enable(cpu);
+
+    auto timer = apic.timer();
+    timer->enable_local_timer();
+
+    dbgln("Initialized CPU #{}!", cpu);
+
     Scheduler::run();
 }
 

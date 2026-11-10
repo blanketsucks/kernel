@@ -77,20 +77,20 @@ public:
     size_t offset_in(VirtualAddress address) const {
         return static_cast<size_t>(address - m_range.base());
     }
-    
+
     bool used() const { return m_used; }
 
     int prot() const { return m_prot; }
-    
+
     bool contains(VirtualAddress address) const { return m_range.contains(address); }
-    
+
     bool is_readable() const { return m_prot & PROT_READ; }
     bool is_writable() const { return m_prot & PROT_WRITE; }
     bool is_executable() const { return m_prot & PROT_EXEC; }
-    
+
     bool is_shared() const { return m_shared; }
     void set_shared(bool shared) { m_shared = shared; }
-    
+
     // true if the underlying physical memory that is pointed by this region is managed by the kernel.
     bool is_kernel_managed() const { return m_kernel_managed; }
 
@@ -152,11 +152,11 @@ public:
 
     Region* create_file_backed_region(fs::File* file, size_t size, VirtualAddress hint = {});
 
-    Region* find_region(void* address, bool contains = false) const {
+    Region* find_region(void* address, bool contains = false) {
         return find_region(VirtualAddress(address), contains);
     }
-    
-    Region* find_region(VirtualAddress address, bool contains = false) const;
+
+    Region* find_region(VirtualAddress address, bool contains = false);
 
     template<typename T>
     void for_each_region(T&& callback) const {
@@ -165,7 +165,7 @@ public:
         }
     }
 
-    void print() const;
+    void print();
 
     Region* insert_before(Region* region, Region* new_region);
     Region* insert_after(Region* region, Region* new_region);

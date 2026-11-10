@@ -242,41 +242,19 @@ bool Thread::should_unblock() const {
 
 void Thread::block(RefPtr<Blocker> blocker) {
     m_blocker = move(blocker);
-    m_state = Blocked;
 
+    Scheduler::dequeue(this, Thread::Blocked);
     Scheduler::yield();
 }
 
 void Thread::unblock() {
     m_blocker = nullptr;
-    m_state = Runnable;
-
-    Scheduler::queue(this);
+    Scheduler::queue(this, Thread::Runnable);
 }
 
 void Thread::sleep(clockid_t clock_id, const Duration& duration) {
     auto blocker = SleepBlocker::create(duration, clock_id);
     this->block(move(blocker));
-}
-
-void Thread::enqueue(Thread* thread) {
-    if (thread == this) {
-        return;
-    }
-
-    if (next) {
-        next->enqueue(thread);
-    } else {
-        thread->prev = this;
-        next = thread;
-    }
-}
-
-Thread* Thread::take_next() {
-    Thread* next_thread = next;
-    next = nullptr;
-
-    return next_thread;
 }
 
 }

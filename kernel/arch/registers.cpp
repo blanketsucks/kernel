@@ -1,6 +1,9 @@
 #include <kernel/arch/registers.h>
+#include <kernel/arch/processor.h>
 #include <kernel/process/stack.h>
 #include <kernel/process/threads.h>
+#include <kernel/process/scheduler.h>
+
 
 #include <std/format.h>
 
@@ -8,7 +11,9 @@ namespace kernel::arch {
 
 extern "C" void _thread_first_enter();
 
-extern "C" void _thread_context_init(Thread*) {}
+extern "C" void _thread_context_init(Thread*) {
+    Scheduler::unlock();
+}
 
 void ThreadRegisters::set_initial_stack_state(Thread* thread) {
     auto& stack = thread->kernel_stack();
@@ -39,7 +44,7 @@ void ThreadRegisters::set_initial_stack_state(Thread* thread) {
     // Argument for _thread_context_init
     stack.push(reinterpret_cast<FlatPtr>(thread));
     stack.push(reinterpret_cast<FlatPtr>(&_thread_first_enter));
-    
+
     stack.push<FlatPtr>(0x2); // Start the thread with interrupts disabled
     stack.push(r15);
     stack.push(r14);

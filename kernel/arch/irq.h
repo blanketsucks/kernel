@@ -26,13 +26,15 @@ public:
     void register_interrupt_handler();
     void unregister_interrupt_handler();
 
-    InterruptController const& controller() const { return *m_controller; }
+    InterruptController const* controller() const { return m_controller.ptr(); }
 
     u8 irq() const { return m_irq; }
     bool is_registered() const { return m_registered; }
 
 protected:
     IRQHandlerBase(u8 irq);
+
+    InterruptController& ensure_controller();
 
     RefPtr<InterruptController> m_controller;
 

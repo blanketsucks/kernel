@@ -11,6 +11,7 @@
 #include <std/string.h>
 #include <std/time.h>
 #include <std/vector.h>
+#include <std/atomic.h>
 #include <std/memory.h>
 #include <std/intrusive_list.h>
 
@@ -25,6 +26,8 @@ public:
     static constexpr u32 USER_STACK_SIZE   = 1 * MiB;
 
     static constexpr u32 DEFAULT_AFFINITY = 0xffffffff;
+
+    static constexpr u32 NO_CPU = 0xffffffff;
 
     enum State : u8 {
         Runnable,
@@ -89,9 +92,21 @@ public:
     void exit(void* value);
     void kill();
 
+    bool try_claim_cpu(u32 cpu) {
+        u32 expected = NO_CPU;
+        return m_running_cpu.compare_exchange_strong(expected, cpu);
+    }
+
+    void release_cpu() { m_running_cpu.store(NO_CPU); }
+    u32 running_cpu() { return m_running_cpu.load(); }
+
+    bool is_idle_thread() const { return m_idle; }
+    void set_idle_thread(bool value) { m_idle = value; }
+
 private:
     friend class Process;
     friend class Scheduler;
+    friend class Processor;
 
     friend struct ReadyQueue;
 
@@ -105,9 +120,6 @@ private:
     void prepare_argument_vector(Vector<String> const& src, Vector<FlatPtr>& dst);
 
     void reset_arguments_region();
-
-    void enqueue(Thread*);
-    Thread* take_next();
 
     pid_t m_id;
     State m_state;
@@ -137,8 +149,9 @@ private:
 
     std::ListNode m_ready_node;
 
-    Thread* next = nullptr;
-    Thread* prev = nullptr;
+    std::Atomic<u32> m_running_cpu { NO_CPU };
+
+    bool m_idle = false;
 };
 
 }

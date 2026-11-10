@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/boot/boot_info.h>
+#include <kernel/sync/spinlock.h>
 #include <kernel/common.h>
 
 #include <std/stack.h>
@@ -32,7 +33,7 @@ public:
     ErrorOr<void*> allocate_contiguous(size_t count);
 
     ErrorOr<void> free(void* frame, size_t count);
-    
+
 private:
     PhysicalAddress m_base;
     size_t m_size;
@@ -51,7 +52,7 @@ public:
 
     size_t total_usable_memory() const { return m_total_usable_memory; }
     size_t total_pages() const { return m_total_pages; }
-    
+
     size_t used_memory() const { return m_allocations * PAGE_SIZE; }
 
     size_t allocations() const { return m_allocations; }
@@ -77,6 +78,8 @@ private:
 
     Vector<PhysicalRegion> m_physical_regions;
     std::Stack<PhysicalAddress> m_frames;
+
+    SpinLock m_lock;
 };
 
 }

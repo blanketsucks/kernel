@@ -1,3 +1,4 @@
+#include <kernel/arch/processor.h>
 #include <kernel/process/process.h>
 #include <kernel/process/syscalls.h>
 #include <kernel/process/threads.h>
@@ -15,6 +16,14 @@ static const SyscallHandler SYSCALL_HANDLERS[] = {
 static constexpr size_t SYSCALL_COUNT = sizeof(SYSCALL_HANDLERS) / sizeof(SyscallHandler);
 
 FlatPtr Process::handle_syscall(arch::Registers* registers) {
+    if (this->is_kernel()) {
+        auto& p = Processor::current();
+        dbgln("IDENT: cpu={} cur={:#p} idle={:#p} thread_now={:#p} pid={}",
+              p.cpu(), p.current_thread(), p.idle_thread(), Thread::current(), Thread::current()->pid());
+    }
+
+    ASSERT(!this->is_kernel(), "syscall dispatched to a kernel process (pid={}, name='{}')", m_id, m_name);
+
     FlatPtr syscall, arg1, arg2, arg3, arg4;
 
     registers->capture_syscall_arguments(syscall, arg1, arg2, arg3, arg4);

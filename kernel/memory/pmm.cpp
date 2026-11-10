@@ -48,13 +48,13 @@ ErrorOr<void*> PhysicalRegion::allocate_contiguous(size_t count) {
                 m_bitmap.set(k, true);
             }
 
+            m_free_pages -= count;
             return reinterpret_cast<void*>(m_base + i * PAGE_SIZE);
         }
 
         i = j;
     }
 
-    m_free_pages -= count;
     return Error(ENOMEM);
 }
 
@@ -73,7 +73,7 @@ ErrorOr<void> PhysicalRegion::free(void* frame, size_t count) {
 PhysicalMemoryManager* PhysicalMemoryManager::create(BootInfo const& boot_info) {
     PhysicalMemoryManager* pmm = new PhysicalMemoryManager();
     pmm->init(boot_info);
-    
+
     return pmm;
 }
 
@@ -145,6 +145,8 @@ ErrorOr<void*> PhysicalMemoryManager::allocate() {
         return Error(ENXIO);
     }
 
+    SpinLockGuard guard(m_lock);
+
     if (m_frames.empty()) {
         TRY(this->fill_preframe_buffer());
     }
@@ -156,6 +158,8 @@ ErrorOr<void*> PhysicalMemoryManager::allocate_contiguous(size_t count) {
     if (!this->is_initialized()) {
         return Error(ENXIO);
     }
+
+    SpinLockGuard guard(m_lock);
 
     if (m_frames.empty()) {
         TRY(this->fill_preframe_buffer());
@@ -180,6 +184,8 @@ ErrorOr<void> PhysicalMemoryManager::free(void* frame, size_t count) {
     if (!this->is_initialized()) {
         return Error(ENXIO);
     }
+
+    SpinLockGuard guard(m_lock);
 
     PhysicalAddress pa { frame };
     for (auto& region : m_physical_regions) {

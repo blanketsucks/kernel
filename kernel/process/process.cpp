@@ -131,7 +131,7 @@ ErrorOr<void(*)(void*)> Process::create_user_entry(ELF elf) {
 
 ErrorOr<void> Process::create_user_thread(ELF elf) {
     auto entry = TRY(this->create_user_entry(move(elf)));
-    
+
     auto* thread = Thread::create(m_id, "main", this, entry, nullptr, m_arguments);
     this->add_thread(thread);
 
@@ -139,32 +139,37 @@ ErrorOr<void> Process::create_user_thread(ELF elf) {
 }
 
 void Process::add_thread(Thread* thread) {
-    m_threads.set(thread->id(), thread);
+    m_threads.with([&](auto& threads) { threads.set(thread->id(), thread); });
 }
 
 void Process::remove_thread(Thread* thread) {
     m_exit_values.set(thread->id(), thread->m_exit_value);
-    m_threads.remove(thread->id());
+    m_threads.with([&](auto& threads) { threads.remove(thread->id()); });
 }
 
 Thread* Process::get_thread(pid_t id) const {
-    auto iterator = m_threads.find(id);
-    if (iterator != m_threads.end()) {
-        return iterator->value;
-    }
+    return m_threads.with([&](auto& threads) -> Thread* {
+        auto iterator = threads.find(id);
+        if (iterator != threads.end()) {
+            return iterator->value;
+        }
 
-    return nullptr;
+        return nullptr;
+    });
 }
 
 Thread* Process::get_main_thread() const {
     return this->get_thread(m_id);
 }
 
-Thread* Process::spawn(String name, void (*entry)(void*), void* data) {
+Thread* Process::spawn(String name, void (*entry)(void*), void* data, bool queue) {
     auto* thread = Thread::create(Scheduler::generate_pid(), move(name), this, entry, data, m_arguments);
     this->add_thread(thread);
 
-    Scheduler::queue(thread);
+    if (queue) {
+        Scheduler::queue(thread);
+    }
+
     return thread;
 }
 
@@ -254,7 +259,7 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         if (!page) {
             goto unrecoverable_fault;
         }
-        
+
         bool is_cow = page->flags & PhysicalPage::CoW;
         if (!is_cow) {
             goto unrecoverable_fault;
@@ -263,8 +268,10 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         PhysicalAddress frame { MUST(MM->allocate_page_frame()) };
 
         // TODO: Move this to a function in MemoryManager
-        page = MM->get_physical_page(frame);
-        page->ref_count++;
+        {
+            auto* page = MM->get_physical_page(frame);
+            page->ref();
+        }
 
         MUST(MM->copy_physical_memory(frame, pa, PAGE_SIZE));
         entry->set_physical_address(frame);
@@ -272,15 +279,14 @@ void Process::handle_page_fault(arch::InterruptRegisters* regs, VirtualAddress a
         entry->set_writable(true);
         arch::invlpg(address);
 
-        page->ref_count--;
-        if (page->ref_count == 0) {
+        if (page->deref() == 1) {
             page->flags &= ~PhysicalPage::CoW;
         }
 
         return;
     }
 
-    if (!region || !region->is_file_backed() || !region->used()) {        
+    if (!region || !region->is_file_backed() || !region->used()) {
 unrecoverable_fault:
         if (is_null_pointer_dereference) {
             dbgln("\033[1;31mNull pointer dereference (address={:#p}) @ IP={:#p} ({}{}{}):\033[0m", address, regs->ip(), fault.present ? 'P' : '-', fault.rw ? 'W' : 'R', fault.user ? 'U' : 'S');
@@ -338,7 +344,7 @@ memory::Region* Process::validate_pointer_access(const void* ptr, bool write) {
         dbgln("Write to read-only region @ {:#}. Killing.", ptr);
         this->kill();
     }
-    
+
     return region;
 }
 
@@ -409,16 +415,16 @@ void Process::kill() {
 
     if (!m_allocator) {
         m_state = Zombie;
-        for (auto& [_, thread] : m_threads) {
+        for_each_thread([](Thread* thread) {
             thread->kill();
-        }
+        });
 
         Scheduler::yield();
 
         __builtin_unreachable();
     }
-    
-    m_allocator->for_each_region([this](auto* region) {
+
+    m_allocator->for_each_region([this](memory::Region* region) {
         if (region->is_file_backed()) {
             // TODO
             return;
@@ -426,14 +432,18 @@ void Process::kill() {
             return;
         }
 
-        MUST(MM->free(m_allocator->page_directory(), region->base(), region->size()));
+        auto result = MM->free(m_allocator->page_directory(), region->base(), region->size());
+        if (result.is_err()) {
+            dbgln("Failed to free region from MemoryManager: start={:#p}, size={:#x}", region->base(), region->size());
+        }
+
         m_allocator->free(region);
     });
-    
+
     m_state = Zombie;
-    for (auto& [_, thread] : m_threads) {
+    for_each_thread([](Thread* thread) {
         thread->kill();
-    }
+    });
 
     Scheduler::yield();
 }

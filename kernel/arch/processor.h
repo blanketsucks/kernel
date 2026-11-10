@@ -58,6 +58,9 @@ public:
 
     void set_idle_thread(Thread* thread) { m_idle_thread = thread; }
 
+    void invoke_scheduler_async(bool value = true) { m_scheduler_invoked_async = value; }
+    void check_scheduler_invoked_async();
+
 private:
     void preinit(int cpu);
 
@@ -86,6 +89,8 @@ private:
 
     Thread* m_current_thread = nullptr;
     Thread* m_idle_thread = nullptr;
+
+    bool m_scheduler_invoked_async = false;
 };
 
 }

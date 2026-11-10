@@ -2,6 +2,7 @@
 
 #include <kernel/common.h>
 #include <kernel/arch/processor.h>
+#include <kernel/time/apic.h>
 
 #include <std/vector.h>
 
@@ -66,7 +67,8 @@ public:
     static constexpr u32 IA32_APIC_BASE_BSP = 0x100;
     static constexpr u32 IA32_APIC_BASE_ENABLE = 0x800;
 
-    static constexpr u8 SPURIOUS_INTERRUPT_VECTOR = 0xFF;
+    static constexpr u8 SPURIOUS_INTERRUPT_VECTOR = 0xFF - IRQ_VECTOR_BASE;
+    static constexpr u8 TIMER_INTERRUPT_VECTOR    = 0xF0 - IRQ_VECTOR_BASE;
 
     enum APICRegisters : u32 {
         ID = 0x20,
@@ -88,18 +90,31 @@ public:
         LVTLint0 = 0x350,
         LVTLint1 = 0x360,
         LVTError = 0x370,
-        InitialCount = 0x380,
-        CurrentCount = 0x390,
-        DivideConfiguration = 0x3E0
+        TimerInitialCount = 0x380,
+        TimerCurrentCount = 0x390,
+        TimerDivideConfiguration = 0x3E0
     };
 
     static APIC& instance();
+
+    static bool is_initialized();
     static void initialize();
 
     static void boot_all();
+    static u32 processors();
+
     static Processor* get_ap_processor(int ap);
+    static Thread* get_ap_idle_thread(int ap);
 
     void enable(int cpu);
+
+    RefPtr<APICTimer> create_timer();
+    RefPtr<APICTimer> timer() const { return m_timer; }
+
+    void configure_local_timer(u32 initial_count);
+
+    u32 read_apic_timer_ticks();
+
     void eoi();
 
 private:
@@ -123,10 +138,13 @@ private:
 
     VirtualAddress m_apic_base;
 
+    RefPtr<APICTimer> m_timer = nullptr;
+
     u32 m_processors;
     PhysicalAddress m_trampoline;
 
     Vector<Processor*> m_ap_processors;
+    Vector<Thread*> m_ap_idle_threads;
     Vector<VirtualAddress> m_ap_stacks;
 };
 

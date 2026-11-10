@@ -56,7 +56,7 @@ union PageFault {
         u8 hlt : 1;
 
         u8 reserved0 : 7;
-        
+
         // 0 = The fault was not caused by SGX.
         // 1 = There was an SGX access-control violation.
         u8 sgx : 1;
@@ -74,8 +74,11 @@ struct PhysicalPage {
         CoW = 1 << 0,
     };
 
-    u16 ref_count = 0;
+    std::Atomic<u16> ref_count = 0;
     u16 flags = 0;
+
+    u16 ref() { return ref_count.fetch_add(1); }
+    u16 deref() { return ref_count.fetch_sub(1); }
 };
 
 class MemoryManager {
@@ -136,11 +139,13 @@ public:
     PhysicalPage* get_physical_page(PhysicalAddress address);
 
     SpinLock& liballoc_lock() { return m_liballoc_lock; }
-    Mutex& lock() { return m_lock; }
+    SpinLock& lock() { return m_lock; }
 
 private:
     void init();
     void create_physical_pages();
+
+    ErrorOr<void> free_unlocked(arch::PageDirectory*, VirtualAddress address, size_t size);
 
     bool try_allocate_contiguous(arch::PageDirectory*, memory::Region*, PageFlags flags);
 
@@ -153,7 +158,7 @@ private:
     size_t m_physical_pages_count = 0;
 
     SpinLock m_liballoc_lock;
-    Mutex m_lock;
+    SpinLock m_lock;
 };
 
 class TemporaryMapping {
@@ -184,8 +189,8 @@ template<> struct std::Formatter<kernel::PhysicalAddress> {
     }
 };
 
-int liballoc_lock();
-int liballoc_unlock();
+int liballoc_lock(kernel::InterruptState&);
+int liballoc_unlock(kernel::InterruptState);
 
 void* liballoc_alloc(size_t pages);
 int liballoc_free(void* address, size_t pages);

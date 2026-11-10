@@ -9,18 +9,20 @@ ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
     auto* current_thread = Thread::current();
     ASSERT(current_thread->process() == this, "Current thread should belong to this process");
 
-   for (auto& [_, thread] : m_threads) {
+    for_each_thread([current_thread](Thread* thread) {
         if (thread == current_thread) {
-            continue;
+            return;
         }
 
         thread->kill();
-    }
+    });
 
     auto vfs = fs::vfs();
 
     auto file = TRY(vfs->open(path, O_RDONLY, 0, m_cwd));
     auto elf = ELF(file);
+
+    Processor::disable_interrupts();
 
     m_page_directory = arch::PageDirectory::create_user_page_directory();
     m_allocator = memory::RegionAllocator::create_user_allocator(m_page_directory);
@@ -29,9 +31,11 @@ ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
     m_name = path;
 
     auto* entry = TRY(this->create_user_entry(move(elf)));
-    
+
     current_thread->reset_arguments_region();
-    current_thread->init_exec_state(reinterpret_cast<FlatPtr>(entry), false);
+    current_thread->init_exec_state(reinterpret_cast<FlatPtr>(entry), true);
+
+    Scheduler::lock();
 
     auto& processor = Processor::current();
     processor.switch_to(current_thread);

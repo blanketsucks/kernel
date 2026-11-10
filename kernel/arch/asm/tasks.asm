@@ -62,11 +62,12 @@ _switch_context_no_state:
     popr
     ret
 
-; void _switch_context(ThreadRegisters *old, ThreadRegisters *new)
+; void _switch_context(ThreadRegisters *old, ThreadRegisters *new, std::Atomic<u32>* old_running_cpu)
 _switch_context:
     pushr
 
     mov [rdi + ThreadRegisters.rsp], rsp
+    mov DWORD [rdx], 0xffffffff
 
     ; Load rsp and cr3 from `new`
     mov rsp, [rsi + ThreadRegisters.rsp]

@@ -8,26 +8,28 @@ bool SpinLock::is_locked() {
     return m_lock.load(std::MemoryOrder::Relaxed) != 0;
 }
 
-void SpinLock::lock() {
+InterruptState SpinLock::lock() {
     if (!Processor::are_interrupts_initialized()) {
-        return;
+        return InterruptState::Disabled;
     }
 
-    m_interrupt_state = Processor::interrupt_state();
+    InterruptState saved = Processor::interrupt_state();
     Processor::disable_interrupts();
 
     while (m_lock.exchange(1, std::MemoryOrder::Acquire) != 0) {
         asm volatile("pause");
     }
+
+    return saved;
 }
 
-void SpinLock::unlock() {
+void SpinLock::unlock(InterruptState saved) {
     if (!Processor::are_interrupts_initialized()) {
         return;
     }
 
-    m_lock.store(0, std::MemoryOrder::Relaxed);
-    Processor::set_interrupt_state(m_interrupt_state);
+    m_lock.store(0, std::MemoryOrder::Release);
+    Processor::set_interrupt_state(saved);
 }
 
 

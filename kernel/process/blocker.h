@@ -29,7 +29,7 @@ public:
 
     bool should_unblock() override { return m_value; }
     void set_value(bool value) { m_value = value; }
-    
+
 private:
     BooleanBlocker(bool value = false) : m_value(value) {}
 
@@ -54,11 +54,11 @@ private:
 class WaitBlocker : public Blocker {
 public:
     static RefPtr<WaitBlocker> create(Thread* thread, pid_t pid);
-    
-    static void try_wake_all(Process*, int status);
-    void try_wake(Process*, int status);
 
-    bool should_unblock() override { return m_ready; } 
+    static void try_wake_all(Process*, int status);
+    bool try_wake(Process*, int status);
+
+    bool should_unblock() override { return m_ready; }
     int status() const { return m_status; }
 
 private:

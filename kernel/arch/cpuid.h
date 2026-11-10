@@ -32,7 +32,7 @@ inline constexpr CPUIDWord CPUID_WORDS[] = {
     {0x80000001, CPUIDReg::ecx},
 };
 
-inline constexpr size_t WORD_COUNT = sizeof(CPUID_WORDS) / sizeof(CPUIDWord); 
+inline constexpr size_t WORD_COUNT = sizeof(CPUID_WORDS) / sizeof(CPUIDWord);
 
 consteval u32 feature(u32 word, u32 bit) {
     return word * 32 + bit;
@@ -246,7 +246,7 @@ public:
         for (size_t word = 0; word < WORD_COUNT; word++) {
             u32 bits = m_words[word];
 
-            // This will call `func` with features that don't exist so the caller has to 
+            // This will call `func` with features that don't exist so the caller has to
             // make sure that the feature is an actual feature.
             for (size_t bit = 0; bit < 32; bit++) {
                 if (!(bits & (1 << bit))) {

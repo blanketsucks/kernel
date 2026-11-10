@@ -1,11 +1,15 @@
+#include <kernel/arch/cpu.h>
 #include <kernel/arch/interrupts/apic.h>
 #include <kernel/arch/processor.h>
 #include <kernel/memory/manager.h>
+#include <kernel/process/scheduler.h>
 #include <kernel/acpi/acpi.h>
 #include <kernel/arch/idt.h>
 #include <kernel/arch/io.h>
 
 namespace kernel {
+
+#define LVT_DISABLE (1 << 16)
 
 extern "C" void ap_boot_start();
 extern "C" void ap_boot_end();
@@ -39,12 +43,22 @@ static void set_apic_base(PhysicalAddress base) {
 }
 
 static APIC s_apic {};
+static bool s_initialized = false;
 
 APIC& APIC::instance() {
     return s_apic;
 }
 
+bool APIC::is_initialized() {
+    return s_initialized;
+}
+
+u32 APIC::processors() {
+    return s_apic.m_processors;
+}
+
 void APIC::initialize() {
+    s_initialized = true;
     s_apic.init();
 }
 
@@ -53,8 +67,6 @@ void APIC::init() {
     set_apic_base(base);
 
     m_apic_base = VirtualAddress { MUST(MM->map_physical_region(base, PAGE_SIZE)) };
-
-    write_reg(SpuriousInterruptVector, read_reg(SpuriousInterruptVector) | SPURIOUS_INTERRUPT_VECTOR | 0x100);
 
     auto* madt = ACPIParser::find<acpi::MADT>();
     ASSERT(madt, "No MADT found.");
@@ -81,10 +93,44 @@ void APIC::enable(int cpu) {
 
     write_reg(LogicalDestination, ld | (cpu << 24));
     write_reg(DestinationFormat, 0xff000000);
+
+    u32 siv = read_reg(SpuriousInterruptVector) | (SPURIOUS_INTERRUPT_VECTOR + IRQ_VECTOR_BASE);
+    write_reg(SpuriousInterruptVector, siv | 0x100);
+
+    write_reg(LVTTimer, LVT_DISABLE);
+    write_reg(LVTLint0, LVT_DISABLE);
+    write_reg(LVTLint1, LVT_DISABLE);
+
+    write_reg(TaskPriority, 0);
+}
+
+RefPtr<APICTimer> APIC::create_timer() {
+    if (m_timer) {
+        return m_timer;
+    }
+
+    m_timer = APICTimer::create(TIMER_INTERRUPT_VECTOR);
+    return m_timer;
+}
+
+void APIC::configure_local_timer(u32 initial_count) {
+    write_reg(TimerInitialCount, 0);
+    write_reg(LVTTimer, (TIMER_INTERRUPT_VECTOR + IRQ_VECTOR_BASE) | 0x20000);
+
+    write_reg(TimerDivideConfiguration, 0x3);
+    write_reg(TimerInitialCount, initial_count);
+}
+
+u32 APIC::read_apic_timer_ticks() {
+    return read_reg(TimerCurrentCount);
 }
 
 Processor* APIC::get_ap_processor(int ap) {
     return s_apic.m_ap_processors[ap];
+}
+
+Thread* APIC::get_ap_idle_thread(int ap) {
+    return s_apic.m_ap_idle_threads[ap];
 }
 
 void APIC::setup_ap_trampoline() {
@@ -95,9 +141,14 @@ void APIC::setup_ap_trampoline() {
 
     // TODO: Move this to somewhere else as it doesn't really have to do anything with setting up the
     //       trampoline itself.
-    m_ap_processors.reserve(to_boot);
+    m_ap_processors.resize(to_boot);
     for (size_t i = 0; i < to_boot; i++) {
         m_ap_processors[i] = new Processor;
+    }
+
+    m_ap_idle_threads.resize(to_boot);
+    for (size_t i = 0; i < to_boot; i++) {
+        m_ap_idle_threads[i] = Scheduler::create_idle_thread(i + 1);
     }
 
     FlatPtr ap_start_address = reinterpret_cast<FlatPtr>(&ap_boot_start);
@@ -176,7 +227,7 @@ void APIC::write_icr(
     u8 trigger_mode,
     u8 destination_type
 ) {
-    ICR cmd = {{ 
+    ICR cmd = {{
         vector,
         delivery_mode,
         destination_mode,

@@ -37,7 +37,7 @@ RefPtr<RegionAllocator> RegionAllocator::create_user_allocator(arch::PageDirecto
 }
 
 RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) {
-    ScopedLock lock(m_lock);
+    SpinLockGuard guard(m_lock);
 
     auto allocator = RegionAllocator::create(m_range, m_head->clone(), page_directory);
 
@@ -53,7 +53,7 @@ RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directo
 
         prev->next = cloned;
         cloned->prev = prev;
-    
+
         prev = cloned;
         if (region->used()) {
             this->map_into(page_directory, region);
@@ -78,7 +78,7 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
         if (!entry) {
             continue;
         }
-        
+
         PhysicalAddress pa = entry->get_physical_address();
         PhysicalPage* page = MM->get_physical_page(pa);
 
@@ -86,7 +86,7 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
             continue;
         }
 
-        if (!is_shared) {            
+        if (!is_shared) {
             page->flags |= PhysicalPage::CoW;
             entry->set_writable(false);
         }
@@ -99,8 +99,8 @@ void RegionAllocator::map_into(arch::PageDirectory* page_directory, Region* regi
         if (entry->is_no_execute()) {
             flags |= PageFlags::NoExecute;
         }
-        
-        page->ref_count++;
+
+        page->ref();
         page_directory->map(address, pa, flags);
     }
 }
@@ -132,6 +132,8 @@ Region* RegionAllocator::insert_after(Region* region, Region* new_region) {
 }
 
 Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int prot) {
+    SpinLockGuard guard(m_lock);
+
     Region* region = m_head;
     while (region) {
         if (!region->contains(address)) {
@@ -177,11 +179,13 @@ Region* RegionAllocator::allocate_at(VirtualAddress address, size_t size, int pr
         m_usage += size;
         return region;
     }
-    
+
     return nullptr;
 }
 
-Region* RegionAllocator::find_region(VirtualAddress address, bool contains) const {
+Region* RegionAllocator::find_region(VirtualAddress address, bool contains) {
+    SpinLockGuard guard(m_lock);
+
     auto* region = m_head;
     while (region) {
         if (contains && region->contains(address)) {
@@ -220,6 +224,8 @@ Region* RegionAllocator::find_free_region(size_t size) {
 Region* RegionAllocator::allocate(size_t size, int prot) {
     ASSERT(size % PAGE_SIZE == 0, "size must be page aligned");
 
+    SpinLockGuard guard(m_lock);
+
     auto* region = this->find_free_region(size);
     if (!region) {
         return nullptr;
@@ -246,6 +252,8 @@ void RegionAllocator::free(VirtualAddress address) {
 }
 
 void RegionAllocator::free(Region* region) {
+    SpinLockGuard guard(m_lock);
+
     region->m_used = false;
     region->m_prot = PROT_NONE;
 
@@ -268,7 +276,9 @@ Region* RegionAllocator::create_file_backed_region(fs::File* file, size_t size, 
     return region;
 }
 
-void RegionAllocator::print() const {
+void RegionAllocator::print() {
+    SpinLockGuard guard(m_lock);
+
     for_each_region([](memory::Region* region) {
         if (!region->used()) {
             return;

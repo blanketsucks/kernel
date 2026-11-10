@@ -29,6 +29,8 @@ public:
     Duration epoch_time();
     Duration monotonic_time();
 
+    void set_system_timer(RefPtr<Timer> timer);
+
 private:
     TimeManager() = default;
 
@@ -41,9 +43,10 @@ private:
     void update_time();
 
     RefPtr<Timer> m_system_timer;
+    RefPtr<Timer> m_time_keep_timer;
 
     u64 m_ticks_per_second = 0;
-    
+
     u64 m_seconds_since_boot = 0;
     u64 m_ticks = 0;
 

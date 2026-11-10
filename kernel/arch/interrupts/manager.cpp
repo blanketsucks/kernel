@@ -52,7 +52,7 @@ RefPtr<InterruptController> InterruptManager::find_responsible_controller(u16 ir
         }
     }
 
-    ASSERT(false, "No interrupt controller found for IRQ #{}.", irq);
+    return nullptr;
 }
 
 void InterruptManager::enumerate_ioapics(acpi::MADT* madt) {
@@ -74,7 +74,7 @@ void InterruptManager::enumerate_ioapics(acpi::MADT* madt) {
             case acpi::MADTEntryType::InterruptSourceOverride: {
                 auto* iso = reinterpret_cast<acpi::InterruptSourceOverride*>(header);
 
-                m_iso.append({ 
+                m_iso.append({
                     .bus   = iso->bus_source,
                     .irq   = iso->irq_source,
                     .gsi   = iso->global_system_interrupt,
