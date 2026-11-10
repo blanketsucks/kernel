@@ -56,7 +56,7 @@ public:
         return reinterpret_cast<T*>(reinterpret_cast<u8*>(node) - Offset);
     }
 
-    bool empty() const { return m_head.is_linked(); }
+    bool empty() const { return !m_head.is_linked(); }
 
     void append(T& value) { insert(node_of(value), m_head.prev, &m_head); }
     void preppend(T& value) { insert(node_of(value), &m_head, m_head.next); }
