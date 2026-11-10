@@ -86,6 +86,7 @@ extern "C" void main(BootInfo const& boot_info) {
     MemoryManager::initialize();
     ACPIParser::initialize();
 
+    CommandLine::initialize();
     InterruptManager::initialize();
 
     TimeManager::initialize();
@@ -115,17 +116,19 @@ extern "C" void init_ap(FlatPtr cpu) {
     auto timer = apic.timer();
     timer->enable_local_timer();
 
-    dbgln("Initialized CPU #{}!", cpu);
+    dbgln("Initialized CPU #{} and ready to schedule!", cpu);
 
     Scheduler::run();
 }
 
 void stage2() {
-    APIC::boot_all();
+    auto* process = Process::current();
+
+    if (!CommandLine::disable_smp()) {
+        APIC::boot_all();
+    }
 
     devfs::init();
-
-    auto* process = Process::current();
 
     dbgln("PCI Bus:");
 
@@ -135,8 +138,6 @@ void stage2() {
     });
 
     dbgln();
-
-    CommandLine::initialize();
 
     NullDevice::create();
     ZeroDevice::create();

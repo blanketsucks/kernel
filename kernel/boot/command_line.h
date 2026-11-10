@@ -15,6 +15,7 @@ public:
 
     [[nodiscard]] static StringView root();
     [[nodiscard]] static StringView init();
+    [[nodiscard]] static bool disable_smp();
 
 private:
     void parse(StringView cmdline);

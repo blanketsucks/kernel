@@ -58,4 +58,8 @@ StringView CommandLine::init() {
     return s_instance.get("init").value_or("/bin/shell");
 }
 
+bool CommandLine::disable_smp() {
+    return s_instance.has("nosmp");
+}
+
 }
