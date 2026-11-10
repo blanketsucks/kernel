@@ -36,6 +36,7 @@ void Processor::syscall_interrupt_handler() {
         "push   %%r14\n"
         "push   %%r15\n"
         "mov    %%rsp, %%rdi\n"
+        "cld\n"
         "call   _syscall_handler\n"
         "pop    %%r15\n"
         "pop    %%r14\n"
