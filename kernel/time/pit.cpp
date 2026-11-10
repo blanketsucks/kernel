@@ -4,6 +4,8 @@
 
 #include <std/format.h>
 
+#define CHANNEL2_GATE 0x61
+
 namespace kernel {
 
 RefPtr<PIT> PIT::create() {
@@ -27,6 +29,25 @@ void PIT::set_frequency(u32 frequency) {
     io::write<u8>(CHANNEL0, high);
 
     m_frequency = frequency;
+}
+
+void PIT::wait_ms(u32 ms) {
+    u16 count = static_cast<u16>(((u64)ms * INPUT_CLOCK + 500) / 1000);
+
+    u8 gate = io::read<u8>(CHANNEL2_GATE);
+    io::write<u8>(CHANNEL2_GATE, gate & ~0b00110001);
+
+    u8 cmd = io::read<u8>(COMMAND);
+
+    io::write<u8>(COMMAND, Access::Channel2 | Access::LowHighByte | Access::Countdown);
+    io::write<u8>(CHANNEL2, count & 0xFF);
+    io::write<u8>(CHANNEL2, count >> 8);
+
+    io::write<u8>(CHANNEL2_GATE, (gate & ~0x02) | 0x01);
+    while (!(io::read<u8>(CHANNEL2_GATE) & 0x20)) {}
+
+    io::write<u8>(CHANNEL2_GATE, gate);
+    io::write<u8>(COMMAND, cmd);
 }
 
 }
