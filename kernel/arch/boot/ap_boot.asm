@@ -80,6 +80,8 @@ ap_boot_lm:
     mov rdi, rsi
     inc rdi
 
+    cld
+
     mov r10, [AP_BASE + (ap_entry_function - ap_boot_start)]
     call r10
 

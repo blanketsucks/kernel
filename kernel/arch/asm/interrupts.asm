@@ -14,11 +14,13 @@ extern _irq_handler
         pushaq
 
         mov rdi, rsp
+
+        cld
         call %2
 
         popaq
         add rsp, 16
-        
+
         iretq
 %endmacro
 
@@ -91,10 +93,10 @@ define_isr 31
 %endrep
 
 _isr_stub_table:
-%assign i 0 
+%assign i 0
 %rep 32
     dq _isr_stub_%+i
-    %assign i i+1 
+    %assign i i+1
 %endrep
 
 _irq_stub_table:

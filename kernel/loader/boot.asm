@@ -41,14 +41,14 @@ section .multiboot align=4
     dd 0   ; Graphics mode
     dd 640 ; Width
     dd 480 ; Height
-    dd 32  ; Depth 
+    dd 32  ; Depth
 
 section .stack nobits align=16
 stack:
     resb 0x8000 ; 32KB
 stack.bottom:
 
-section .bss 
+section .bss
 align PAGE_SIZE
 boot_pml4t:
     resb PAGE_SIZE
@@ -81,7 +81,7 @@ clear_screen:
     mov ecx, 80 * 25
     mov edi, VIDEO_ADDRESS
     rep stosw
-    
+
     ret
 
 ; esi = String pointer (null-terminated).
@@ -124,7 +124,7 @@ _start:
     jz .pae_not_supported
 
     pop ebx
-    
+
     clear_page_tables boot_pml4t, (PAGE_SIZE / 4) * 9 ; This will clear everything else below it too.
 
     ; Set boot_pml4t[0] to point to boot_pdpt
@@ -132,7 +132,7 @@ _start:
 
     mov dword [edi], boot_pdpt + 0x3
     mov dword [edi + HHDM_PML4E], boot_pdpt + 0x3
-    
+
     ; Set boot_pdpt[0..3] to point to boot_pd[0..3]
     ; First check if 1GB pages are supported and use that instead.
     test edx, 1 << 26
@@ -146,10 +146,10 @@ _start:
     mov dword [edi + 24], 0xC0000000 | 0x83
 
     jmp .loop.end
-    
+
 .no_1gb_pages:
     mov edi, boot_pdpt
-    
+
     mov dword [edi +  0], boot_pd + PAGE_SIZE * 0 + 0x3
     mov dword [edi +  8], boot_pd + PAGE_SIZE * 1 + 0x3
     mov dword [edi + 16], boot_pd + PAGE_SIZE * 2 + 0x3
@@ -215,6 +215,8 @@ _64bit_start:
     mov ss, ax
 
     mov rdi, rbx
+
+    cld
     call init
 
     cli
