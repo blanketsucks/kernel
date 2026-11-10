@@ -1,8 +1,6 @@
 #include <kernel/memory/region.h>
 #include <kernel/memory/manager.h>
-#include <kernel/sync/lock.h>
 #include <kernel/fs/file.h>
-
 
 #include <std/format.h>
 

@@ -26,4 +26,21 @@ private:
     std::Atomic<size_t> m_recursion_count { 0 };
 };
 
+class MutexGuard {
+public:
+    NO_COPY(MutexGuard);
+    NO_MOVE(MutexGuard);
+
+    MutexGuard(Mutex& lock) : m_lock(&lock) {
+        lock.lock();
+    }
+
+    ~MutexGuard() {
+        m_lock->unlock();
+    }
+
+private:
+    Mutex* m_lock;
+};
+
 }

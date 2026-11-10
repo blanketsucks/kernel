@@ -1,13 +1,12 @@
 #pragma once
 
 #include <kernel/sync/spinlock.h>
-#include <kernel/sync/lock.h>
 
 #include <std/utility.h>
 
 namespace kernel {
 
-template<typename T, class Lock, class Guard = ScopedLock<Lock>>
+template<typename T, class Lock, class Guard>
 class LockedResource {
 public:
     template<typename... Args>

@@ -1,7 +1,6 @@
 #include <kernel/serial.h>
 #include <kernel/arch/io.h>
 #include <kernel/sync/spinlock.h>
-#include <kernel/sync/lock.h>
 #include <kernel/arch/processor.h>
 
 #include <std/cstring.h>
