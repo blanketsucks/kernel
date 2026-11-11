@@ -40,7 +40,7 @@ AC97Device::AC97Device(pci::Address address) : IRQHandler(address.interrupt_line
     // Set volume to max
     m_audio_mixer.write<u16>(PCMVolume, 0);
     m_audio_mixer.write<u16>(MasterVolume, 0);
-    
+
     m_audio_mixer.write<u16>(SampleRate, m_sample_rate);
     this->reset();
 
@@ -60,7 +60,7 @@ AC97Device::AC97Device(pci::Address address) : IRQHandler(address.interrupt_line
 
     m_irq_blocker = BooleanBlocker::create();
     this->enable_irq();
-    
+
     dbgln("AC97 Device ({}:{}:{}):", address.bus(), address.device(), address.function());
     dbgln(" - Channels: {}", m_channels);
     dbgln(" - Sample Rate: {} Hz", m_sample_rate);
@@ -78,6 +78,7 @@ void AC97Device::reset() {
 
     m_dma_enabled = false;
     m_current_descriptor = 0;
+    m_current_page = 0;
 }
 
 void AC97Device::handle_irq() {
@@ -140,7 +141,7 @@ void AC97Device::write_single(const void* buffer, size_t count, size_t offset) {
             if (buffers < OUTPUT_BUFFER_PAGES) {
                 break;
             }
-        
+
             m_irq_blocker->set_value(false);
             m_irq_blocker->wait();
         } while (m_dma_enabled);
