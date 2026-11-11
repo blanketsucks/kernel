@@ -117,7 +117,6 @@ extern "C" void init_ap(FlatPtr cpu) {
     timer->enable_local_timer();
 
     dbgln("Initialized CPU #{} and ready to schedule!", cpu);
-
     Scheduler::run();
 }
 

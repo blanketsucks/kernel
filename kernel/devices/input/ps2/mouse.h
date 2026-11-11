@@ -72,7 +72,7 @@ private:
     void initialize();
 
     Vector<sys_mouse_event> m_state_buffer;
-    u8 m_cycle;
+    u8 m_cycle = 0;
     u8 m_bytes[4];
 
     bool m_has_scroll_wheel;
