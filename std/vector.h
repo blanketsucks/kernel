@@ -43,7 +43,7 @@ struct VectorIterator {
     bool operator==(const VectorIterator& other) const { return m_ptr == other.m_ptr; }
     bool operator!=(const VectorIterator& other) const { return !(*this == other); }
 
-    VectorIterator operator+(size_t offset) const { 
+    VectorIterator operator+(size_t offset) const {
         return VectorIterator(m_ptr + offset, m_offset + offset);
     }
 
@@ -51,12 +51,12 @@ struct VectorIterator {
         return VectorIterator(m_ptr - offset, m_offset - offset);
     }
 
-    VectorIterator operator+(const VectorIterator& other) const { 
-        return VectorIterator(m_ptr + other.m_offset, m_offset + other.m_offset); 
+    VectorIterator operator+(const VectorIterator& other) const {
+        return VectorIterator(m_ptr + other.m_offset, m_offset + other.m_offset);
 
     }
-    VectorIterator operator-(const VectorIterator& other) const { 
-        return VectorIterator(m_ptr - other.m_offset, m_offset - other.m_offset); 
+    VectorIterator operator-(const VectorIterator& other) const {
+        return VectorIterator(m_ptr - other.m_offset, m_offset - other.m_offset);
     }
 
     T& operator*() { return *m_ptr; }
@@ -76,7 +76,7 @@ public:
     using ConstIterator = VectorIterator<const T>;
 
     Vector() : m_size(0), m_capacity(0), m_data(nullptr) {}
-    
+
     Vector(size_t size, const T& initial) : m_size(size) {
         this->reserve(size);
         for (size_t i = 0; i < size; i++) {
@@ -141,10 +141,8 @@ public:
     }
 
     ~Vector() {
-        kfree(m_data);
-
+        clear();
         m_data = nullptr;
-        m_size = 0;
     }
 
     void clear() {
@@ -326,7 +324,7 @@ public:
         return this->find(value) != this->end();
     }
 
-private:    
+private:
     size_t m_size = 0;
     size_t m_capacity = 0;
     T* m_data = nullptr;
