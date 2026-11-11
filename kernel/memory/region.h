@@ -125,17 +125,17 @@ public:
     RegionAllocator(const Range& range, arch::PageDirectory*);
     RegionAllocator(const Range& range, Region* head, arch::PageDirectory* page_directory);
 
-    static RefPtr<RegionAllocator> create(const Range& range, arch::PageDirectory* page_directory) {
-        return RefPtr<RegionAllocator>(new RegionAllocator(range, page_directory));
+    static OwnPtr<RegionAllocator> create(const Range& range, arch::PageDirectory* page_directory) {
+        return OwnPtr<RegionAllocator>(new RegionAllocator(range, page_directory));
     }
 
-    static RefPtr<RegionAllocator> create(const Range& range, Region* head, arch::PageDirectory* page_directory) {
-        return RefPtr<RegionAllocator>(new RegionAllocator(range, head, page_directory));
+    static OwnPtr<RegionAllocator> create(const Range& range, Region* head, arch::PageDirectory* page_directory) {
+        return OwnPtr<RegionAllocator>(new RegionAllocator(range, head, page_directory));
     }
 
-    static RefPtr<RegionAllocator> create_user_allocator(arch::PageDirectory*);
+    static OwnPtr<RegionAllocator> create_user_allocator(arch::PageDirectory*);
 
-    RefPtr<RegionAllocator> clone(arch::PageDirectory*);
+    OwnPtr<RegionAllocator> clone(arch::PageDirectory*);
 
     Range const& range() const { return m_range; }
     arch::PageDirectory* page_directory() const { return m_page_directory; }

@@ -25,7 +25,7 @@ RegionAllocator::RegionAllocator(
     const Range& range, Region* head, arch::PageDirectory* page_directory
 ) : m_range(range), m_head(head), m_page_directory(page_directory) {}
 
-RefPtr<RegionAllocator> RegionAllocator::create_user_allocator(arch::PageDirectory* page_directory) {
+OwnPtr<RegionAllocator> RegionAllocator::create_user_allocator(arch::PageDirectory* page_directory) {
     Range range {
         VirtualAddress { PAGE_SIZE },
         static_cast<size_t>(g_boot_info->kernel_virtual_base - PAGE_SIZE)
@@ -34,7 +34,7 @@ RefPtr<RegionAllocator> RegionAllocator::create_user_allocator(arch::PageDirecto
     return create(range, page_directory);
 }
 
-RefPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) {
+OwnPtr<RegionAllocator> RegionAllocator::clone(arch::PageDirectory* page_directory) {
     SpinLockGuard guard(m_lock);
 
     auto allocator = RegionAllocator::create(m_range, m_head->clone(), page_directory);

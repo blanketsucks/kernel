@@ -151,8 +151,8 @@ private:
 
     memory::PhysicalMemoryManager* m_pmm;
 
-    RefPtr<memory::RegionAllocator> m_heap_region_allocator;
-    RefPtr<memory::RegionAllocator> m_kernel_region_allocator;
+    OwnPtr<memory::RegionAllocator> m_heap_region_allocator;
+    OwnPtr<memory::RegionAllocator> m_kernel_region_allocator;
 
     PhysicalPage* m_physical_pages = nullptr;
     size_t m_physical_pages_count = 0;

@@ -196,7 +196,7 @@ private:
     bool m_kernel = false;
 
     arch::PageDirectory* m_page_directory = nullptr;
-    RefPtr<memory::RegionAllocator> m_allocator;
+    OwnPtr<memory::RegionAllocator> m_allocator;
 
     TTY* m_tty = nullptr;
 
