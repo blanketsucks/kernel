@@ -19,6 +19,10 @@ public:
         return Duration(0, 0);
     }
 
+    static constexpr Duration max() {
+        return Duration(0xffffffffffffffff, 0xffffffff);
+    }
+
     static constexpr Duration from_seconds(u64 seconds) {
         return Duration(seconds, 0);
     }
