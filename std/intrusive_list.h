@@ -64,6 +64,8 @@ public:
     Iterator begin() { return Iterator(m_head.next); }
     Iterator end() { return Iterator(&m_head); }
 
+    T& first() { return *begin(); }
+
     static void remove(T& value) {
         auto* node = node_of(value);
         node->unlink();
