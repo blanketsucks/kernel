@@ -71,7 +71,7 @@ ErrorOr<size_t> InodeEntry::read(void* buffer, size_t size, size_t offset) const
     if (total_blocks > 1) {
         u8* buf = reinterpret_cast<u8*>(buffer);
         u8 block_buffer[block_size];
-    
+
         if (block_offset) {
             TRY(this->read_blocks(block, 1, block_buffer));
             memcpy(buf, block_buffer + block_offset, block_size - block_offset);
@@ -87,13 +87,13 @@ ErrorOr<size_t> InodeEntry::read(void* buffer, size_t size, size_t offset) const
             TRY(this->read_blocks(block + total_blocks, 1, block_buffer));
             memcpy(buf + size - remaining_bytes, block_buffer, remaining_bytes);
         }
-        
+
         return size;
     }
 
     size_t bytes_read = 0;
     u8 block_buffer[block_size];
- 
+
     while (bytes_read < size) {
         TRY(this->read_blocks(block, 1, block_buffer));
 
@@ -193,7 +193,7 @@ ErrorOr<void> InodeEntry::read_blocks(size_t block, size_t count, u8* buffer) co
         TRY(m_fs->read_block(ptr, buffer));
         return {};
     }
-    
+
     bool is_contiguous = false;
 
     u32 start_block = 0;
@@ -266,11 +266,11 @@ ErrorOr<Vector<fs::DirectoryEntry>> InodeEntry::read_directory_entries() const {
         while (offset < m_fs->block_size()) {
             DirEntry* entry = reinterpret_cast<DirEntry*>(buffer + offset);
             StringView name { entry->name, entry->name_length };
-            
+
             if (entry->inode == 0) {
                 break;
             }
-            
+
             offset += entry->size;
             entries.append(fs::DirectoryEntry(entry->inode, static_cast<fs::DirectoryEntry::Type>(entry->type_indicator), String(name)));
         }
@@ -549,7 +549,7 @@ ErrorOr<void> InodeEntry::write_doubly_indirect_block_pointers(u32 block) {
 }
 
 ErrorOr<void> InodeEntry::write_triply_indirect_block_pointers(u32) {
-    ASSERT(false, "Writing triply indirect block pointers is not implemented yet.");
+    ASSERT_MSG(false, "Writing triply indirect block pointers is not implemented yet.");
     return {};
 }
 

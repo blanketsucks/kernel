@@ -69,7 +69,7 @@ void APIC::init() {
     m_apic_base = VirtualAddress { MUST(MM->map_physical_region(base, PAGE_SIZE)) };
 
     auto* madt = ACPIParser::find<acpi::MADT>();
-    ASSERT(madt, "No MADT found.");
+    ASSERT(madt);
 
     madt->for_each_entry([this](acpi::MADTHeader* entry) {
         if (entry->type != acpi::MADTEntryType::ProcessorLocalAPIC) {

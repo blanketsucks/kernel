@@ -190,7 +190,7 @@ ErrorOr<void*> Process::allocate_at(VirtualAddress address, size_t size, PageFla
 }
 
 ErrorOr<void*> Process::allocate_from_kernel_region(VirtualAddress address, size_t size, int prot) {
-    ASSERT(address % PAGE_SIZE == 0, "address must be page aligned.");
+    ASSERT(address % PAGE_SIZE == 0);
     auto* region = m_allocator->allocate(size, prot);
     if (!region) {
         return Error(ENOMEM);
@@ -211,7 +211,7 @@ ErrorOr<void*> Process::allocate_from_kernel_region(VirtualAddress address, size
 }
 
 ErrorOr<void*> Process::allocate_with_physical_region(PhysicalAddress address, size_t size, int prot) {
-    ASSERT(address % PAGE_SIZE == 0, "address must be page aligned.");
+    ASSERT(address % PAGE_SIZE == 0);
     auto* region = m_allocator->allocate(size, prot);
     if (!region) {
         return Error(ENOMEM);
@@ -231,7 +231,7 @@ ErrorOr<void*> Process::allocate_with_physical_region(PhysicalAddress address, s
 }
 
 ErrorOr<void*> Process::allocate_file_backed_region(fs::File* file, size_t size) {
-    ASSERT(size % PAGE_SIZE == 0, "size must be page aligned");
+    ASSERT(size % PAGE_SIZE == 0);
     auto* region = m_allocator->create_file_backed_region(file, size);
     if (!region) {
         return Error(ENOMEM);

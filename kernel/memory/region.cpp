@@ -220,7 +220,7 @@ Region* RegionAllocator::find_free_region(size_t size) {
 }
 
 Region* RegionAllocator::allocate(size_t size, int prot) {
-    ASSERT(size % PAGE_SIZE == 0, "size must be page aligned");
+    ASSERT(size % PAGE_SIZE == 0);
 
     SpinLockGuard guard(m_lock);
 

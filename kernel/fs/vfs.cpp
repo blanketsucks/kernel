@@ -95,17 +95,17 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(
             path = path.substr(index + 1);
         }
 
-        
+
         if (component == ".") {
             continue;
         } else if (component == "..") {
             if (current->parent()) {
                 current = current->m_parent;
             }
-            
+
             continue;
         }
-        
+
         auto entry = TRY(current->inode().lookup(component));
 
         if (entry->is_symlink()) {
@@ -115,7 +115,7 @@ ErrorOr<RefPtr<ResolvedInode>> VFS::resolve(
 
             String link = TRY(entry->readlink());
             auto relative = TRY(this->resolve(link, parent, relative_to, true, nrecursions + 1));
-        
+
             return this->resolve(path, parent, relative, true, nrecursions + 1);
         }
 
@@ -161,7 +161,7 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t m
             return err;
         }
 
-        ASSERT(parent, "parent should not be null");
+        ASSERT(parent);
         auto inode = TRY(parent->inode().create_entry(basename(path), mode | S_IFREG, 0, 0, 0));
 
         resolved = ResolvedInode::create(basename(path), parent->fs(), move(inode), parent);
@@ -179,7 +179,7 @@ ErrorOr<RefPtr<FileDescriptor>> VFS::open(StringView path, int options, mode_t m
     } else if (!inode.is_directory() && (options & O_DIRECTORY)) {
         return Error(ENOTDIR);
     }
-    
+
     if (inode.is_device()) {
         auto device = Device::get_device(static_cast<DeviceMajor>(inode.major()), inode.minor());
         if (!device) {

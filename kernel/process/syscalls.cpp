@@ -17,7 +17,7 @@ static constexpr size_t SYSCALL_COUNT = sizeof(SYSCALL_HANDLERS) / sizeof(Syscal
 
 FlatPtr Process::handle_syscall(arch::Registers* registers) {
     // FIXME: Sometimes this trips up even though we're supposed to be in a user process.
-    ASSERT(!this->is_kernel(), "syscall dispatched to a kernel process (pid={}, name='{}')", m_id, m_name);
+    ASSERT_MSG(!this->is_kernel(), "syscall dispatched to a kernel process (pid={}, name='{}')", m_id, m_name);
 
     FlatPtr syscall, arg1, arg2, arg3, arg4;
 

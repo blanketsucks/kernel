@@ -79,10 +79,10 @@ void Device::initialize() {
         auto* region = MUST(MM->map_physical_region(address, size));
         m_bars[config.bar] = VirtualAddress { region };
     }
-    
+
     auto* config = m_common_config = get_config(Configuration::Common);
     auto* notify = get_config(Configuration::Notify);
-    
+
     this->reset();
     config->write<u8>(CommonConfig::DeviceStatus, DeviceStatus::Acknowledge | DeviceStatus::Driver);
 
@@ -112,13 +112,13 @@ u64 Device::features() {
 
 ErrorOr<void> Device::set_accepted_features(u64 accepted) {
     u64 features = this->features();
-    
+
     if (std::has_flag(features, VIRTIO_F_VERSION_1)) {
         accepted |= VIRTIO_F_VERSION_1;
     }
-    
+
     this->set_features(accepted);
-    
+
     auto* config = m_common_config;
     u8 status = config->read<u8>(CommonConfig::DeviceStatus);
 
@@ -151,7 +151,7 @@ void Device::reset() {
 }
 
 Queue& Device::queue(u16 index) {
-    ASSERT(index < m_queues.size(), "Invalid queue index");
+    ASSERT(index < m_queues.size());
     return *m_queues[index];
 }
 
@@ -186,13 +186,13 @@ ErrorOr<void> Device::setup_queue(u16 index) {
         return Error(ENXIO);
     }
 
-    u16 notify_offset = config->read<u16>(CommonConfig::QueueNotifyOffset);    
+    u16 notify_offset = config->read<u16>(CommonConfig::QueueNotifyOffset);
     auto queue = Queue::create(size, notify_offset);
-    
+
     config->write<u64>(CommonConfig::QueueDescriptorAddress, queue->get_physical_address(queue->descriptors()));
     config->write<u64>(CommonConfig::QueueDriverAddress, queue->get_physical_address(queue->driver()));
     config->write<u64>(CommonConfig::QueueDeviceAddress, queue->get_physical_address(queue->device()));
-    
+
     m_queues.append(move(queue));
     return {};
 }

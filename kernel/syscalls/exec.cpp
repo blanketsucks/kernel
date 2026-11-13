@@ -7,7 +7,7 @@ namespace kernel {
 
 ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
     auto* current_thread = Thread::current();
-    ASSERT(current_thread->process() == this, "Current thread should belong to this process");
+    ASSERT(current_thread->process() == this);
 
     for_each_thread([current_thread](Thread* thread) {
         if (thread == current_thread) {
@@ -40,7 +40,7 @@ ErrorOr<FlatPtr> Process::exec(StringView path, ProcessArguments arguments) {
     auto& processor = Processor::current();
     processor.switch_to(current_thread);
 
-    ASSERT(false, "Unreachable");
+    ASSERT(false);
     __builtin_unreachable();
 
     return 0;

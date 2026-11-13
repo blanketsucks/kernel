@@ -4,13 +4,9 @@
 
 #include <std/string_view.h>
 #include <std/format.h>
+#include <std/asserts.h>
 
 #define PANIC(message) kernel::panic(message, __FILE__, __LINE__)
-
-#define ASSERT(condition, ...)                                       \
-    do {                                                             \
-        if (!(condition)) { PANIC(std::format(__VA_ARGS__)); }       \
-    } while (0)                                     
 
 namespace kernel {
 

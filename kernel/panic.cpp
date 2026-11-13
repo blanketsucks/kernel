@@ -3,7 +3,6 @@
 #include <kernel/serial.h>
 #include <kernel/memory/manager.h>
 
-
 #include <std/format.h>
 
 namespace kernel {
@@ -67,10 +66,11 @@ void print_stack_trace(StackFrame* frame) {
     dbgln();
 
     if (message.empty()) {
-        message = "No message provided.";
+        dbgln("\033[1;31mKernel panic.\033[0m", message);
+    } else {
+        dbgln("\033[1;31mKernel panic. {}\033[0m", message);
     }
 
-    dbgln("\033[1;31mKernel panic. {}\033[0m", message);
     if (file) {
         dbgln("\033[1;31m  At {}:{}\033[0m", StringView { file }, line);
     }
@@ -79,7 +79,9 @@ void print_stack_trace(StackFrame* frame) {
     print_stack_trace();
 
     asm volatile("cli");
-    asm volatile("hlt");
+    for (;;) {
+        asm volatile("hlt");
+    }
 
     __builtin_unreachable();
 }

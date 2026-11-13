@@ -13,7 +13,7 @@ extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
     u8 irq = regs->intno - IRQ_VECTOR_BASE;
     IRQHandlerBase* handler = s_irq_handlers[irq];
 
-    ASSERT(handler, "No IRQ handler found for #{}", irq);
+    ASSERT_MSG(handler, "No IRQ handler found for #{}", irq);
 
     handler->handle_irq();
     handler->eoi();
@@ -97,7 +97,7 @@ void IRQHandlerBase::unregister_interrupt_handler() {
 
 // TODO: Make another class for interrupts that don't have a corresponding controller (such as the APIC Timer)
 InterruptController& IRQHandlerBase::ensure_controller() {
-    ASSERT(m_controller, "No interrupt controller was set for IRQ #{}.", irq());
+    ASSERT_MSG(m_controller, "No interrupt controller was set for IRQ #{}.", irq());
     return *m_controller;
 }
 
