@@ -16,6 +16,7 @@ add_compile_options(
     -mno-mmx
     -mno-sse
     -mno-sse2
+    -Werror=vla
 )
 
 add_link_options(

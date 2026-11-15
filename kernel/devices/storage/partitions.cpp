@@ -2,6 +2,7 @@
 
 #include <std/array.h>
 #include <std/format.h>
+#include <std/heap_array.h>
 
 namespace kernel {
 
@@ -48,7 +49,7 @@ struct GPTEntry {
     u64 last_lba;
     u64 attributes;
     u16 name[36];
-    
+
     bool is_valid() const {
         return std::any(partition_type_guid, [](u8 byte) { return byte != 0; });
     }
@@ -68,12 +69,12 @@ Vector<PartitionEntry> enumerate_device_partitions(BlockDevice* device) {
     if (mbr.signature != MasterBootRecord::SIGNATURE) {
         return {};
     }
-    
+
     bool is_protective = mbr.partitions[0].type == 0xEE;
     if (is_protective) {
         return parse_gpt_partitions(device);
     }
-    
+
     Vector<PartitionEntry> partitions;
     size_t index = 0;
 
@@ -89,19 +90,19 @@ Vector<PartitionEntry> enumerate_device_partitions(BlockDevice* device) {
 }
 
 Vector<PartitionEntry> parse_gpt_partitions(BlockDevice* device) {
-    u8 block[device->block_size()];
-    auto result = device->read_blocks(block, 1, 1);
+    std::HeapArray<u8> block { device->block_size() };
+    auto result = device->read_blocks(block.data(), 1, 1);
 
     if (result.is_err()) {
         // TODO: Report the error
         return {};
     }
 
-    GPTHeader* gpt = reinterpret_cast<GPTHeader*>(block);
+    GPTHeader* gpt = reinterpret_cast<GPTHeader*>(block.data());
     if (memcmp(gpt->signature, "EFI PART", 8) != 0) {
         return {};
     }
-    
+
     Vector<PartitionEntry> partitions;
 
     // FIXME: Do not read every single entry at once but rather read them in chunks.

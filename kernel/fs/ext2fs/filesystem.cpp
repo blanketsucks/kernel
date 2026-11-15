@@ -4,6 +4,7 @@
 #include <kernel/serial.h>
 
 #include <std/bitmap.h>
+#include <std/heap_array.h>
 
 namespace kernel::ext2fs {
 
@@ -60,7 +61,7 @@ u32 FileSystem::get_block_group_block(u32 block_group) const {
     u32 block = block_group * sizeof(BlockGroupDescriptor) / block_size;
 
     if (block_size == 1024) {
-        // If the block size is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2. 
+        // If the block size is 1024 bytes per block, the Block Group Descriptor Table will begin at block 2.
         return block + 2;
     } else {
         // For any other block size, it will begin at block 1.
@@ -71,25 +72,25 @@ u32 FileSystem::get_block_group_block(u32 block_group) const {
 ErrorOr<void> FileSystem::read_block_group(u32 index, BlockGroupDescriptor* group) const {
     u32 block = this->get_block_group_block(index);
 
-    u8 buffer[this->block_size()];
-    TRY(this->read_block(block, buffer));
+    std::HeapArray<u8> buffer { block_size() };
+    TRY(this->read_block(block, buffer.data()));
 
     u32 offset = (index * sizeof(BlockGroupDescriptor)) % this->block_size();
-    memcpy(group, buffer + offset, sizeof(BlockGroupDescriptor));
+    memcpy(group, buffer.data() + offset, sizeof(BlockGroupDescriptor));
 
     return {};
 }
 
 ErrorOr<void> FileSystem::write_block_group(u32 index, const BlockGroupDescriptor* group) const {
-    u32 block = this->get_block_group_block(index); 
+    u32 block = this->get_block_group_block(index);
 
-    u8 buffer[this->block_size()];
-    TRY(this->read_block(block, buffer));
+    std::HeapArray<u8> buffer { block_size() };
+    TRY(this->read_block(block, buffer.data()));
 
     u32 offset = (index * sizeof(BlockGroupDescriptor)) % this->block_size();
-    memcpy(buffer + offset, group, sizeof(BlockGroupDescriptor));
+    memcpy(buffer.data() + offset, group, sizeof(BlockGroupDescriptor));
 
-    TRY(this->write_block(block, buffer));
+    TRY(this->write_block(block, buffer.data()));
     return {};
 }
 
@@ -134,14 +135,14 @@ ErrorOr<RefPtr<fs::Inode>> FileSystem::inode(ino_t inode) {
     }
 
     u32 block = group->inode_table() + (index) * sizeof(ext2fs::Inode) / block_size;
-    u8 buffer[block_size];
+    std::HeapArray<u8> buffer { block_size };
 
-    TRY(this->read_block(block, buffer));
+    TRY(this->read_block(block, buffer.data()));
     ext2fs::Inode result = {};
 
     u32 offset = (index * sizeof(ext2fs::Inode)) % block_size;
-    memcpy(&result, buffer + offset, sizeof(ext2fs::Inode));
-    
+    memcpy(&result, buffer.data() + offset, sizeof(ext2fs::Inode));
+
     auto entry = RefPtr<InodeEntry>(new InodeEntry(this, result, inode));
     m_inodes.set(inode, entry);
 
@@ -156,7 +157,7 @@ ErrorOr<RefPtr<fs::Inode>> FileSystem::create_inode(mode_t mode, dev_t dev, uid_
     if (!block_group) {
         return Error(ENOSPC);
     }
-    
+
     u32 inode = TRY(block_group->allocate_inode(S_ISDIR(mode)));
     inode += 1 + block_group->index() * m_superblock->inodes_per_group;
 

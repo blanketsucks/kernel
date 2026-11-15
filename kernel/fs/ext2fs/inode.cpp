@@ -9,6 +9,7 @@
 #include <std/function.h>
 #include <std/result.h>
 #include <std/bytes_buffer.h>
+#include <std/heap_array.h>
 
 #define VERIFY_BLOCK(block)                         \
     if (!block) {                                   \
@@ -70,11 +71,11 @@ ErrorOr<size_t> InodeEntry::read(void* buffer, size_t size, size_t offset) const
 
     if (total_blocks > 1) {
         u8* buf = reinterpret_cast<u8*>(buffer);
-        u8 block_buffer[block_size];
+        std::HeapArray<u8> block_buffer { block_size };
 
         if (block_offset) {
-            TRY(this->read_blocks(block, 1, block_buffer));
-            memcpy(buf, block_buffer + block_offset, block_size - block_offset);
+            TRY(this->read_blocks(block, 1, block_buffer.data()));
+            memcpy(buf, block_buffer.data() + block_offset, block_size - block_offset);
 
             buf += block_size - block_offset;
 
@@ -84,21 +85,21 @@ ErrorOr<size_t> InodeEntry::read(void* buffer, size_t size, size_t offset) const
 
         TRY(this->read_blocks(block, total_blocks, buf));
         if (remaining_bytes) {
-            TRY(this->read_blocks(block + total_blocks, 1, block_buffer));
-            memcpy(buf + size - remaining_bytes, block_buffer, remaining_bytes);
+            TRY(this->read_blocks(block + total_blocks, 1, block_buffer.data()));
+            memcpy(buf + size - remaining_bytes, block_buffer.data(), remaining_bytes);
         }
 
         return size;
     }
 
     size_t bytes_read = 0;
-    u8 block_buffer[block_size];
+    std::HeapArray<u8> block_buffer { block_size };
 
     while (bytes_read < size) {
-        TRY(this->read_blocks(block, 1, block_buffer));
+        TRY(this->read_blocks(block, 1, block_buffer.data()));
 
         size_t bytes_to_read = std::min(size - bytes_read, block_size - block_offset);
-        memcpy(reinterpret_cast<u8*>(buffer) + bytes_read, block_buffer + block_offset, bytes_to_read);
+        memcpy(reinterpret_cast<u8*>(buffer) + bytes_read, block_buffer.data() + block_offset, bytes_to_read);
 
         bytes_read += bytes_to_read;
         block_offset = 0;
@@ -122,15 +123,15 @@ ErrorOr<size_t> InodeEntry::write(const void* buffer, size_t size, size_t offset
     size_t block_offset = offset % block_size;
 
     size_t written = 0;
-    u8 block_buffer[block_size];
+    std::HeapArray<u8> block_buffer { block_size };
 
     while (written < size) {
-        TRY(this->read_blocks(block, 1, block_buffer));
+        TRY(this->read_blocks(block, 1, block_buffer.data()));
 
         size_t bytes_to_write = std::min(size - written, block_size - block_offset);
-        memcpy(block_buffer + block_offset, reinterpret_cast<const u8*>(buffer) + written, bytes_to_write);
+        memcpy(block_buffer.data() + block_offset, reinterpret_cast<const u8*>(buffer) + written, bytes_to_write);
 
-        TRY(this->write_blocks(block, 1, block_buffer));
+        TRY(this->write_blocks(block, 1, block_buffer.data()));
 
         written += bytes_to_write;
         block_offset = 0;
@@ -255,16 +256,16 @@ ErrorOr<Vector<fs::DirectoryEntry>> InodeEntry::read_directory_entries() const {
         return Error(ENOTDIR);
     }
 
-    u8 buffer[m_fs->block_size()];
+    std::HeapArray<u8> buffer { m_fs->block_size() };
     Vector<fs::DirectoryEntry> entries;
 
     for (size_t i = 0; i < this->block_count(); i++) {
-        memset(buffer, 0, m_fs->block_size());
-        TRY(this->read_blocks(i, 1, buffer));
+        memset(buffer.data(), 0, m_fs->block_size());
+        TRY(this->read_blocks(i, 1, buffer.data()));
 
         size_t offset = 0;
         while (offset < m_fs->block_size()) {
-            DirEntry* entry = reinterpret_cast<DirEntry*>(buffer + offset);
+            DirEntry* entry = reinterpret_cast<DirEntry*>(buffer.data() + offset);
             StringView name { entry->name, entry->name_length };
 
             if (entry->inode == 0) {
@@ -308,39 +309,39 @@ ErrorOr<void> InodeEntry::write_directory_entries() {
         TRY(this->allocate_blocks(blocks - block_count()));
     }
 
-    u8 buffer[block_size];
+    std::HeapArray<u8> buffer { block_size };
     size_t current_block = 0;
 
     size_t offset = 0;
     for (auto& entry : m_entries) {
         size_t size = std::align_up(entry.name.size() + sizeof(DirEntry), 4);
         if (size + offset > block_size) {
-            TRY(m_fs->write_block(get_block_pointer(current_block), buffer));
-            memset(buffer, 0, block_size);
+            TRY(m_fs->write_block(get_block_pointer(current_block), buffer.data()));
+            memset(buffer.data(), 0, block_size);
 
             current_block++;
             offset = 0;
         }
 
-        auto* dir_entry = reinterpret_cast<DirEntry*>(buffer + offset);
+        auto* dir_entry = reinterpret_cast<DirEntry*>(buffer.data() + offset);
 
         dir_entry->inode = entry.inode;
         dir_entry->name_length = entry.name.size();
         dir_entry->size = size;
         dir_entry->type_indicator = static_cast<u8>(entry.type);
 
-        memcpy(buffer + offset + sizeof(DirEntry), entry.name.data(), entry.name.size());
+        memcpy(buffer.data() + offset + sizeof(DirEntry), entry.name.data(), entry.name.size());
         offset += size;
     }
 
-    auto* null = reinterpret_cast<DirEntry*>(buffer + offset);
+    auto* null = reinterpret_cast<DirEntry*>(buffer.data() + offset);
 
     null->inode = 0;
     null->type_indicator = fs::DirectoryEntry::Unknown;
     null->name_length = 0;
     null->size = block_size - offset;
 
-    TRY(m_fs->write_block(get_block_pointer(current_block), buffer));
+    TRY(m_fs->write_block(get_block_pointer(current_block), buffer.data()));
     return {};
 }
 
@@ -405,12 +406,12 @@ ErrorOr<void> InodeEntry::read_block_pointers() {
 }
 
 ErrorOr<void> InodeEntry::read_singly_indirect_block_pointers(u32 block) {
-    u8 buffer[m_fs->block_size()];
-    TRY(m_fs->read_block(block, buffer));
+    std::HeapArray<u8> buffer { m_fs->block_size() };
+    TRY(m_fs->read_block(block, buffer.data()));
 
     m_indirect_block_pointers.append(block);
 
-    u32* pointers = reinterpret_cast<u32*>(buffer);
+    u32* pointers = reinterpret_cast<u32*>(buffer.data());
     for (size_t i = 0; i < m_fs->block_size() / sizeof(u32); i++) {
         if (!pointers[i]) {
             continue;
@@ -423,12 +424,12 @@ ErrorOr<void> InodeEntry::read_singly_indirect_block_pointers(u32 block) {
 }
 
 ErrorOr<void> InodeEntry::read_doubly_indirect_block_pointers(u32 block) {
-    u8 buffer[m_fs->block_size()];
-    TRY(m_fs->read_block(block, buffer));
+    std::HeapArray<u8> buffer { m_fs->block_size() };
+    TRY(m_fs->read_block(block, buffer.data()));
 
     m_indirect_block_pointers.append(block);
 
-    u32* pointers = reinterpret_cast<u32*>(buffer);
+    u32* pointers = reinterpret_cast<u32*>(buffer.data());
     for (size_t i = 0; i < m_fs->block_size() / sizeof(u32); i++) {
         if (!pointers[i]) {
             continue;
@@ -441,12 +442,12 @@ ErrorOr<void> InodeEntry::read_doubly_indirect_block_pointers(u32 block) {
 }
 
 ErrorOr<void> InodeEntry::read_triply_indirect_block_pointers(u32 block) {
-    u8 buffer[m_fs->block_size()];
-    TRY(m_fs->read_block(block, buffer));
+    std::HeapArray<u8> buffer { m_fs->block_size() };
+    TRY(m_fs->read_block(block, buffer.data()));
 
     m_indirect_block_pointers.append(block);
 
-    u32* pointers = reinterpret_cast<u32*>(buffer);
+    u32* pointers = reinterpret_cast<u32*>(buffer.data());
     for (size_t i = 0; i < m_fs->block_size() / sizeof(u32); i++) {
         if (!pointers[i]) {
             continue;
@@ -516,35 +517,35 @@ ErrorOr<void> InodeEntry::write_block_pointers() {
 ErrorOr<void> InodeEntry::write_singly_indirect_block_pointers(u32 block) {
     u32 block_size = m_fs->block_size();
 
-    u8 buffer[block_size];
-    TRY(m_fs->read_block(block, buffer));
+    std::HeapArray<u8> buffer { block_size };
+    TRY(m_fs->read_block(block, buffer.data()));
 
     m_indirect_block_pointers.append(block);
 
-    u32* singly_indirect_pointers = reinterpret_cast<u32*>(buffer);
+    u32* singly_indirect_pointers = reinterpret_cast<u32*>(buffer.data());
     for (size_t i = 0; i < block_size / sizeof(u32); i++) {
         singly_indirect_pointers[i] = this->get_block_pointer(i + 12);
     }
 
-    TRY(m_fs->write_block(block, buffer));
+    TRY(m_fs->write_block(block, buffer.data()));
     return {};
 }
 
 ErrorOr<void> InodeEntry::write_doubly_indirect_block_pointers(u32 block) {
     u32 block_size = m_fs->block_size();
 
-    u8 buffer[block_size];
-    TRY(m_fs->read_block(block, buffer));
+    std::HeapArray<u8> buffer { block_size };
+    TRY(m_fs->read_block(block, buffer.data()));
 
     m_indirect_block_pointers.append(block);
 
-    u32* doubly_indirect_pointers = reinterpret_cast<u32*>(buffer);
+    u32* doubly_indirect_pointers = reinterpret_cast<u32*>(buffer.data());
     for (size_t i = 0; i < block_size / sizeof(u32); i++) {
         VERIFY_BLOCK(doubly_indirect_pointers[i]);
         TRY(this->write_singly_indirect_block_pointers(doubly_indirect_pointers[i]));
     }
 
-    TRY(m_fs->write_block(block, buffer));
+    TRY(m_fs->write_block(block, buffer.data()));
     return {};
 }
 
@@ -619,14 +620,14 @@ ErrorOr<void> InodeEntry::flush() {
     }
 
     u32 block = group->inode_table() + index * sizeof(ext2fs::Inode) / block_size;
-    u8 buffer[block_size];
+    std::HeapArray<u8> buffer { block_size };
 
-    TRY(m_fs->read_block(block, buffer));
+    TRY(m_fs->read_block(block, buffer.data()));
 
     u32 offset = (index * sizeof(ext2fs::Inode)) % block_size;
-    memcpy(buffer + offset, &m_inode, sizeof(ext2fs::Inode));
+    memcpy(buffer.data() + offset, &m_inode, sizeof(ext2fs::Inode));
 
-    TRY(m_fs->write_block(block, buffer));
+    TRY(m_fs->write_block(block, buffer.data()));
     return {};
 }
 

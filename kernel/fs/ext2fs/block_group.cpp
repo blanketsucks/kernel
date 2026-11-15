@@ -3,6 +3,7 @@
 #include <kernel/serial.h>
 
 #include <std/bitmap.h>
+#include <std/heap_array.h>
 
 namespace kernel::ext2fs {
 
@@ -32,10 +33,10 @@ ErrorOr<Vector<u32>> BlockGroup::allocate_blocks(u32 count) {
         first_block += 1;
     }
 
-    u8 buffer[m_fs->block_size()];
-    TRY(m_fs->read_block(this->block_bitmap(), buffer));
+    std::HeapArray<u8> buffer { m_fs->block_size() };
+    TRY(m_fs->read_block(this->block_bitmap(), buffer.data()));
 
-    auto bitmap = std::Bitmap(buffer, superblock->blocks_per_group);
+    auto bitmap = std::Bitmap(buffer.data(), superblock->blocks_per_group);
     for (u32 i = 0; i < superblock->blocks_per_group; i++) {
         if (bitmap.get(i)) {
             continue;
@@ -52,7 +53,7 @@ ErrorOr<Vector<u32>> BlockGroup::allocate_blocks(u32 count) {
         superblock->free_blocks--;
     }
 
-    TRY(m_fs->write_block(this->block_bitmap(), buffer));
+    TRY(m_fs->write_block(this->block_bitmap(), buffer.data()));
     TRY(this->flush());
 
     m_fs->flush_superblock();
@@ -65,20 +66,20 @@ ErrorOr<u32> BlockGroup::allocate_block() {
 }
 
 ErrorOr<void> BlockGroup::free_blocks(const Vector<u32>& blocks) {
-    u8 buffer[m_fs->block_size()];
-    TRY(m_fs->read_block(this->block_bitmap(), buffer));
+    std::HeapArray<u8> buffer { m_fs->block_size() };
+    TRY(m_fs->read_block(this->block_bitmap(), buffer.data()));
 
     auto& descriptor = this->descriptor();
     auto* superblock = m_fs->superblock();
 
     u32 first_block = superblock->blocks_per_group * m_index;
 
-    auto bitmap = std::Bitmap(buffer, superblock->blocks_per_group);
+    auto bitmap = std::Bitmap(buffer.data(), superblock->blocks_per_group);
     for (auto block : blocks) {
         bitmap.set(block - first_block, false);
     }
 
-    TRY(m_fs->write_block(this->block_bitmap(), buffer));
+    TRY(m_fs->write_block(this->block_bitmap(), buffer.data()));
 
     descriptor.free_blocks += blocks.size();
     superblock->free_blocks += blocks.size();
@@ -101,14 +102,14 @@ ErrorOr<u32> BlockGroup::allocate_inode(bool is_directory) {
         return Error(ENOSPC);
     }
 
-    u8 buffer[m_fs->block_size()];
-    TRY(m_fs->read_block(this->inode_bitmap(), buffer));
+    std::HeapArray<u8> buffer { m_fs->block_size() };
+    TRY(m_fs->read_block(this->inode_bitmap(), buffer.data()));
 
-    std::Bitmap bitmap(buffer, superblock.inodes_per_group);
+    std::Bitmap bitmap(buffer.data(), superblock.inodes_per_group);
     ino_t inode = bitmap.find_first_unset();
 
     bitmap.set(inode, true);
-    TRY(m_fs->write_block(this->inode_bitmap(), buffer));
+    TRY(m_fs->write_block(this->inode_bitmap(), buffer.data()));
 
     descriptor.free_inodes--;
     superblock.free_inodes--;
@@ -116,7 +117,7 @@ ErrorOr<u32> BlockGroup::allocate_inode(bool is_directory) {
     if (is_directory) {
         descriptor.dir_count++;
     }
-    
+
     TRY(this->flush());
     m_fs->flush_superblock();
 
