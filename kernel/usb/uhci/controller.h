@@ -7,7 +7,7 @@
 #include <kernel/arch/io.h>
 #include <kernel/pci/pci.h>
 #include <kernel/arch/irq.h>
-#include <kernel/process/blocker.h>
+#include <kernel/process/wait_queue.h>
 
 #include <std/stack.h>
 #include <std/array.h>
@@ -69,7 +69,7 @@ private:
     uhci::QueueHead* m_control_anchor_qh;
     uhci::QueueHead* m_bulk_anchor_qh;
 
-    RefPtr<BooleanBlocker> m_irq_blocker;
+    WaitQueue m_wq;
 };
 
 }

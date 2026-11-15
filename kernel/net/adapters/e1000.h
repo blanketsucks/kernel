@@ -7,8 +7,6 @@
 #include <kernel/net/mac.h>
 #include <kernel/net/adapter.h>
 
-#include <kernel/process/blocker.h>
-
 #include <std/memory.h>
 
 namespace kernel::net {
@@ -107,7 +105,7 @@ public:
             u8 strip_ethernet_crc : 1;
             u8 : 5;
         } PACKED;
-        
+
         u32 value;
 
         ReceiveControl() : value(0) {}
@@ -165,7 +163,7 @@ public:
         u8 errors;
         u16 special;
     } PACKED;
-    
+
     struct TxDescriptor {
         u64 address;
         u16 length;

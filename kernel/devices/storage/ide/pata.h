@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/process/blocker.h>
+#include <kernel/process/wait_queue.h>
 #include <kernel/devices/storage/device.h>
 #include <kernel/devices/storage/ata.h>
 #include <kernel/arch/irq.h>
@@ -25,7 +25,7 @@ public:
 
     ata::Channel channel() const { return m_channel; }
     ata::Drive drive() const { return m_drive; }
-    
+
     Type type() const override { return m_type; }
 
     bool has_48bit_pio() const { return m_has_48bit_pio; }
@@ -37,7 +37,7 @@ public:
     io::Port bus_master_port() const { return m_bus_master; }
 
     void wait_while_busy() const;
-    void wait_for_irq();
+    void submit_and_wait_for_irq();
     void poll() const; // An alternative to IRQs
 
     void prepare_for(ata::Command command, size_t lba, u16 sectors);
@@ -50,7 +50,7 @@ public:
 
     void read_sectors_with_dma(size_t lba, u8 sectors, u8* buffer);
     void write_sectors_with_dma(size_t lba, u8 sectors, const u8* buffer);
-    
+
 private:
     friend class Device;
 
@@ -68,7 +68,7 @@ private:
     io::Port m_data;
     io::Port m_bus_master;
 
-    RefPtr<BooleanBlocker> m_irq_blocker;
+    WaitQueue m_wq;
 
     bool m_has_48bit_pio;
     bool m_has_dma;

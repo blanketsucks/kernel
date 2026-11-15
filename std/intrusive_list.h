@@ -1,8 +1,21 @@
 #pragma once
 
 #include <std/types.h>
+#include <std/type_traits.h>
 
 namespace std {
+
+namespace detail {
+
+template<typename M> struct member_ptr_traits;
+
+template<typename C, typename R>
+struct member_ptr_traits<R C::*> {
+    using Class  = C;
+    using Member = R;
+};
+
+}
 
 struct ListNode {
     ListNode* next = this;
@@ -17,13 +30,26 @@ struct ListNode {
     }
 };
 
-template<typename T, size_t Offset>
+template<auto Member>
 class IntrusiveList {
 public:
+    using Traits = detail::member_ptr_traits<decltype(Member)>;
+    using T      = Traits::Class;
+
+    static_assert(std::is_same_v<typename Traits::Member, ListNode>, "member must be a ListNode");
+
     IntrusiveList() = default;
 
     IntrusiveList(const IntrusiveList&) = delete;
     IntrusiveList& operator=(const IntrusiveList&) = delete;
+
+    static size_t node_offset() {
+        ptrdiff_t offset = 0;
+        auto m = Member;
+
+        __builtin_memcpy(&offset, &m, sizeof(offset));
+        return static_cast<size_t>(offset);
+    }
 
     class Iterator {
     public:
@@ -49,17 +75,28 @@ public:
     };
 
     static ListNode* node_of(T& value) {
-        return reinterpret_cast<ListNode*>(reinterpret_cast<u8*>(&value) + Offset);
+        return reinterpret_cast<ListNode*>(reinterpret_cast<u8*>(&value) + node_offset());
     }
 
     static T* owner_of(ListNode* node) {
-        return reinterpret_cast<T*>(reinterpret_cast<u8*>(node) - Offset);
+        return reinterpret_cast<T*>(reinterpret_cast<u8*>(node) - node_offset());
     }
 
     bool empty() const { return !m_head.is_linked(); }
 
     void append(T& value) { insert(node_of(value), m_head.prev, &m_head); }
     void preppend(T& value) { insert(node_of(value), &m_head, m_head.next); }
+
+    void insert_before(T& pos, T& value) {
+        ListNode* current = node_of(pos);
+        ListNode* node    = node_of(value);
+
+        node->prev = current->prev;
+        node->next = current;
+
+        current->prev->next = node;
+        current->prev = node;
+    }
 
     Iterator begin() { return Iterator(m_head.next); }
     Iterator end() { return Iterator(&m_head); }

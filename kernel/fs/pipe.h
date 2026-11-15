@@ -1,7 +1,6 @@
 #pragma once
 
 #include <kernel/fs/file.h>
-#include <kernel/process/blocker.h>
 
 #include <std/ring_buffer.h>
 
@@ -17,7 +16,7 @@ public:
 
     void add_reader() { m_readers++; }
     void add_writer() { m_writers++; }
-    
+
     void remove_reader() { m_readers--; }
     void remove_writer() { m_writers--; }
 

@@ -24,7 +24,10 @@ ErrorOr<size_t> Pipe::read(void* buffer, size_t size, size_t) {
         return 0;
     }
 
-    return m_buffer->read(reinterpret_cast<u8*>(buffer), size);
+    size_t nread = TRY(m_buffer->read(reinterpret_cast<u8*>(buffer), size));
+    m_write_wq.wake_all();
+
+    return nread;
 }
 
 ErrorOr<size_t> Pipe::write(const void* buffer, size_t size, size_t) {
@@ -33,8 +36,11 @@ ErrorOr<size_t> Pipe::write(const void* buffer, size_t size, size_t) {
     } else if (m_buffer->full()) {
         return 0;
     }
- 
-    return m_buffer->write(reinterpret_cast<const u8*>(buffer), size);
+
+    size_t nwritten = TRY(m_buffer->write(reinterpret_cast<const u8*>(buffer), size));
+    m_read_wq.wake_all();
+
+    return nwritten;
 }
 
 }

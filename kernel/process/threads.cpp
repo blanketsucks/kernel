@@ -1,9 +1,10 @@
 #include <kernel/process/threads.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/process/process.h>
-#include <kernel/process/blocker.h>
+#include <kernel/process/wait_queue.h>
 #include <kernel/memory/manager.h>
 #include <kernel/arch/processor.h>
+#include <kernel/time/manager.h>
 
 #include <std/format.h>
 
@@ -232,29 +233,19 @@ void Thread::kill() {
     Scheduler::dequeue(this);
 }
 
-bool Thread::should_unblock() const {
+void Thread::wake_up() {
     if (m_state != Blocked) {
-        return false;
+        return;
     }
 
-    return m_blocker && m_blocker->should_unblock();
-}
-
-void Thread::block(RefPtr<Blocker> blocker) {
-    m_blocker = move(blocker);
-
-    Scheduler::dequeue(this, Thread::Blocked);
-    Scheduler::yield();
-}
-
-void Thread::unblock() {
-    m_blocker = nullptr;
     Scheduler::queue(this, Thread::Runnable);
 }
 
 void Thread::sleep(clockid_t clock_id, const Duration& duration) {
-    auto blocker = SleepBlocker::create(duration, clock_id);
-    this->block(move(blocker));
+    Duration at = TimeManager::query_time(clock_id) + duration;
+
+    WaitQueue wq;
+    wq.prepare_and_wait([]() {}, Deadline::at(at, clock_id));
 }
 
 }

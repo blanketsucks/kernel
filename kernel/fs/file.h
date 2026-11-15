@@ -2,6 +2,8 @@
 
 #include <kernel/common.h>
 #include <kernel/posix/sys/stat.h>
+#include <kernel/process/wait_queue.h>
+
 #include <std/result.h>
 #include <std/memory.h>
 
@@ -30,12 +32,19 @@ public:
     virtual bool can_read(FileDescriptor const&) const = 0;
     virtual bool can_write(FileDescriptor const&) const = 0;
 
+    WaitQueue& read_queue() { return m_read_wq; }
+    WaitQueue& write_queue() { return m_write_wq; }
+
     virtual void close() {}
 
     virtual ErrorOr<void*> mmap(Process&, size_t, int) { return Error(ENODEV); }
     virtual ErrorOr<int> ioctl(unsigned, unsigned) { return Error(ENOTTY); }
 
     virtual ErrorOr<size_t> readdir(void*, size_t) { return Error(ENOTDIR); }
+
+protected:
+    WaitQueue m_read_wq;
+    WaitQueue m_write_wq;
 };
 
 class InodeFile : public File {

@@ -27,8 +27,8 @@ public:
 
     static void add_process(Process*);
 
-    static void queue(Thread*, Optional<Thread::State> with_state = {});
-    static void dequeue(Thread*, Optional<Thread::State> with_state = {});
+    static void queue(Thread*, Optional<int> with_state = {});
+    static void dequeue(Thread*, Optional<int> with_state = {});
 
     static Process* get_process(pid_t id);
 

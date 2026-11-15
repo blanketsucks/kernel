@@ -2,6 +2,7 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/memory/manager.h>
 #include <kernel/arch/interrupts.h>
+#include <kernel/process/threads.h>
 
 namespace kernel {
 

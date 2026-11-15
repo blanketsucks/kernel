@@ -11,7 +11,7 @@
 namespace kernel {
 
 struct ReadyQueue {
-    std::IntrusiveList<Thread, __builtin_offsetof(Thread, m_ready_node)> list;
+    std::IntrusiveList<&Thread::m_ready_node> list;
 };
 
 static std::Atomic<pid_t> s_next_id = 0;
@@ -81,20 +81,6 @@ void Scheduler::run() {
 void Scheduler::yield() {
     SpinLockGuard guard(s_scheduler_lock);
 
-    s_processes.with([](Vector<Process*>& list) {
-        for (auto& process : list) {
-            process->for_each_thread([](Thread* thread) {
-                if (!thread->is_blocked()) {
-                    return;
-                } else if (!thread->should_unblock()) {
-                    return;
-                }
-
-                thread->unblock();
-            });
-        }
-    });
-
     auto& processor = Processor::current();
     if (!processor.current_thread()) {
         return;
@@ -131,7 +117,7 @@ void Scheduler::add_process(Process* process) {
     });
 }
 
-void Scheduler::queue(Thread* thread, Optional<Thread::State> with_state) {
+void Scheduler::queue(Thread* thread, Optional<int> with_state) {
     if (thread->is_idle_thread()) {
         return;
     }
@@ -139,12 +125,12 @@ void Scheduler::queue(Thread* thread, Optional<Thread::State> with_state) {
     s_ready_queue.with([&](ReadyQueue& queue) {
         queue.list.append(*thread);
         if (with_state.has_value()) {
-            thread->set_state(with_state.value());
+            thread->set_state(static_cast<Thread::State>(with_state.value()));
         }
     });
 }
 
-void Scheduler::dequeue(Thread* thread, Optional<Thread::State> with_state) {
+void Scheduler::dequeue(Thread* thread, Optional<int> with_state) {
     if (thread->is_idle_thread()) {
         return;
     }
@@ -152,7 +138,7 @@ void Scheduler::dequeue(Thread* thread, Optional<Thread::State> with_state) {
     s_ready_queue.with([&](ReadyQueue& queue) {
         queue.list.remove(*thread);
         if (with_state.has_value()) {
-            thread->set_state(with_state.value());
+            thread->set_state(static_cast<Thread::State>(with_state.value()));
         }
     });
 }
@@ -170,16 +156,18 @@ Thread* Scheduler::get_next_thread() {
             }
 
             queue.list.remove(thread);
-            thread.set_state(Thread::Running);
 
+            thread.set_state(Thread::Running);
             thread.try_claim_cpu(processor.cpu());
+
             return &thread;
         }
 
         auto* idle_thread = processor.idle_thread();
-        idle_thread->set_state(Thread::Running);
 
+        idle_thread->set_state(Thread::Running);
         idle_thread->try_claim_cpu(processor.cpu());
+
         return idle_thread;
     });
 }

@@ -35,13 +35,14 @@ void PS2MouseDevice::update_mouse_state() {
     y = packet->y - (packet->ys ? 0x100 : 0);
 
     if (m_has_scroll_wheel && packet->z) {
-        z = (packet->z == 0xFF) ? -1 : packet->z; 
+        z = (packet->z == 0xFF) ? -1 : packet->z;
     }
 
     if (this->is_full()) {
         m_state_buffer.remove(0);
     }
-    
+
+    m_read_wq.wake_all();
     m_state_buffer.append({ x, y, z, buttons });
 }
 

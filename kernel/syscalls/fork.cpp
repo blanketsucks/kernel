@@ -1,5 +1,6 @@
 #include <kernel/process/process.h>
 #include <kernel/process/scheduler.h>
+#include <kernel/process/threads.h>
 
 namespace kernel {
 

@@ -67,6 +67,14 @@ bool FileDescriptor::can_write() const {
     return m_file->can_write(*this);
 }
 
+WaitResult FileDescriptor::wait_for_read(Duration timeout) {
+    return m_file->read_queue().wait_until([&]() { return this->can_read(); }, Deadline::after(timeout));
+}
+
+WaitResult FileDescriptor::wait_for_write(Duration timeout) {
+    return m_file->write_queue().wait_until([&]() { return this->can_read(); }, Deadline::after(timeout));
+}
+
 void FileDescriptor::seek(off_t offset, int whence) {
     switch (whence) {
         case SEEK_SET:
@@ -87,7 +95,7 @@ void FileDescriptor::close() {
     if (!m_file) {
         return;
     }
-    
+
     return m_file->close();
 }
 

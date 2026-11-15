@@ -1,8 +1,8 @@
 #pragma once
 
 #include <kernel/devices/audio/device.h>
+#include <kernel/process/wait_queue.h>
 #include <kernel/arch/irq.h>
-#include <kernel/process/blocker.h>
 #include <kernel/pci/pci.h>
 #include <kernel/arch/io.h>
 
@@ -93,9 +93,9 @@ public:
     struct BufferDescriptor {
         u32 address;
         u16 samples;
-    
+
         u16 : 14;
-    
+
         u8 last_entry : 1;
         u8 interrupt_on_completion : 1;
     } PACKED;
@@ -135,15 +135,15 @@ private:
 
     BufferDescriptor* m_descriptors;
     u8* m_output_buffer;
-    
+
     u8 m_current_descriptor = 0;
     u8 m_current_page = 0;
 
-    bool m_dma_enabled = false;    
+    bool m_dma_enabled = false;
     bool m_variable_rate = false;
     bool m_double_rate = false;
 
-    RefPtr<BooleanBlocker> m_irq_blocker;
+    WaitQueue m_wq;
 };
 
 }

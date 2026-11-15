@@ -70,9 +70,7 @@ void NetworkManager::spawn() {
     Scheduler::add_process(process);
 }
 
-NetworkManager::NetworkManager() {
-    m_blocker = BooleanBlocker::create();
-}
+NetworkManager::NetworkManager() {}
 
 void NetworkManager::initialize() {
     s_instance = new NetworkManager();
@@ -87,7 +85,7 @@ void NetworkManager::initialize() {
 }
 
 void NetworkManager::wakeup() {
-    s_instance->m_blocker->set_value(true);
+    s_instance->m_wq.wake_all();
 }
 
 void NetworkManager::add_adapter(RefPtr<net::NetworkAdapter> adapter) {
@@ -96,8 +94,7 @@ void NetworkManager::add_adapter(RefPtr<net::NetworkAdapter> adapter) {
 
 void NetworkManager::task() {
     while (true) {
-        m_blocker->set_value(false);
-        m_blocker->wait();
+        m_wq.prepare_and_wait([]() {});
 
         for (auto& adapter : m_adapters) {
             net::Packet packet = adapter->dequeue();

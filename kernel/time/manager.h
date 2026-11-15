@@ -2,9 +2,11 @@
 
 #include <kernel/common.h>
 #include <kernel/posix/sys/types.h>
+#include <kernel/process/wait_queue.h>
 #include <kernel/posix/time.h>
 #include <kernel/time/timer.h>
 #include <kernel/sync/spinlock.h>
+#include <kernel/sync/resource.h>
 
 #include <std/atomic.h>
 #include <std/time.h>
@@ -23,6 +25,9 @@ public:
 
     static Duration query_time(clockid_t);
 
+    static void add_waiter(WaitEntry&);
+    static void cancel_waiter(WaitEntry&);
+
     static time_t boot_time();
     static void tick();
 
@@ -32,6 +37,8 @@ public:
     void set_system_timer(RefPtr<Timer> timer);
 
 private:
+    using WaiterList = std::IntrusiveList<&WaitEntry::m_timer_node>;
+
     TimeManager() = default;
 
     void init();
@@ -51,6 +58,8 @@ private:
     u64 m_ticks = 0;
 
     Duration m_epoch_time;
+
+    SpinLockResource<WaiterList> m_waiters;
 
     // TODO: Maybe use a lock instead in epoch_time() and monotonic_time(), but for some reason adding a lock
     // makes the kernel go insane and crash.

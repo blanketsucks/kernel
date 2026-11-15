@@ -1,9 +1,8 @@
 #pragma once
 
-#include <kernel/common.h>
 #include <kernel/net/adapter.h>
 #include <kernel/process/threads.h>
-#include <kernel/process/blocker.h>
+#include <kernel/process/wait_queue.h>
 #include <kernel/pci/pci.h>
 
 #include <std/vector.h>
@@ -39,7 +38,7 @@ private:
     RefPtr<net::NetworkAdapter> m_loopback_adapter;
 
     Thread* m_thread = nullptr;
-    RefPtr<BooleanBlocker> m_blocker;
+    WaitQueue m_wq;
 };
 
 }

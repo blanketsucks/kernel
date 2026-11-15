@@ -35,7 +35,7 @@ void StorageManager::initialize() {
 
         return format("{}{}", path, index);
     });
-    
+
     s_instance.enumerate_controllers();
 
 }
@@ -66,7 +66,7 @@ void StorageManager::enumerate_controllers() {
             default:
                 return;
         }
-        
+
         if (controller) {
             m_controllers.append(controller);
             this->enumerate_devices(controller);
@@ -152,7 +152,7 @@ BlockDevice* StorageManager::determine_boot_device() {
         if (device->type() != boot_device.type) {
             continue;
         }
-        
+
         if (index != boot_device.index) {
             index++;
             continue;

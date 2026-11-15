@@ -34,8 +34,6 @@ PATADevice::PATADevice(
         m_data = ata::SECONDARY_DATA_PORT;
         m_control = ata::SECONDARY_CONTROL_PORT;
     }
-
-    m_irq_blocker = BooleanBlocker::create();
 }
 
 ErrorOr<void> PATADevice::initialize() {
@@ -122,7 +120,7 @@ void PATADevice::handle_irq() {
     }
 
     m_bus_master.write<u8>(ata::BMStatus, status | 0x04);
-    m_irq_blocker->set_value(true);
+    m_wq.wake_all();
 }
 
 size_t PATADevice::max_io_block_count() const {
@@ -137,10 +135,7 @@ void PATADevice::wait_while_busy() const {
     while (m_data.read<u8>(ata::StatusReg) & ata::Busy);
 }
 
-void PATADevice::wait_for_irq() {
-    Thread* thread = Thread::current();
-    thread->block(m_irq_blocker);
-}
+void PATADevice::submit_and_wait_for_irq() {}
 
 void PATADevice::poll() const {
     u8 status = m_data.read<u8>(ata::StatusReg);
@@ -234,8 +229,6 @@ void PATADevice::write_sectors(size_t lba, u8 count, const u8* buffer) {
 }
 
 void PATADevice::read_sectors_with_dma(size_t lba, u8 count, u8* buffer) {
-    m_irq_blocker->set_value(false);
-
     m_prdt->size = count * SECTOR_SIZE;
     m_prdt->flags = 0x8000;
 
@@ -250,11 +243,9 @@ void PATADevice::read_sectors_with_dma(size_t lba, u8 count, u8* buffer) {
 
     this->prepare_for(ata::ReadDMA, lba, count);
 
-    while (!(m_control.read<u8>() & to_underlying(ata::DataRequest)));
+    while (!(m_control.read<u8>() & to_underlying(ata::DataRequest))) {}
 
-    m_bus_master.write<u8>(0x09);
-    this->wait_for_irq();
-
+    m_wq.prepare_and_wait([&]() { m_bus_master.write<u8>(0x09); });
     memcpy(buffer, m_dma_buffer, count * SECTOR_SIZE);
 
     status = m_bus_master.read<u8>(ata::BMStatus);

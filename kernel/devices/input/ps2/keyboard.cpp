@@ -28,7 +28,7 @@ static const char SHIFT_SCANCODE_MAP[0x80] = {
     '^', '&', '*', '(', ')', '_', '+',
     0x08, '\t', 'Q', 'W', 'E', 'R', 'T',
     'Y', 'U', 'I', 'O', 'P', '{', '}',
-    '\n', 0, 'A', 'S', 'D', 'F', 'G', 'H', 
+    '\n', 0, 'A', 'S', 'D', 'F', 'G', 'H',
     'J', 'K', 'L', ':', '"', '~', 0, '|',
     'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<',
     '>', '?', 0, '*', 0, ' ', 0, 0, 0,
@@ -80,6 +80,7 @@ void PS2KeyboardDevice::handle_irq() {
         m_key_buffer.remove(0);
     }
 
+    m_read_wq.wake_all();
     m_key_buffer.append(event);
 }
 
@@ -93,7 +94,7 @@ ErrorOr<size_t> PS2KeyboardDevice::read(void* buffer, size_t size, size_t) {
         auto key = m_key_buffer.take_first();
         memcpy(reinterpret_cast<u8*>(buffer) + i, &key, sizeof(sys_keyboard_event));
 
-        i += sizeof(sys_keyboard_event);   
+        i += sizeof(sys_keyboard_event);
     }
 
     return i;

@@ -43,7 +43,10 @@ public:
 
     bool can_read() const;
     bool can_write() const;
-    
+
+    WaitResult wait_for_read(Duration timeout = Duration::max());
+    WaitResult wait_for_write(Duration timeout = Duration::max());
+
     ErrorOr<size_t> read(void* buffer, size_t size);
     ErrorOr<size_t> write(const void* buffer, size_t size);
 

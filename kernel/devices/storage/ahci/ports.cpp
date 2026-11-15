@@ -25,20 +25,20 @@ void AHCIPort::allocate_resources() {
     for (size_t i = 0; i < COMMAND_LIST_SIZE; i++) {
         auto& header = m_command_headers[i];
         auto* table = &m_command_tables[i];
-        
+
         memset(&header, 0, sizeof(CommandHeader));
         memset(table, 0, sizeof(CommandTable) + sizeof(PhysicalRegionDescriptor) * MAX_PRDT_COUNT);
-        
+
         PhysicalAddress address = MM->get_physical_address(table);
-        
+
         header.command_table_base = address;
         if constexpr (sizeof(address) > 4) {
             header.command_table_base_upper = (address >> 32) & 0xFFFFFFFF;
         }
-        
+
         header.prdt_length = MAX_PRDT_COUNT;
     }
- 
+
     memset(m_fis_receive, 0, PAGE_SIZE);
     memset(m_identify_buffer, 0, PAGE_SIZE);
 }
@@ -54,8 +54,6 @@ bool AHCIPort::initialize() {
     if (!this->is_active()) {
         return false;
     }
-
-    m_irq_blocker = BooleanBlocker::create();
 
     this->stop();
 
@@ -180,10 +178,9 @@ void AHCIPort::wait_while_busy() {
 }
 
 void AHCIPort::issue_command(int slot) {
-    m_irq_blocker->set_value(false);
-
-    m_port->command_issue = 1 << slot;
-    m_irq_blocker->wait();
+    m_wq.prepare_and_wait([&]() {
+        m_port->command_issue = 1 << slot;
+    });
 }
 
 int AHCIPort::prepare_for(ata::Command command, u64 lba, u16 sectors) {
@@ -272,7 +269,7 @@ void AHCIPort::handle_interrupt() {
         return;
     }
 
-    m_irq_blocker->set_value(true);
+    m_wq.wake_all();
     this->clear_interrupt_status();
 }
 

@@ -5,7 +5,7 @@
 #include <kernel/usb/ohci/ohci.h>
 #include <kernel/arch/irq.h>
 #include <kernel/pci/address.h>
-#include <kernel/process/blocker.h>
+#include <kernel/process/wait_queue.h>
 
 #include <std/stack.h>
 

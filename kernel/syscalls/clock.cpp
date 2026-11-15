@@ -1,6 +1,5 @@
 #include <kernel/process/process.h>
 #include <kernel/process/threads.h>
-#include <kernel/process/blocker.h>
 #include <kernel/time/manager.h>
 
 namespace kernel {
@@ -27,12 +26,18 @@ ErrorOr<FlatPtr> Process::sys$clock_nanosleep(clockid_t clock_id, int flags, con
     bool is_absolute = flags & TIMER_ABSTIME;
     this->validate_read(req, sizeof(timespec));
 
-    auto* thread = Thread::current();
-
     auto duration = Duration::from_timespec(*req);
-    auto blocker = SleepBlocker::create(duration, clock_id, is_absolute);
 
-    thread->block(move(blocker));
+    Deadline deadline;
+    if (is_absolute) {
+        deadline = Deadline::at(duration, clock_id);
+    } else {
+        deadline = Deadline::after(duration, clock_id);
+    }
+
+    WaitQueue wq;
+    wq.prepare_and_wait([]() {}, deadline);
+
     return 0;
 }
 

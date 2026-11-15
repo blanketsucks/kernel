@@ -1,6 +1,5 @@
 #include <kernel/process/process.h>
 #include <kernel/process/threads.h>
-#include <kernel/process/blocker.h>
 #include <kernel/fs/pipe.h>
 
 namespace kernel {
@@ -42,15 +41,12 @@ ErrorOr<FlatPtr> Process::sys$read(int fd, void* buffer, size_t size) {
         return Error(EBADF);
     }
 
-    if (!file->can_read()) {
+    while (!file->can_read()) {
         if (file->options() & O_NONBLOCK) {
             return Error(EAGAIN);
         }
 
-        auto* thread = Thread::current();
-        auto blocker = FileBlocker::create(file, O_RDONLY);
-
-        thread->block(move(blocker));
+        file->wait_for_read();
     }
 
     this->validate_read(buffer, size);
@@ -67,15 +63,12 @@ ErrorOr<FlatPtr> Process::sys$write(int fd, const void* buffer, size_t size) {
         return Error(EBADF);
     }
 
-    if (!file->can_write()) {
+    while (!file->can_write()) {
         if (file->options() & O_NONBLOCK) {
             return Error(EAGAIN);
         }
-        
-        auto* thread = Thread::current();
-        auto blocker = FileBlocker::create(file, O_WRONLY);
 
-        thread->block(move(blocker));
+        file->wait_for_write();
     }
 
     this->validate_read(buffer, size);

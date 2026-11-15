@@ -2,8 +2,10 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/arch/interrupts/manager.h>
 #include <kernel/arch/processor.h>
+#include <kernel/arch/registers.h>
 
 #include <std/format.h>
+#include <std/asserts.h>
 
 namespace kernel {
 

@@ -209,6 +209,11 @@ private:
     Vector<RefPtr<fs::FileDescriptor>> m_file_descriptors;
 
     ProcessArguments m_arguments;
+
+    std::ListNode m_child_node;
+    std::IntrusiveList<&Process::m_child_node> m_children;
+
+    WaitQueue m_exit_wq;
 };
 
 };

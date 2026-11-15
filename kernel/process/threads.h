@@ -3,7 +3,6 @@
 #include <kernel/posix/sys/types.h>
 #include <kernel/posix/time.h>
 #include <kernel/process/stack.h>
-#include <kernel/process/blocker.h>
 #include <kernel/arch/registers.h>
 #include <kernel/arch/cpu.h>
 
@@ -76,18 +75,12 @@ public:
 
     void* exit_value() const { return m_exit_value; }
 
-    RefPtr<Blocker> const& blocker() const { return m_blocker; }
-
-    bool should_unblock() const;
-    void set_blocker(RefPtr<Blocker> blocker) { m_blocker = blocker; }
-
     void sleep(clockid_t, const Duration& duration);
     void sleep(const Duration& duration) {
         this->sleep(CLOCK_MONOTONIC, duration);
     }
 
-    void block(RefPtr<Blocker>);
-    void unblock();
+    void wake_up();
 
     void exit(void* value);
     void kill();
@@ -142,8 +135,6 @@ private:
     size_t m_arguments_offset = 0;
 
     void* m_exit_value = nullptr;
-
-    mutable RefPtr<Blocker> m_blocker = nullptr;
 
     arch::FPUState* m_fpu_state = nullptr;
 

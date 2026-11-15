@@ -5,6 +5,9 @@
 #include <kernel/process/scheduler.h>
 #include <kernel/acpi/acpi.h>
 #include <kernel/arch/interrupts/apic.h>
+#include <kernel/process/wait_queue.h>
+
+#include <std/asserts.h>
 
 namespace kernel {
 
@@ -65,6 +68,31 @@ void TimeManager::initialize_with_pit() {
     this->set_system_timer(PIT::create());
 }
 
+void TimeManager::add_waiter(WaitEntry& entry) {
+    auto* tm = s_instance;
+    ASSERT(tm);
+
+    tm->m_waiters.with([&](auto& list) {
+        for (auto& other : list) {
+            if (other.m_deadline.at() > entry.m_deadline.at()) {
+                list.insert_before(other, entry);
+                return;
+            }
+        }
+
+        list.append(entry);
+    });
+}
+
+void TimeManager::cancel_waiter(WaitEntry& entry) {
+    auto* tm = s_instance;
+    ASSERT(tm);
+
+    tm->m_waiters.with([&](auto& list) {
+        list.remove(entry);
+    });
+}
+
 Duration TimeManager::query_time(clockid_t clock_id) {
     if (clock_id == CLOCK_REALTIME) {
         return s_instance->epoch_time();
@@ -107,6 +135,18 @@ void TimeManager::update_time() {
     m_epoch_time += Duration::from_nanoseconds(delta);
 
     m_timer_update1.store(iteration + 1, std::MemoryOrder::Release);
+
+    m_waiters.with([](auto& list) {
+        while (!list.empty()) {
+            auto& entry = list.first();
+            if (!entry.m_deadline.is_expired()) {
+                break;
+            }
+
+            entry.m_queue->on_timeout(entry);
+            list.remove(entry);
+        }
+    });
 }
 
 Duration TimeManager::epoch_time() {

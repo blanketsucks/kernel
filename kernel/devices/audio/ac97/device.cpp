@@ -57,8 +57,6 @@ AC97Device::AC97Device(pci::Address address) : IRQHandler(address.interrupt_line
     }
 
     m_audio_mixer.write<u16>(ExtendedCapabilities, extended_capabilities);
-
-    m_irq_blocker = BooleanBlocker::create();
     this->enable_irq();
 
     dbgln("AC97 Device ({}:{}:{}):", address.bus(), address.device(), address.function());
@@ -97,7 +95,7 @@ void AC97Device::handle_irq() {
         this->reset();
     }
 
-    m_irq_blocker->set_value(true);
+    m_wq.wake_all();
 }
 
 ErrorOr<size_t> AC97Device::read(void*, size_t, size_t) {
@@ -142,8 +140,7 @@ void AC97Device::write_single(const void* buffer, size_t count, size_t offset) {
                 break;
             }
 
-            m_irq_blocker->set_value(false);
-            m_irq_blocker->wait();
+            m_wq.prepare_and_wait([]() {});
         } while (m_dma_enabled);
     }
 

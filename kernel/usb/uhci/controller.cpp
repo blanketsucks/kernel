@@ -1,4 +1,3 @@
-#include <kernel/process/blocker.h>
 #include <kernel/usb/uhci/controller.h>
 #include <kernel/usb/pipe.h>
 #include <kernel/usb/usb.h>
@@ -7,6 +6,7 @@
 #include <kernel/arch/io.h>
 #include <kernel/process/process.h>
 #include <kernel/process/scheduler.h>
+#include <kernel/process/threads.h>
 
 #include <std/format.h>
 
@@ -50,8 +50,6 @@ UHCIController::UHCIController(pci::Address address) : IRQHandler(address.interr
 
     m_port = io::Port(address.bar(4) & ~1);
     this->initialize();
-
-    m_irq_blocker = BooleanBlocker::create();
 }
 
 void UHCIController::reset() {
@@ -230,7 +228,6 @@ auto UHCIController::create_td_chain(Pipe* pipe, uhci::PacketType direction, Phy
 }
 
 size_t UHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& request, PhysicalAddress buffer, size_t length) {
-    m_irq_blocker->set_value(false);
     pipe->set_data_toggle(false);
 
     bool is_device_to_host = request.is_device_to_host();
@@ -262,15 +259,16 @@ size_t UHCIController::submit_control_transfer(Pipe* pipe, const DeviceRequest& 
     qh->attach_td(setup);
 
     auto* prev = m_control_anchor_qh->prev();
-    prev->link(qh);
-    qh->link(m_anchor_qh);
 
-    m_irq_blocker->wait();
+    m_wq.prepare_and_wait([&]() {
+        prev->link(qh);
+        qh->link(m_anchor_qh);
+    });
+
     return 0;
 }
 
 size_t UHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, size_t length) {
-    m_irq_blocker->set_value(false);
     pipe->set_data_toggle(false);
 
     auto pid = pipe->direction() == Pipe::In ? PacketType::In : PacketType::Out;
@@ -280,10 +278,11 @@ size_t UHCIController::submit_bulk_transfer(Pipe* pipe, PhysicalAddress buffer, 
     qh->attach_td(chain.head);
 
     auto* prev = m_bulk_anchor_qh->prev();
-    prev->link(qh);
-    qh->link(m_anchor_qh);
+    m_wq.prepare_and_wait([&]() {
+        prev->link(qh);
+        qh->link(m_anchor_qh);
+    });
 
-    m_irq_blocker->wait();
     return length;
 }
 
@@ -296,9 +295,9 @@ void UHCIController::handle_irq() {
     if (status & Status::USB_ERROR_INTERRUPT) {
         dbgln("Error occurred during transfer: {:#x}", status);
     }
-    
+
     if (status & Status::USBINT) {
-        m_irq_blocker->set_value(true);
+        m_wq.wake_all();
     }
 
     m_port.write<u16>(IORegister::USBSTS, status);

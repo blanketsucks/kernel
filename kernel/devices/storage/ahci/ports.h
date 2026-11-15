@@ -1,9 +1,8 @@
 #pragma once
 
-#include <kernel/common.h>
+#include <kernel/process/wait_queue.h>
 #include <kernel/devices/storage/ahci/ahci.h>
 #include <kernel/devices/storage/ata.h>
-#include <kernel/process/blocker.h>
 
 #include <std/memory.h>
 #include <std/result.h>
@@ -43,17 +42,17 @@ public:
 
     ErrorOr<void> read_sectors(u64 lba, u16 count, u8* buffer);
     ErrorOr<void> write_sectors(u64 lba, u16 count, const u8* buffer);
-    
+
 private:
     friend AHCIController;
-    
+
     AHCIPort(ahci::HBAPort* port, u32 index, AHCIController* AHCIController) : m_port(port), m_controller(AHCIController), m_index(index) {}
-    
+
     void clear_interrupt_enable() { m_port->interrupt_enable = 0; }
     void set_interrupt_enable() { m_port->interrupt_enable = 0xffffffff; }
-    
+
     void clear_interrupt_status() { m_port->interrupt_status = 0xffffffff; }
-    
+
     void rebase();
     void allocate_resources();
     bool identify();
@@ -80,7 +79,7 @@ private:
 
     RefPtr<SATADevice> m_device;
 
-    RefPtr<BooleanBlocker> m_irq_blocker;
+    WaitQueue m_wq;
 };
 
 }

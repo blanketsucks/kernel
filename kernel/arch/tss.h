@@ -1,7 +1,10 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/process/threads.h>
+
+namespace kernel {
+    class Thread;
+}
 
 namespace kernel::arch {
 
@@ -37,14 +40,7 @@ struct TSS {
 
     u16 iomap_base;
 
-    void init(Thread* initial_thread) {
-        auto& regs = initial_thread->registers();
-        iomap_base = sizeof(TSS);
-
-        rsp0l = regs.sp0() & 0xFFFFFFFF;
-        rsp0h = regs.sp0() >> 32;
-    }
-
+    void init(Thread* initial_thread);
     void set_kernel_stack(FlatPtr stack) {
         rsp0l = stack & 0xFFFFFFFF;
         rsp0h = stack >> 32;
