@@ -51,6 +51,7 @@ ErrorOr<size_t> PTYMaster::write(const void* buffer, size_t size, size_t) {
 
 void PTYMaster::on_slave_write(const u8* buffer, size_t size) {
     m_buffer.append(buffer, size);
+    m_read_wq.wake_all();
 }
 
 ErrorOr<int> PTYMaster::ioctl(unsigned request, unsigned arg) {

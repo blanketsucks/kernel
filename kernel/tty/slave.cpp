@@ -16,6 +16,7 @@ size_t PTYSlave::on_master_write(const u8* buffer, size_t size) {
         this->emit(buffer[i]);
     }
 
+    m_read_wq.wake_all();
     return size;
 }
 
