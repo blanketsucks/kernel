@@ -46,4 +46,6 @@ typedef void* locale_t;
 enum {
     CLOCK_REALTIME,
     CLOCK_MONOTONIC,
+
+    CLOCK_COUNT
 };
