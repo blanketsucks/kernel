@@ -50,7 +50,7 @@ void TimeManager::init() {
     }
 }
 
-void TimeManager::set_system_timer(RefPtr<Timer> timer) {
+void TimeManager::set_system_timer(RefPtr<TimerBase> timer) {
     m_system_timer = move(timer);
     m_system_timer->set_callback([this]() { this->timer_tick(); });
 }
@@ -72,7 +72,8 @@ void TimeManager::add_waiter(WaitEntry& entry) {
     auto* tm = s_instance;
     ASSERT(tm);
 
-    tm->m_waiters.with([&](auto& list) {
+    tm->m_waiters.with([&](ClockList& clocks) {
+        auto& list = clocks[entry.m_deadline.clock_id()];
         for (auto& other : list) {
             if (other.m_deadline.at() > entry.m_deadline.at()) {
                 list.insert_before(other, entry);
@@ -88,7 +89,8 @@ void TimeManager::cancel_waiter(WaitEntry& entry) {
     auto* tm = s_instance;
     ASSERT(tm);
 
-    tm->m_waiters.with([&](auto& list) {
+    tm->m_waiters.with([&](ClockList& clocks) {
+        auto& list = clocks[entry.m_deadline.clock_id()];
         list.remove(entry);
     });
 }
@@ -136,15 +138,21 @@ void TimeManager::update_time() {
 
     m_timer_update1.store(iteration + 1, std::MemoryOrder::Release);
 
-    m_waiters.with([](auto& list) {
-        while (!list.empty()) {
-            auto& entry = list.first();
-            if (!entry.m_deadline.is_expired()) {
-                break;
-            }
+    this->wakeup_waiters();
+}
 
-            entry.m_queue->on_timeout(entry);
-            list.remove(entry);
+void TimeManager::wakeup_waiters() {
+    m_waiters.with([](ClockList& clocks) {
+        for (auto& list : clocks) {
+            while (!list.empty()) {
+                auto& entry = list.first();
+                if (!entry.m_deadline.is_expired()) {
+                    break;
+                }
+
+                entry.m_queue->on_timeout(entry);
+                list.remove(entry);
+            }
         }
     });
 }

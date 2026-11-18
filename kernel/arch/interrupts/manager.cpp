@@ -52,7 +52,7 @@ RefPtr<InterruptController> InterruptManager::find_responsible_controller(u16 ir
         }
     }
 
-    return nullptr;
+    ASSERT_MSG(false, "No interrupt controller was set for IRQ #{}.", irq);
 }
 
 void InterruptManager::enumerate_ioapics(acpi::MADT* madt) {

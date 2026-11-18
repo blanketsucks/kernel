@@ -5,7 +5,7 @@
 
 namespace kernel {
 
-class APICTimer : public Timer {
+class APICTimer : public Timer<InterruptHandler> {
 public:
     static constexpr u32 DEFAULT_FREQUENCY = 1'000;
 

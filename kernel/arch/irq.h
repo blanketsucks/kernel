@@ -9,37 +9,53 @@ namespace kernel {
 
 class InterruptController;
 
-enum class IRQHandlerType : u8 {
-    Exclusive = 1,
-    Shared = 2
+enum class InterruptHandlerType : u8 {
+    Generic = 0,
+    IRQ = 1,
+    IRQShared = 2
 };
 
-class IRQHandlerBase {
+class InterruptHandler {
 public:
-    virtual ~IRQHandlerBase() = default;
+    virtual ~InterruptHandler() = default;
 
-    virtual void handle_irq() = 0;
-    virtual void eoi() = 0;
+    virtual void handle_interrupt() = 0;
+    virtual void eoi() {}
 
-    virtual IRQHandlerType handler_type() const = 0;
+    virtual InterruptHandlerType handler_type() const { return InterruptHandlerType::Generic; }
 
     void register_interrupt_handler();
     void unregister_interrupt_handler();
 
-    InterruptController const* controller() const { return m_controller.ptr(); }
+    u8 interrupt() const { return m_interrupt; }
+    bool is_registered() const { return m_registered; }
 
-    u8 irq() const { return m_irq; }
+protected:
+    InterruptHandler(u8 interrupt) : m_interrupt(interrupt) {}
+
+private:
+    u8 m_interrupt;
+    bool m_registered = false;
+};
+
+class IRQHandlerBase : public InterruptHandler {
+public:
+
+    virtual void handle_irq() = 0;
+    void handle_interrupt() override { handle_irq(); }
+
+    virtual void eoi() override = 0;
+
+    InterruptController const& controller() const { return *m_controller; }
+
     bool is_registered() const { return m_registered; }
 
 protected:
     IRQHandlerBase(u8 irq);
 
-    InterruptController& ensure_controller();
-
     RefPtr<InterruptController> m_controller;
 
 private:
-    u8 m_irq;
     bool m_registered = false;
 };
 
@@ -50,7 +66,7 @@ public:
     virtual void handle_irq() override = 0;
     void eoi() override;
 
-    IRQHandlerType handler_type() const override { return IRQHandlerType::Exclusive; }
+    InterruptHandlerType handler_type() const override { return InterruptHandlerType::IRQ; }
 
     void enable_irq();
     void disable_irq();
@@ -72,7 +88,7 @@ public:
     void handle_irq() override;
     void eoi() override;
 
-    IRQHandlerType handler_type() const override { return IRQHandlerType::Shared; }
+    InterruptHandlerType handler_type() const override { return InterruptHandlerType::IRQShared; }
 
     void enable_irq();
     void disable_irq();

@@ -7,7 +7,7 @@
 
 namespace kernel {
 
-class PIT : public Timer {
+class PIT : public Timer<IRQHandler> {
 public:
     enum Access {
         Countdown     = 0x0,

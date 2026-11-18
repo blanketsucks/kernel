@@ -14,7 +14,7 @@ class HPET;
 
 static constexpr size_t DEFAULT_HPET_TIMER_FREQUENCY = 1'000;
 
-class HPETTimer : public Timer {
+class HPETTimer : public Timer<IRQHandler> {
 public:
     static RefPtr<HPETTimer> create(HPET*, u8 irq, u8 id);
 
@@ -48,5 +48,5 @@ private:
     bool m_is_periodic = false;
     size_t m_frequency = DEFAULT_HPET_TIMER_FREQUENCY;
 };
-    
+
 }

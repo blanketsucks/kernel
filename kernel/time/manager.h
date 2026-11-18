@@ -11,6 +11,7 @@
 #include <std/atomic.h>
 #include <std/time.h>
 #include <std/memory.h>
+#include <std/array.h>
 
 namespace kernel {
 
@@ -34,10 +35,11 @@ public:
     Duration epoch_time();
     Duration monotonic_time();
 
-    void set_system_timer(RefPtr<Timer> timer);
+    void set_system_timer(RefPtr<TimerBase> timer);
 
 private:
     using WaiterList = std::IntrusiveList<&WaitEntry::m_timer_node>;
+    using ClockList = std::Array<WaiterList, CLOCK_COUNT>;
 
     TimeManager() = default;
 
@@ -49,8 +51,10 @@ private:
     void timer_tick();
     void update_time();
 
-    RefPtr<Timer> m_system_timer;
-    RefPtr<Timer> m_time_keep_timer;
+    void wakeup_waiters();
+
+    RefPtr<TimerBase> m_system_timer;
+    RefPtr<TimerBase> m_time_keep_timer;
 
     u64 m_ticks_per_second = 0;
 
@@ -59,7 +63,7 @@ private:
 
     Duration m_epoch_time;
 
-    SpinLockResource<WaiterList> m_waiters;
+    SpinLockResource<ClockList> m_waiters;
 
     // TODO: Maybe use a lock instead in epoch_time() and monotonic_time(), but for some reason adding a lock
     // makes the kernel go insane and crash.

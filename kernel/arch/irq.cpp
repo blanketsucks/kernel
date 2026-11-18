@@ -9,22 +9,22 @@
 
 namespace kernel {
 
-static IRQHandlerBase* s_irq_handlers[IRQ_HANDLER_COUNT] = {};
+static InterruptHandler* s_irq_handlers[IRQ_HANDLER_COUNT] = {};
 
 extern "C" void _irq_handler(arch::InterruptRegisters* regs) {
     u8 irq = regs->intno - IRQ_VECTOR_BASE;
-    IRQHandlerBase* handler = s_irq_handlers[irq];
+    auto* handler = s_irq_handlers[irq];
 
     ASSERT_MSG(handler, "No IRQ handler found for #{}", irq);
 
-    handler->handle_irq();
+    handler->handle_interrupt();
     handler->eoi();
 
     Processor::current().check_scheduler_invoked_async();
 }
 
-static void register_irq_handler(IRQHandlerBase* handler) {
-    u8 irq = handler->irq();
+static void register_irq_handler(InterruptHandler* handler) {
+    u8 irq = handler->interrupt();
     if (irq >= IRQ_HANDLER_COUNT) {
         return;
     }
@@ -35,24 +35,28 @@ static void register_irq_handler(IRQHandlerBase* handler) {
         return;
     }
 
-    if (slot->handler_type() == IRQHandlerType::Exclusive) {
+    if (slot->handler_type() == InterruptHandlerType::IRQ) {
+        ASSERT(handler->handler_type() == InterruptHandlerType::IRQ);
+
         auto* exclusive = static_cast<IRQHandler*>(slot);
         exclusive->set_shared(true);
 
         auto* shared = new SharedIRQHandler(irq);
 
         shared->add_irq_handler(exclusive);
-        shared->add_irq_handler(handler);
+        shared->add_irq_handler(static_cast<IRQHandler*>(handler));
 
         slot = shared;
-    } else {
-        // Shared handler
-        static_cast<SharedIRQHandler*>(slot)->add_irq_handler(handler);
+    } else if (slot->handler_type() == InterruptHandlerType::IRQShared) {
+        ASSERT(handler->handler_type() == InterruptHandlerType::IRQ);
+
+        auto* shared = static_cast<SharedIRQHandler*>(slot);
+        shared->add_irq_handler(static_cast<IRQHandler*>(handler));
     }
 }
 
-static void unregister_irq_handler(IRQHandlerBase* handler) {
-    u8 irq = handler->irq();
+static void unregister_irq_handler(InterruptHandler* handler) {
+    u8 irq = handler->interrupt();
     if (irq >= IRQ_HANDLER_COUNT) {
         return;
     }
@@ -62,24 +66,27 @@ static void unregister_irq_handler(IRQHandlerBase* handler) {
         return;
     }
 
-    if (slot->handler_type() == IRQHandlerType::Exclusive) {
+    if (slot->handler_type() == InterruptHandlerType::Generic) {
+        slot = nullptr;
+        return;
+    } else if (slot->handler_type() == InterruptHandlerType::IRQ) {
         static_cast<IRQHandler*>(slot)->set_shared(false);
         slot = nullptr;
 
         return;
     }
 
+    ASSERT(handler->handler_type() == InterruptHandlerType::IRQ);
+
     auto* shared = static_cast<SharedIRQHandler*>(slot);
-    shared->remove_irq_handler(handler);
+    shared->remove_irq_handler(static_cast<IRQHandler*>(handler));
 
     if (!shared->handlers_count()) {
         slot = nullptr;
     }
 }
 
-IRQHandlerBase::IRQHandlerBase(u8 irq) : m_controller(InterruptManager::controller_for(irq)), m_irq(irq) {}
-
-void IRQHandlerBase::register_interrupt_handler() {
+void InterruptHandler::register_interrupt_handler() {
     if (m_registered) {
         return;
     }
@@ -88,7 +95,7 @@ void IRQHandlerBase::register_interrupt_handler() {
     m_registered = true;
 }
 
-void IRQHandlerBase::unregister_interrupt_handler() {
+void InterruptHandler::unregister_interrupt_handler() {
     if (!m_registered) {
         return;
     }
@@ -97,18 +104,14 @@ void IRQHandlerBase::unregister_interrupt_handler() {
     m_registered = false;
 }
 
-// TODO: Make another class for interrupts that don't have a corresponding controller (such as the APIC Timer)
-InterruptController& IRQHandlerBase::ensure_controller() {
-    ASSERT_MSG(m_controller, "No interrupt controller was set for IRQ #{}.", irq());
-    return *m_controller;
-}
+IRQHandlerBase::IRQHandlerBase(u8 irq) : InterruptHandler(irq), m_controller(InterruptManager::controller_for(irq)) {}
 
 void IRQHandler::eoi() {
     if (m_is_shared) {
         return;
     }
 
-    ensure_controller().eoi(irq());
+    m_controller->eoi(interrupt());
 }
 
 void IRQHandler::enable_irq() {
@@ -118,14 +121,14 @@ void IRQHandler::enable_irq() {
 
     m_enabled = true;
     if (!m_is_shared) {
-        ensure_controller().enable(irq());
+        m_controller->enable(interrupt());
     }
 }
 
 void IRQHandler::disable_irq() {
     m_enabled = false;
     if (!m_is_shared) {
-        ensure_controller().disable(irq());
+        m_controller->disable(interrupt());
     }
 }
 
@@ -136,7 +139,7 @@ void SharedIRQHandler::handle_irq() {
 }
 
 void SharedIRQHandler::eoi() {
-    ensure_controller().eoi(irq());
+    m_controller->eoi(interrupt());
 }
 
 void SharedIRQHandler::enable_irq() {
@@ -145,7 +148,7 @@ void SharedIRQHandler::enable_irq() {
     }
 
     m_enabled = true;
-    ensure_controller().enable(irq());
+    m_controller->enable(interrupt());
 }
 
 void SharedIRQHandler::disable_irq() {
@@ -154,7 +157,7 @@ void SharedIRQHandler::disable_irq() {
     }
 
     m_enabled = false;
-    ensure_controller().disable(irq());
+    m_controller->disable(interrupt());
 }
 
 void SharedIRQHandler::add_irq_handler(IRQHandlerBase* handler) {
