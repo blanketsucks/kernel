@@ -16,6 +16,10 @@ enum class InterruptState {
 
 class Processor {
 public:
+    Processor() = default;
+
+    NO_COPY(Processor);
+
     void initialize(int cpu);
 
     static Processor& current();
