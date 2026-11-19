@@ -1,21 +1,32 @@
 #pragma once
 
 #include <kernel/common.h>
-#include <kernel/time/timer.h>
+#include <kernel/time/event_timer.h>
+#include <kernel/arch/irq.h>
 
 namespace kernel {
 
-class APICTimer : public Timer<InterruptHandler> {
+class APICTimer : public EventTimer, InterruptHandler {
 public:
-    static constexpr u32 DEFAULT_FREQUENCY = 1'000;
-
     static RefPtr<APICTimer> create(u8 irq);
 
-    u32 frequency() const { return m_frequency; }
+    StringView name() const override { return "APIC"; }
 
+    u64 frequency() const override { return m_frequency; }
+
+    bool supports_oneshot() const override { return false; }
+    bool supports_periodic() const override { return true; }
+
+    void start_periodic(u64 hz) override;
+    void start_oneshot(u64 ticks) override;
+
+    void stop() override;
+
+    void handle_interrupt() override { dispatch(); }
     void eoi() override;
 
-    void enable_local_timer(u32 frequency = DEFAULT_FREQUENCY);
+    void enable_local_timer(u64 frequency);
+    void disable_local_timer();
 
 private:
     APICTimer(u8 irq);

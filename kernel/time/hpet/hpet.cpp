@@ -12,13 +12,13 @@ HPET* HPET::instance() {
     return s_instance;
 }
 
-bool HPET::init() {
+bool HPET::initialize() {
     if (s_instance) {
         return false;
     }
 
     auto* hpet = s_instance = new HPET;
-    bool result = hpet->initialize();
+    bool result = hpet->init();
 
     if (!result) {
         delete hpet;
@@ -30,7 +30,7 @@ bool HPET::init() {
     return true;
 }
 
-bool HPET::initialize() {
+bool HPET::init() {
     auto* hpet = ACPIParser::find<HPETTable>();
     if (!hpet) {
         return false;
@@ -61,11 +61,14 @@ bool HPET::initialize() {
         dbgln(" - Counter size: 32-bit");
     }
 
+    m_is_64_bit_counter = hpet->count_size_cap;
+
     // Replace the PIT and RTC timers
     if (capabilities.legacy_replacement) {
         m_registers->general_configuration = m_registers->general_configuration | (1 << 1);
     }
 
+    m_clock_source = HPETClockSource::create(this);
     m_timers.append(HPETTimer::create(this, 0, 0));
 
     dbgln();
@@ -90,36 +93,12 @@ TimerConfiguration* HPET::timer_configuration_for(u8 id) const {
     if (id >= 32) {
         return nullptr;
     }
-    
+
     return &m_registers->timers[id];
 }
 
-u64 HPET::counter() {
-    return m_registers->main_counter_value;
-}
-
-u64 HPET::deltatime_ns(u64& seconds_since_boot, u64& current_ticks, bool update) {
-    u64 counter = this->counter();
-
-    u64 delta = 0;
-    if (counter >= m_last_counter) {
-        delta = counter - m_last_counter;
-    } else {
-        // The counter has wrapped around
-        delta = (0xFFFFFFFFFFFFFFFF - m_last_counter) + counter;
-    }
-
-    u64 ticks = current_ticks + delta;
-    auto frequency = this->frequency();
-    
-    seconds_since_boot += ticks / frequency;
-    current_ticks = ticks % frequency;
-    
-    if (update) {
-        m_last_counter = counter;
-    }
-
-    return (delta * 1'000'000'000ull) / frequency;
+HPETClockSource::HPETClockSource(HPET* hpet) : m_hpet(hpet) {
+    m_mask = m_hpet->is_64_bit_counter() ? (~0ull) : (~0u);
 }
 
 }

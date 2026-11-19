@@ -1,3 +1,4 @@
+#include <kernel/time/hpet/timer.h>
 #include <kernel/time/manager.h>
 #include <kernel/time/hpet/hpet.h>
 #include <kernel/time/rtc.h>
@@ -27,7 +28,6 @@ TimeManager* TimeManager::instance() {
 
 void TimeManager::init() {
     rtc::init();
-
     m_epoch_time = Duration::from_seconds(rtc::boot_time());
 
     // No need to use the APIC timer when running 1 core.
@@ -35,37 +35,40 @@ void TimeManager::init() {
         auto& apic = APIC::instance();
         auto timer = apic.create_timer();
 
-        m_ticks_per_second = timer->frequency();
-        this->set_system_timer(timer);
-
-        HPET::init();
-        return;
-    }
-
-    // Fall back to the PIT if the HPET is not available
-    if (!HPET::init()) {
-        this->initialize_with_pit();
+        this->set_event_timer(move(timer));
+        if (HPET::initialize()) {
+            auto* hpet = HPET::instance();
+            this->set_clock_source(hpet->clock_source());
+        }
     } else {
-        this->initialize_with_hpet();
+        // Fall back to the PIT if the HPET is not available
+        if (!HPET::initialize()) {
+            this->initialize_with_pit();
+        } else {
+            this->initialize_with_hpet();
+        }
     }
-}
 
-void TimeManager::set_system_timer(RefPtr<TimerBase> timer) {
-    m_system_timer = move(timer);
-    m_system_timer->set_callback([this]() { this->timer_tick(); });
+    ASSERT_MSG(m_clock_source, "No clock source found on this system.");
+
+    dbgln("Time Manager:");
+    dbgln(" - Event timer: {}", m_event_timer->name());
+    dbgln(" - Clock source: {}", m_clock_source->name());
+    dbgln();
+
+    m_event_timer->start_periodic(DEFAULT_FREQUENCY);
 }
 
 void TimeManager::initialize_with_hpet() {
     auto* hpet = HPET::instance();
-    m_ticks_per_second = hpet->frequency();
 
-    this->set_system_timer(hpet->timer(0));
+    this->set_clock_source(hpet->clock_source());
+    this->set_event_timer(hpet->timer(0));
 }
 
 void TimeManager::initialize_with_pit() {
-    m_ticks_per_second = PIT::DEFAULT_FREQUENCY;
-
-    this->set_system_timer(PIT::create());
+    this->set_event_timer(PIT::create());
+    // TODO: Use a clock source for the PIT
 }
 
 void TimeManager::add_waiter(WaitEntry& entry) {
@@ -119,23 +122,22 @@ void TimeManager::timer_tick() {
 }
 
 void TimeManager::update_time() {
-    if (!HPET::instance()) {
-        return;
-    }
+    u64 now = m_clock_source->read();
+    u64 cycles = (now - m_last_counter) & m_clock_source->mask();
 
-    auto* hpet = HPET::instance();
-
-    u64 seconds_since_boot = m_seconds_since_boot;
-    u64 ticks = m_ticks;
-    u64 delta = hpet->deltatime_ns(seconds_since_boot, ticks);
+    auto [ns, frac] = cycles_to_ns(cycles, m_ns_frac);
+    u64 total_ns = static_cast<u64>(m_ns) + ns;
 
     u32 iteration = m_timer_update2.fetch_add(1, std::MemoryOrder::Acquire);
+    {
+        m_last_counter = now;
+        m_ns_frac      = frac;
 
-    m_ticks = ticks;
-    m_seconds_since_boot = seconds_since_boot;
+        m_seconds_since_boot += total_ns / 1'000'000'000ull;
+        m_ns = static_cast<u32>(total_ns % 1'000'000'000ull);
 
-    m_epoch_time += Duration::from_nanoseconds(delta);
-
+        m_epoch_time += Duration::from_nanoseconds(ns);
+    }
     m_timer_update1.store(iteration + 1, std::MemoryOrder::Release);
 
     this->wakeup_waiters();
@@ -173,23 +175,37 @@ Duration TimeManager::epoch_time() {
 }
 
 Duration TimeManager::monotonic_time() {
-    if (!HPET::instance()) {
-        return Duration::zero();
-    }
+    u64 seconds, last_counter, frac;
+    u32 iteration, ns;
 
-    u32 ticks;
-    u64 seconds;
-
-    u32 iteration;
     do {
         iteration = m_timer_update1.load(std::MemoryOrder::Acquire);
 
         seconds = m_seconds_since_boot;
-        ticks = m_ticks;
+        ns = m_ns;
+        last_counter = m_last_counter;
+        frac = m_ns_frac;
     } while (iteration != m_timer_update2.load(std::MemoryOrder::Acquire));
 
-    u64 ns = ((u64)ticks * 1'000'000'000ull) / m_ticks_per_second;
-    return Duration(seconds, static_cast<u32>(ns));
+    u64 cycles = (m_clock_source->read() - last_counter) & m_clock_source->mask();
+    u64 total_ns = static_cast<u64>(ns) + cycles_to_ns(cycles, frac).ns;
+
+    return Duration(
+        seconds + total_ns / 1'000'000'000ull,
+        static_cast<u32>(total_ns % 1'000'000'000ull)
+    );
+}
+
+auto TimeManager::cycles_to_ns(u64 cycles, u64 frac) -> NSConv {
+    u64 frequency = m_clock_source->frequency();
+
+    u64 secs = cycles / frequency;
+    u64 rem  = cycles % frequency;
+
+    u64 acc = rem  * 1'000'000'000 + frac;
+    u64 ns  = secs * 1'000'000'000 + (acc / frequency);
+
+    return { ns, acc % frequency };
 }
 
 }

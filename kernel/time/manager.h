@@ -4,7 +4,8 @@
 #include <kernel/posix/sys/types.h>
 #include <kernel/process/wait_queue.h>
 #include <kernel/posix/time.h>
-#include <kernel/time/timer.h>
+#include <kernel/time/clock_source.h>
+#include <kernel/time/event_timer.h>
 #include <kernel/sync/spinlock.h>
 #include <kernel/sync/resource.h>
 
@@ -17,6 +18,8 @@ namespace kernel {
 
 class TimeManager {
 public:
+    static constexpr u64 DEFAULT_FREQUENCY = 1'000;
+
     static void initialize();
     static TimeManager* instance();
 
@@ -30,14 +33,16 @@ public:
     static void cancel_waiter(WaitEntry&);
 
     static time_t boot_time();
-    static void tick();
 
     Duration epoch_time();
     Duration monotonic_time();
 
-    void set_system_timer(RefPtr<TimerBase> timer);
-
 private:
+    struct NSConv {
+        u64 ns;
+        u64 frac;
+    };
+
     using WaiterList = std::IntrusiveList<&WaitEntry::m_timer_node>;
     using ClockList = std::Array<WaiterList, CLOCK_COUNT>;
 
@@ -48,25 +53,36 @@ private:
     void initialize_with_pit();
     void initialize_with_hpet();
 
+    void set_clock_source(RefPtr<ClockSource> clock_source) {
+        m_clock_source = move(clock_source);
+    }
+
+    void set_event_timer(RefPtr<EventTimer> event_timer) {
+        m_event_timer = move(event_timer);
+        m_event_timer->set_callback([this]() {
+            this->timer_tick();
+        });
+    }
+
     void timer_tick();
     void update_time();
 
     void wakeup_waiters();
 
-    RefPtr<TimerBase> m_system_timer;
-    RefPtr<TimerBase> m_time_keep_timer;
+    NSConv cycles_to_ns(u64 cycles, u64 frac);
 
-    u64 m_ticks_per_second = 0;
+    RefPtr<ClockSource> m_clock_source = nullptr;
+    RefPtr<EventTimer>  m_event_timer  = nullptr;
 
     u64 m_seconds_since_boot = 0;
-    u64 m_ticks = 0;
+    u32 m_ns                 = 0;
+    u64 m_last_counter       = 0;
+    u64 m_ns_frac            = 0;
 
     Duration m_epoch_time;
 
     SpinLockResource<ClockList> m_waiters;
 
-    // TODO: Maybe use a lock instead in epoch_time() and monotonic_time(), but for some reason adding a lock
-    // makes the kernel go insane and crash.
     std::Atomic<u32> m_timer_update1;
     std::Atomic<u32> m_timer_update2;
 };

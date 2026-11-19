@@ -114,7 +114,7 @@ extern "C" void init_ap(FlatPtr cpu) {
     apic.enable(cpu);
 
     auto timer = apic.timer();
-    timer->enable_local_timer();
+    timer->enable_local_timer(TimeManager::DEFAULT_FREQUENCY);
 
     dbgln("Initialized CPU #{} and ready to schedule!", cpu);
     Scheduler::run();

@@ -34,7 +34,7 @@ union GeneralCapabilitiesAndID {
         u16 pci_vendor_id;
         u32 counter_clock_period;
     };
-    
+
     u64 value;
 
     GeneralCapabilitiesAndID(u64 value = 0) : value(value) {}
@@ -56,7 +56,7 @@ union TimerConfigurationAndCapabilities {
         u32 : 16;
         u32 interrupt_route_capability;
     };
-    
+
     u64 value;
 
     TimerConfigurationAndCapabilities(u64 value = 0) : value(value) {}
