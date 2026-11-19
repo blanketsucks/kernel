@@ -23,7 +23,7 @@ public:
 
     Function(Function&& other) : callable(other.callable) { other.callable = nullptr; }
 
-    ~Function() { 
+    ~Function() {
         if (callable) {
             delete callable;
         }
@@ -63,6 +63,10 @@ public:
         }
 
         return callable->invoke(std::forward<Args>(args)...);
+    }
+
+    explicit operator bool() const {
+        return bool(callable);
     }
 
 private:
