@@ -217,6 +217,8 @@ StringView feature_to_name(Feature f) {
         case Feature::TOPOEXT:      return "topoext";
         case Feature::PERFCTR_CORE: return "perfctr_core";
         case Feature::PERFCTR_NB:   return "perfctr_nb";
+
+        case Feature::INVARIANT_TSC: return "invariant_tsc";
     }
 
     return "unknown";

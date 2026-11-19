@@ -30,6 +30,7 @@ inline constexpr CPUIDWord CPUID_WORDS[] = {
     {0x00000007, CPUIDReg::edx},
     {0x80000001, CPUIDReg::edx},
     {0x80000001, CPUIDReg::ecx},
+    {0x80000007, CPUIDReg::edx}
 };
 
 inline constexpr size_t WORD_COUNT = sizeof(CPUID_WORDS) / sizeof(CPUIDWord);
@@ -218,6 +219,9 @@ enum class Feature : u32 {
     TOPOEXT      = feature(6, 22),
     PERFCTR_CORE = feature(6, 23),
     PERFCTR_NB   = feature(6, 24),
+
+    // 80000007H.EDX
+    INVARIANT_TSC = feature(7, 8)
 };
 
 CPUID cpuid(u32 leaf);
