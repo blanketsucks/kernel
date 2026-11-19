@@ -110,7 +110,12 @@ class QemuArgs(NamedTuple):
             args.extend(['-machine', 'q35'])
 
         if self.kvm:
-            args.extend(['-accel', 'kvm'])
+            if sys.platform == 'win32':
+                args.extend(['-accel', 'whpx', '-cpu', 'qemu64,+invtsc'])
+            else:
+                args.extend(['-accel', 'kvm', '-cpu', 'host,+invtsc'])
+        else:
+            args.extend(['-cpu', 'max'])
 
         if not self.uefi:
             args.extend(['-append', ' '.join(self.cmdline)])
