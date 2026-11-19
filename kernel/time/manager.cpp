@@ -30,8 +30,7 @@ void TimeManager::init() {
     rtc::init();
     m_epoch_time = Duration::from_seconds(rtc::boot_time());
 
-    // No need to use the APIC timer when running 1 core.
-    if (APIC::is_initialized() && APIC::processors() > 1) {
+    if (APIC::is_initialized()) {
         auto& apic = APIC::instance();
         auto timer = apic.create_timer();
 
