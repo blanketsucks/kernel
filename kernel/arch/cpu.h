@@ -3,7 +3,7 @@
 #include <kernel/common.h>
 
 #define IRQ_VECTOR_BASE   0x20
-#define IRQ_HANDLER_COUNT (256 - IRQ_VECTOR_BASE) 
+#define IRQ_HANDLER_COUNT (256 - IRQ_VECTOR_BASE)
 
 namespace kernel::arch {
 
@@ -121,6 +121,13 @@ static inline void fxsave(FPUState& state) {
 
 static inline void fxrstor(FPUState& state) {
     asm volatile("fxrstor %0" :: "m"(state) : "memory");
+}
+
+static inline u64 rdtsc(void) {
+    u32 lo, hi;
+    asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+
+    return (static_cast<u64>(hi) << 32) | lo;
 }
 
 }
