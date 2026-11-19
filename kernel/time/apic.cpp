@@ -1,5 +1,6 @@
 #include <kernel/time/apic.h>
 #include <kernel/time/pit.h>
+#include <kernel/time/calibration.h>
 #include <kernel/arch/interrupts/apic.h>
 
 #include <std/format.h>
@@ -23,16 +24,28 @@ void APICTimer::eoi() {
 }
 
 void APICTimer::calibrate() {
-    // TODO: Calibrate using a more accurate method
     auto& apic = APIC::instance();
 
-    apic.configure_local_timer(0xffffffff);
-    PIT::wait_ms(10);
+    m_frequency = calibrate_timer(
+        [&]() -> u64 {
+            apic.configure_local_timer(0xffffffff);
+            return 0xffffffff;
+        },
+        [&](u64 start) -> u64 {
+            u64 current = apic.read_apic_timer_ticks();
+            apic.configure_local_timer(0, false);
 
-    u32 elapsed = 0xffffffff - apic.read_apic_timer_ticks();
-    m_frequency = elapsed * 100;
+            return start - current;
+        }
+    );
 
-    this->disable_local_timer();
+    // calibrate_timer would have called configure_local_timer(0, false) at this point so
+    // no need to do it ourselves.
+
+    u64 khz  = m_frequency / 1'000'000;
+    u64 rest = (m_frequency % 1'000'000) / 1'000;
+
+    dbgln("LAPIC timer calibrated to {}.{} MHz", khz, rest);
 }
 
 
