@@ -111,7 +111,7 @@ public:
     RefPtr<APICTimer> create_timer();
     RefPtr<APICTimer> timer() const { return m_timer; }
 
-    void configure_local_timer(u32 initial_count);
+    void configure_local_timer(u32 initial_count, bool enable = true);
 
     u32 read_apic_timer_ticks();
 

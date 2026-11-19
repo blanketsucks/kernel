@@ -113,7 +113,14 @@ RefPtr<APICTimer> APIC::create_timer() {
     return m_timer;
 }
 
-void APIC::configure_local_timer(u32 initial_count) {
+void APIC::configure_local_timer(u32 initial_count, bool enable) {
+    if (!enable) {
+        write_reg(TimerInitialCount, 0);
+        write_reg(LVTTimer, LVT_DISABLE);
+
+        return;
+    }
+
     write_reg(TimerInitialCount, 0);
     write_reg(LVTTimer, (TIMER_INTERRUPT_VECTOR + IRQ_VECTOR_BASE) | 0x20000);
 
