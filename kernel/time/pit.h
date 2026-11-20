@@ -39,6 +39,7 @@ public:
     static void wait_ms(u32 ms);
 
     StringView name() const override { return "PIT"; }
+    EventTimerType type() const override { return EventTimerType::PIT; }
     u64 frequency() const override { return INPUT_CLOCK; };
 
     bool supports_oneshot() const override { return false; }

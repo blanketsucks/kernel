@@ -13,7 +13,9 @@ class HPETClockSource;
 
 class HPET {
 public:
-    static bool initialize();
+    static void initialize();
+    static bool is_initialized();
+
     static HPET* instance();
 
     HPETRegisters* registers() const { return m_registers; }
@@ -31,7 +33,7 @@ public:
     void disable();
 
 private:
-    bool init();
+    void init();
 
     HPETRegisters* m_registers = nullptr;
 
@@ -54,6 +56,7 @@ public:
     }
 
     StringView name() const override { return "HPET"; }
+    ClockSourceType type() const override { return ClockSourceType::HPET; }
 
     u64 frequency() const override {
         return 1'000'000'000'000'000ull / m_hpet->counter_clock_period();

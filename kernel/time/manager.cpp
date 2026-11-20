@@ -30,44 +30,69 @@ void TimeManager::init() {
     rtc::init();
     m_epoch_time = Duration::from_seconds(rtc::boot_time());
 
-    if (APIC::is_initialized()) {
-        auto& apic = APIC::instance();
-        auto timer = apic.create_timer();
+    HPET::initialize();
+    this->discover();
 
-        this->set_event_timer(move(timer));
-        if (HPET::initialize()) {
-            auto* hpet = HPET::instance();
-            this->set_clock_source(hpet->clock_source());
-        }
-    } else {
-        // Fall back to the PIT if the HPET is not available
-        if (!HPET::initialize()) {
-            this->initialize_with_pit();
-        } else {
-            this->initialize_with_hpet();
-        }
-    }
-
-    ASSERT_MSG(m_clock_source, "No clock source found on this system.");
+    this->pick_best_clock_source();
+    this->pick_best_event_timer();
 
     dbgln("Time Manager:");
     dbgln(" - Event timer: {}", m_event_timer->name());
     dbgln(" - Clock source: {}", m_clock_source->name());
     dbgln();
 
+    m_event_timer->set_callback([this]() {
+        this->timer_tick();
+    });
+
     m_event_timer->start_periodic(DEFAULT_FREQUENCY);
 }
 
-void TimeManager::initialize_with_hpet() {
-    auto* hpet = HPET::instance();
+void TimeManager::discover() {
+    if (APIC::is_initialized()) {
+        auto& apic = APIC::instance();
+        auto timer = apic.create_timer();
 
-    this->set_clock_source(hpet->clock_source());
-    this->set_event_timer(hpet->timer(0));
+        m_event_timers.append(move(timer));
+    }
+
+    if (HPET::is_initialized()) {
+        auto* hpet = HPET::instance();
+
+        m_clock_sources.append(hpet->clock_source());
+        m_event_timers.append(hpet->timer(0));
+    }
+
+    m_event_timers.append(PIT::create());
+
+    ASSERT_MSG(!m_clock_sources.empty(), "No clock source found on this system.");
 }
 
-void TimeManager::initialize_with_pit() {
-    this->set_event_timer(PIT::create());
-    // TODO: Use a clock source for the PIT
+void TimeManager::pick_best_clock_source() {
+    RefPtr<ClockSource> best = m_clock_sources[0];
+    if (m_clock_sources.size() == 1) {
+        m_clock_source = best;
+        return;
+    }
+
+    for (auto& clock_source : m_clock_sources) {
+        if (clock_source->type() > best->type()) {
+            best = clock_source;
+        }
+    }
+
+    m_clock_source = best;
+}
+
+void TimeManager::pick_best_event_timer() {
+    RefPtr<EventTimer> best = m_event_timers[0];
+    for (auto& event_timer : m_event_timers) {
+        if (event_timer->type() > best->type()) {
+            best = event_timer;
+        }
+    }
+
+    m_event_timer = best;
 }
 
 void TimeManager::add_waiter(WaitEntry& entry) {
@@ -117,6 +142,7 @@ void TimeManager::timer_tick() {
         this->update_time();
     }
 
+    this->wakeup_waiters();
     processor.invoke_scheduler_async();
 }
 
@@ -128,6 +154,7 @@ void TimeManager::update_time() {
     u64 total_ns = static_cast<u64>(m_ns) + ns;
 
     u32 iteration = m_timer_update2.fetch_add(1, std::MemoryOrder::Acquire);
+
     {
         m_last_counter = now;
         m_ns_frac      = frac;
@@ -137,9 +164,8 @@ void TimeManager::update_time() {
 
         m_epoch_time += Duration::from_nanoseconds(ns);
     }
-    m_timer_update1.store(iteration + 1, std::MemoryOrder::Release);
 
-    this->wakeup_waiters();
+    m_timer_update1.store(iteration + 1, std::MemoryOrder::Release);
 }
 
 void TimeManager::wakeup_waiters() {

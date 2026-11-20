@@ -5,11 +5,18 @@
 
 namespace kernel {
 
+enum class EventTimerType : u8 {
+    PIT   = 0,
+    HPET  = 1,
+    LAPIC = 2
+};
+
 class EventTimer {
 public:
     virtual ~EventTimer() = default;
 
     virtual StringView name() const = 0;
+    virtual EventTimerType type() const = 0;
 
     virtual u64 frequency() const = 0;
 

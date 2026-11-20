@@ -21,6 +21,7 @@ public:
     u8 id() const { return m_id; }
 
     StringView name() const override { return "HPET"; }
+    EventTimerType type() const override { return EventTimerType::PIT; }
     u64 frequency() const override;
 
     bool supports_oneshot() const override { return true; }

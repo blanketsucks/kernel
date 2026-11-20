@@ -11,6 +11,7 @@ public:
     static RefPtr<APICTimer> create(u8 irq);
 
     StringView name() const override { return "APIC"; }
+    EventTimerType type() const override { return EventTimerType::LAPIC; }
 
     u64 frequency() const override { return m_frequency; }
 

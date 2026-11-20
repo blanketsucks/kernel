@@ -6,11 +6,17 @@
 
 namespace kernel {
 
+enum class ClockSourceType {
+    HPET = 1,
+    TSC  = 2
+};
+
 class ClockSource {
 public:
     virtual ~ClockSource() = default;
 
     virtual StringView name() const = 0;
+    virtual ClockSourceType type() const = 0;
 
     virtual u64 frequency() const = 0;
 

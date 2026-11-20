@@ -13,6 +13,7 @@
 #include <std/time.h>
 #include <std/memory.h>
 #include <std/array.h>
+#include <std/vector.h>
 
 namespace kernel {
 
@@ -50,8 +51,10 @@ private:
 
     void init();
 
-    void initialize_with_pit();
-    void initialize_with_hpet();
+    void discover();
+
+    void pick_best_event_timer();
+    void pick_best_clock_source();
 
     void set_clock_source(RefPtr<ClockSource> clock_source) {
         m_clock_source = move(clock_source);
@@ -73,6 +76,9 @@ private:
 
     RefPtr<ClockSource> m_clock_source = nullptr;
     RefPtr<EventTimer>  m_event_timer  = nullptr;
+
+    Vector<RefPtr<ClockSource>> m_clock_sources;
+    Vector<RefPtr<EventTimer>>  m_event_timers;
 
     u64 m_seconds_since_boot = 0;
     u32 m_ns                 = 0;
