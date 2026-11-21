@@ -3,6 +3,7 @@
 #include <kernel/time/hpet/hpet.h>
 #include <kernel/time/rtc.h>
 #include <kernel/time/pit.h>
+#include <kernel/time/tsc.h>
 #include <kernel/process/scheduler.h>
 #include <kernel/acpi/acpi.h>
 #include <kernel/arch/interrupts/apic.h>
@@ -49,6 +50,11 @@ void TimeManager::init() {
 }
 
 void TimeManager::discover() {
+    // We only care about the TSC if its frequency is invariant through CPU states.
+    if (Processor::current().has_feature(arch::Feature::INVARIANT_TSC)) {
+        m_clock_sources.append(TSCClockSource::create());
+    }
+
     if (APIC::is_initialized()) {
         auto& apic = APIC::instance();
         auto timer = apic.create_timer();
